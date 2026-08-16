@@ -1,0 +1,56 @@
+Fleet Command License, Version 1.1
+
+Copyright (c) 2026 Chinmai Reddy (@chinmaireddy09)
+https://github.com/chinmaireddy09/fleet-command
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and its associated documentation files (the "Work"), to deal in
+the Work without restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Work, and to permit persons to whom the Work is furnished to do so, subject to
+the following conditions:
+
+1. NOTICE. The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Work.
+
+2. VISIBLE CREDIT. Any distribution, adaptation, or public use of the Work, or
+   of anything substantially derived from it, must credit the author in a place
+   people actually encounter — a README, an about page, documentation, or the
+   interface itself. A notice placed only in a file that is not ordinarily read
+   does not satisfy this condition. The credit must name the author and link to
+   the original source above.
+
+3. STATE CHANGES. If you modify the Work, say so plainly alongside the credit,
+   so that readers are not misled about which parts are the author's.
+
+4. NO ENDORSEMENT. Nothing here grants the right to use the author's name to
+   suggest that the author endorses you, your project, or your use of the Work.
+
+5. PATENTS. Each contributor grants you a perpetual, worldwide, non-exclusive,
+   royalty-free, irrevocable patent licence to make, have made, use, offer to
+   sell, sell, import and otherwise transfer the Work, limited to the patent
+   claims licensable by that contributor which are necessarily infringed by
+   their contribution alone or by combination of that contribution with the
+   Work. If you institute patent litigation against any entity alleging that
+   the Work, or a contribution incorporated in it, constitutes patent
+   infringement, then every patent licence granted to you under this licence
+   terminates as of the date such litigation is filed.
+
+6. BREACH AND CURE. If you fail to comply with conditions 1 to 4, the rights
+   granted to you under this licence terminate automatically. Those rights are
+   reinstated in full if you cure the failure within thirty (30) days of
+   becoming aware of it. A cure after that period restores your rights only if
+   the author grants it expressly and in writing.
+
+7. CONTRIBUTIONS. Anything you intentionally submit for inclusion in the Work —
+   by pull request, patch, or otherwise — is licensed to the author and to all
+   recipients of the Work under the terms of this licence, unless you clearly
+   state otherwise in writing at the time you submit it. This does not change
+   your ownership of what you wrote.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS IN THE WORK.
