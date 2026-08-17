@@ -187,6 +187,34 @@ The binding is a tool call, so make it one:
    `git merge-base --is-ancestor <lane> origin/main` is TRUE, **and** the lane has zero commits
    of its own. The throwaway worktree needs neither check, which is the whole reason it exists.
 
+6. **Pin your call-sign to the terminal tab, so the human can always see which window is which.**
+   This is not cosmetic. **The most expensive mistake a human makes with a fleet is typing the
+   right prompt into the wrong window** — and every tab in a repo looks identical, because they
+   all show the same directory and the same rotating status text.
+
+   ```bash
+   osascript -e 'tell application "Terminal" to set custom title of selected tab of front window to "CHANNELS"'
+   ```
+
+   **Verified 2026-08-17.** Terminal.app's `custom title` **overrides** the title Claude Code
+   writes, and it survives Claude Code's constant status updates — the window went from
+   `ecom-nexus-oss — ✳ Initiate mission control — caffeinate • claude` to
+   `ecom-nexus-oss — CONTROL — node ◂ claude` and stayed there. The tab bar shows just the
+   call-sign.
+
+   **This works on a session that is ALREADY RUNNING**, which matters because `--name` is
+   launch-only. A station that came up by hand can pin its tab immediately without restarting
+   and without losing any state.
+
+   | Terminal | How |
+   |---|---|
+   | **macOS Terminal.app** | the `osascript` above — verified, overrides Claude Code |
+   | **iTerm2** | `tell current session of current window to set name to "<CALLSIGN>"` — untested |
+   | **Anything else** | `printf '\033]0;%s\007' "<CALLSIGN>"` — works widely, but Claude Code may overwrite it on its next status update |
+
+   Do this at identify and **do it again if you ever change call-sign.** A tab pinned to the
+   wrong call-sign is worse than an unpinned one.
+
 **A call-sign with no address on its row is reserved, not manned.** Say so in that state
 and never render it as working — a row that claims a holder it does not have makes free work
 look taken, which is the one failure this whole board exists to prevent.
@@ -633,6 +661,41 @@ already know.
 Eleven phrases, and you already knew all eleven. **If you catch yourself wanting a twelfth,
 use ordinary words instead** — "will do" beats "wilco", and nobody has to be taught it.
 
+### `@callsign` — how a human addresses a station
+
+**A human types `@<callsign> <whatever>` into ANY session, and that session relays it.** They
+should never have to find the right window first.
+
+```
+@backend sitrep
+@channels do you hold adapters/ebay.py?
+@all-stations standby, sweep incoming
+```
+
+**Any session that sees a prompt opening with `@<callsign>`:**
+
+1. **It is not for you.** Do not act on it, even if you could — that is the misdirected prompt
+   with extra steps.
+2. **Resolve the call-sign to an address** off the board, then `SendMessage` the text after the
+   token, saying who it is really from: *"CONTROL relaying from the user: sitrep"*.
+3. **Report the reply back** in the window the human typed in.
+4. **`@all-stations` / `@all-hands`** broadcast to every live station.
+5. **Unknown call-sign → say so and list the manned ones. Never guess** — a near-miss delivers
+   someone else's instruction to the wrong station.
+
+**Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
+`BACKEND`; the board and the radio always render it `BACKEND`.
+
+**This is the antidote to the fleet's most expensive human error.** With four identical-looking
+tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
+done work nobody wanted, in a lane that does not own it. `@callsign` puts the target in the text
+instead of in whichever window had focus. **`@` makes misdirection recoverable; the pinned tab
+title from identify step 6 makes it unlikely.** Use both.
+
+**If a human types a bare prompt that plainly belongs to another station** — no `@`, but the
+content is someone else's lane — **do not act on it and do not silently forward it.** Say which
+station it looks meant for, and offer to relay.
+
 **"All stations" and "all hands" are not the same.** *All stations* is routine — read it when
 you get a moment. *All hands* means stop what you are doing. Keep them distinct or both stop
 meaning anything.
@@ -787,6 +850,7 @@ Integrations' code, and Integrations was interrupted once instead of five times.
 | `/mission-control state <normal\|sweep running\|mayday>` | **Fleet state** — set what the whole fleet is doing, so nobody has to infer it |
 | `/mission-control checkin <task>` | **Check in** — tell Control what you're starting, before you start |
 | `/mission-control standdown` | **Hand over and close** — push, report, get acknowledged, then exit |
+| `@<callsign> <anything>` | **Address a station from any window** — the session you typed in relays it and reports the reply. `@all-stations` broadcasts |
 | `/mission-control call <station>` | **Call a station** — ask one specific thing |
 | `/mission-control all-stations` | **Broadcast** — ask every live station to report |
 | `/mission-control depends <what>` | **Dependency check** — who else touches this, and what must I know first |
