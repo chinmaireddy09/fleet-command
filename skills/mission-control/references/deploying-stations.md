@@ -196,15 +196,38 @@ can address, and a post that reads free while somebody sits in it. Four things c
 | **The human interrupted `identify` mid-flow** | It stopped at a step *by instruction* and is waiting on the human to resume. Observed 2026-08-17 |
 | **The session died** | Calls bounce. Now it is a recovery job, not a deploy job |
 | **The command never ran** | The tab exists and sits at a plain shell prompt, with an error in the scrollback. Nothing is listed, because no session was ever started. **This is the cause that was missing on 2026-08-17**, when a mangled `cd` meant the four causes above were all wrong and Control had to ask a human what was on screen |
+| **Spawned but never registered** | `osascript` reported success and named the tab, and **no session ever appeared** — no process, no socket, nothing to stall. It did not hang; it never came up. Measured 2026-08-18 |
 
-**Ask which one it is. Do not diagnose it from the outside.** On 2026-08-17 Control announced a
+**Two outside measurements are free and decisive — take them BEFORE you ask.**
+
+```bash
+pgrep -f "claude --name <CALLSIGN>"   # is the process alive?
+ls /tmp/cc-socks/                     # is there a <PID>.sock for it?
+```
+
+**Verified 2026-08-18:** each live session holds `/tmp/cc-socks/<PID>.sock`, and a station
+spawned `--name FRONTEND` appeared as both a matching process and its socket. That gives a clean
+three-way split:
+
+| What you measure | What it means | What to do |
+|---|---|---|
+| process **and** socket | it is up and registered | it is a `ListAgents` or board problem, not a spawn one |
+| process, **no socket** | alive but not registered — sitting at a prompt or a dialog | **ask the user what is on that tab** |
+| **no process** | it never started, or it died | re-spawn; retrying is safe by design |
+
+**Then ask, for anything these cannot settle. Do not diagnose the REST from the outside.** On 2026-08-17 Control announced a
 stuck permission prompt; the station replied that there was none — the user had typed
 `/mc identify`, interrupted it, and asked for a radio check instead, so it had stopped at step 3
 exactly as told. Sending the user to a tab to approve a dialog that does not exist costs them a
 context switch and costs you credibility on the next call, when it *is* the prompt.
 
-The three that are not death look identical from Control's chair: live session, stale row, no
-traffic explaining why. One question resolves it; a guess resolves nothing and may mislead.
+The remaining ones look identical from Control's chair: live session, stale row, no traffic
+explaining why. One question resolves it; a guess resolves nothing and may mislead.
+
+**The line between measuring and guessing is the point.** *"Do not diagnose from the outside"* is
+about **inferring a cause from a stale row and a feeling** — it was never meant to discourage two
+commands that answer the question outright. Measure what is measurable, ask about the rest, and
+never present either as the other.
 
 **When it IS the prompt, end the deploy report by sending the user to the tab:**
 

@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.11.0
+version: 6.0.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -560,6 +560,16 @@ are answered in, so a long Control makes a long fleet — the drift is automatic
 | Check-in, dependency answer, standdown | **≤ 10 lines** | |
 | Sitrep | **≤ 10 lines** | five facts, no narration |
 | Mayday, sweep announcement, countermeasures | **uncapped** | safety beats brevity, always |
+| **A correction that would otherwise cause wrong work** | **uncapped** | overturning someone's diagnosis — **the reasoning IS the message** |
+
+**The fourth category is new, and it was earned.** Measured 2026-08-18: the two most valuable
+messages of the session ran ~18 lines each and **a five-line cap would have ruined both.** One
+overturned a station's diagnosis — its framing pointed straight at a model field and a migration
+when the real fix was one line calling a facility its sibling adapters already use, and **the
+lines that mattered most were the ones explaining why the obvious fix was wrong.** Brevity is
+right for status. It is actively harmful when you are telling someone their conclusion is wrong,
+because a short *"wrong, use X"* corrects the filing and misses the code. That correction went on
+to catch a live bug in the other station's own commit, which a terse version would not have.
 
 **Six rules that do the actual work:**
 
@@ -711,10 +721,27 @@ check** — the answer is local, free, and needs no peer.
 nor the scratchpad path — both checked — so a peer is still the only source for the bracketed
 part, and you only need it when a bare call-sign matches two rows.
 
-**`--name` is the fix, because a station named after its call-sign already knows its own
-address — it does not have to look it up.** Two consequences worth stating:
+**`--name` narrows the trap; it does not close it.** A named station can *reasonably assume* its
+call-sign is its address — but **it cannot confirm the flag took**, because the one tool that
+would show it is the one tool that never shows it itself. Three sessions hit this in a single
+hour on 2026-08-17, and each was right to ask rather than assume: a row carrying an address that
+does not resolve is exactly the lie the board exists to prevent, and this repo has already been
+burned by one (`channels-1b`).
 
-- **A named station can write its own row immediately**, with no radio check and no peer.
+**Two things close it properly, and the first is free:**
+
+- **Read your own launch arguments** — `ps -o args=` up the parent chain, above. That proves the
+  flag was passed, which is the half you can check alone.
+- **The spawner asserts it in the launch prompt**, because the spawner *does* know:
+  `claude --name FRONTEND '/mc identify FRONTEND — your ListAgents address is FRONTEND'`.
+  Control has the address before the station exists; handing it over costs nothing and removes
+  the round-trip entirely.
+
+**If anything depends on the `[ref]`, ask a peer** — that part is genuinely unreadable from
+inside. Two consequences worth stating:
+
+- **A named station can write its own row immediately** once it has checked its own arguments,
+  with no radio check and no peer.
 - **If you are unnamed, you must still ask.** Say so plainly — *"I cannot see myself; what
   address does this message arrive from?"* — and **never invent a name or leave the cell
   blank.** A nameless row is reserved, not manned.
@@ -894,8 +921,15 @@ everything a station needs on post. The rest loads only when the command in hand
 | `label-tab.sh` | at identify — pins your call-sign to your terminal tab | every station |
 | `spawn-station.sh` | at deploy — opens the station's tab in **your own** window and verifies a session actually started in it | Control |
 
-**Do not read them speculatively.** The whole point of the split is that four stations no longer
-each carry Control's 25KB of procedure they will never run. **Every KB in `SKILL.md` is paid once
+**Do not read them speculatively — but `/mission-control` with no arguments is not speculative.**
+It is the most-used invocation in the skill and **its report format lives in the playbook**, so
+that one routes there every time. Measured 2026-08-18: a Control read *"do not read them
+speculatively"*, skipped the pointer, and built the board report from first principles. **A
+default command whose format is only in a file you are discouraged from opening will be
+reinvented**, differently, by every session that runs it.
+
+The rest of the split still holds: four stations should not each carry Control's procedure they
+will never run. **Every KB in `SKILL.md` is paid once
 per station, so it multiplies with fleet size** — that fixed cost is the parallelism tax, and it
 is what makes four sessions cost more than one doing the same work rather than the same.
 
@@ -903,7 +937,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 
 | Type this | What happens |
 |---|---|
-| `/mission-control` | **Board** — who holds what, what's next, what needs attention |
+| `/mission-control` | **Board** — who holds what, what's next, what needs attention. **→ read `references/control-playbook.md` FIRST; the report's shape lives there** |
 | `/mission-control identify <call-sign>` | **Identify** — take a call-sign, **move yourself into its workspace**, and go on the board |
 | `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
 | `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |
@@ -1133,6 +1167,20 @@ is never entitled to wait forever on someone remembering:
 4. **Never sit on a block silently.** A blocked row nobody has revisited is indistinguishable
    from abandoned work, and the fleet will eventually treat it as such.
 
+**A standing hold written on the board expires the same way — and this is the one that bites
+hardest.** Standing order 9 says every wait needs an end; sweeps and blocks obey it, and a
+*written warning* did not. Measured 2026-08-18: *"never sync this lane — syncing deletes 776
+lines silently"* sat on a board for two days as the most dangerous item on it. Then the reverted
+work re-landed on `main` and **the hazard inverted**: a fast-forward would now *restore* the
+change rather than destroy it, and the warning had quietly become wrong. Nothing prompted anyone
+to notice — it was caught only because someone re-measured after verifying an unrelated merge.
+
+**So a hold records the condition that ends it, inside the hold** — *"until C24 is back on
+`main`"*, never a bare *"never sync this lane"*. **And whoever changes that condition re-reads
+the holds**, because they are the only person who knows it changed. A hold whose trigger has
+passed is not merely stale; it is advice pointing the wrong way, trusted because it is written
+down.
+
 **What you must not do is take the paths anyway.** A stall is a scheduling problem; helping
 yourself to another station's files turns it into a merge problem on top.
 
@@ -1260,16 +1308,51 @@ Control keeps these. They look alike and are not interchangeable.
 |---|---|---|---|
 | `WORK-LOCKS.md` | **who holds what, and what's next** | now | rows initiated and deleted with the fleet; live stations only; stays short |
 
-**"Short" is a real constraint, and it is the one most often broken.** Measured 2026-08-17: a
-live board had grown to **289 KB** — a file whose own protocol section says *"keep this board
-short — it tracks active work, not history."* Every station reads it at identify and again after
-every gap, so its size is paid **per station, per read**, which is precisely the parallelism tax
-this skill exists to keep down.
+### The board has a size limit, and it is enforced by the tools, not by taste
 
-**A row's history belongs in the progress log, not in its Status cell.** When a row's story
-outgrows a couple of sentences, move the story and leave the pointer — *"see PROGRESS-LOG
-2026-08-17"*. A board nobody can scan in ten seconds has stopped being a board and become an
-archive that also happens to block people.
+**Measured 2026-08-18: a live board reached 313 KB and 109 done rows, and `Read` refused it** —
+*"File content (282.5KB) exceeds maximum allowed size (256KB)."* **The skill's own first
+instruction — read the board — failed outright.** Nothing had enforced "short", nothing defined
+it, and nothing said what to do about a board that is already too big.
+
+**The ceiling: ~150 rows or ~100 KB, whichever comes first, and no board should exceed what
+`Read` accepts.** Past that it is not a board, it is an archive that also blocks people.
+
+**Done rows move to `docs/WORK-LOCKS-ARCHIVE.md` at standdown — not at some later tidy-up**,
+because "later" is what produced 109 of them. Closing a row *is* moving it.
+
+**A row is capped too, and this matters more than the file size.** One row measured ~6,000 words
+inside a single table cell — a re-land sequence, two gate results, migration notes and four
+historical corrections. All true, much of it valuable, and **a row that takes ten minutes to read
+is not a row.**
+
+> **A row is: who · what · where · status · a pointer.** The reasoning goes in
+> `PROGRESS-LOG.md`, which exists to answer *what happened and why*. This skill caps radio
+> traffic to five lines and then let rows run to six thousand words — **same instinct, apply it
+> in both places.**
+
+**Recovering a board that is already oversized — `Read` will not open it:**
+
+```bash
+git show origin/main:docs/WORK-LOCKS.md > <scratchpad>/board.md   # then awk the active section
+awk '/^## Active/,/^## Done/' <scratchpad>/board.md
+```
+
+**Say that you did this**, and file trimming the board as real work — it is the one file every
+station pays for on every read.
+
+### Three stations write this file at once, and it works by convention
+
+**Nothing in git prevents two stations mangling one board; what prevented it was manners, and
+manners that were never written down do not survive a new station.** Measured 2026-08-18: three
+stations pushed rows to one file inside twenty minutes with zero collisions. What made that work:
+
+- **Edit your own row. Never reformat, retrim or "tidy" another station's** — even when it is
+  6,000 words and you are right about it. Say it on the radio instead.
+- **Push immediately**, before code. The push race is the one mechanism with teeth.
+- **On rejection, re-cut from the new `origin/main`** and reapply your row — do not merge the
+  board by hand. One station kept a peer's line and rebased its own underneath it rather than
+  overwriting; that is the behaviour to copy.
 | `PROGRESS-LOG.md` | what happened, and why | past | append-only; never edit an old entry |
 | `PROJECT-STATUS-AND-BACKLOG.md` | what to work on next | future | items added, checked off, re-scoped |
 | `MISSION-CONTROL.md` | this project's own rules for running sessions | — | changes rarely |

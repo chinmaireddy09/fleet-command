@@ -27,7 +27,10 @@ while [ "$p" -gt 1 ]; do
 done
 [ -z "$MYTTY" ] && { echo "FAILED: no tty in the parent chain" >&2; exit 1; }
 
-CMD="cd '$WT' && claude --name '$CALLSIGN' '/mc identify $CALLSIGN'"
+# Hand the station its own address in the prompt. It cannot read it from ListAgents
+# (a session never sees itself), and the spawner knows it before the station exists --
+# so asserting it here removes a radio round-trip that happened three times in one hour.
+CMD="cd '$WT' && claude --name '$CALLSIGN' '/mc identify $CALLSIGN — your ListAgents address is $CALLSIGN; confirm with: ps -o args= on your own claude process'"
 
 osascript <<AS
 on findWindowId(theTty)
