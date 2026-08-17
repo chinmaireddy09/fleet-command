@@ -1,0 +1,27 @@
+{
+  "_comment": "EXAMPLE ONLY. The real file lives at ~/.claude/mission-control.json and is written by `/mc deploy` the first time you run it on a machine. Do not copy this into a repo — spawn preferences are per-person, and a clone carrying someone else's terminal choice is a bug, not a default.",
+
+  "spawn": {
+    "platform": "darwin",
+    "terminal": "Apple_Terminal",
+    "placement": "tab",
+    "launchCommand": "claude",
+    "permissionMode": null
+  },
+
+  "_fields": {
+    "platform": "darwin | linux | win32 — from `uname -s` or $OS",
+    "terminal": "Apple_Terminal | iTerm.app | vscode | WindowsTerminal | ghostty | WarpTerminal | other — detected from $TERM_PROGRAM or $WT_SESSION, then CONFIRMED with the user. Detection is not consent: $TERM_PROGRAM says where Control is running, not where stations should appear.",
+    "placement": "tab | window. On macOS Terminal.app a tab additionally needs Accessibility (System Settings -> Privacy & Security -> Accessibility -> Terminal); without it the spawn falls back to a window and says so.",
+    "launchCommand": "usually `claude`; override if the CLI is installed under another name",
+    "permissionMode": "null by default, and deploy NEVER sets this on your behalf. null means a spawned station prompts for its own pushes, exactly like any session, and deploy tells you to approve in the new tab. Setting it to anything else widens what a spawned session may do unattended — your choice, in your own file."
+  },
+
+  "_terminalsVerified": {
+    "Apple_Terminal": "verified 2026-08-17 — tab and window both work",
+    "iTerm.app": "recipe shipped, UNVERIFIED",
+    "WindowsTerminal": "recipe shipped, UNVERIFIED",
+    "vscode": "no recipe exists — nothing outside the editor can open its integrated terminal reliably. Falls back to printing the exact command to paste.",
+    "other": "falls back to printing the command. That is a supported outcome, not a failure — the call-sign and path are filled in and cannot be mistyped."
+  }
+}

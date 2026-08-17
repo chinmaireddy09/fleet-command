@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 4.3.2
+version: 4.4.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -267,56 +267,105 @@ one passes:
 **1 · Cut the post.** Exactly `station <name>`: worktree, branch, copy the ignored instruction
 files, write the row, push it.
 
-**2 · Spawn the session — as a tab, falling back to a window.** Detect the terminal from
-`$TERM_PROGRAM` and open a new one running `claude` with `identify` as its opening prompt.
+**2 · Spawn the session** — in whatever terminal *this* user actually runs, the way *they* want
+it. Everyone's machine differs: macOS Terminal, iTerm2, VS Code, Windows Terminal, a Linux
+terminal. **Ask once, remember it, never ask again.**
 
-**Terminal.app cannot make a tab from its own AppleScript.** `do script` always opens a
-*window*; a tab needs `System Events` to press ⌘T, and that is a **different macOS permission**
-from the one `do script` uses — *Accessibility*, not *Automation*. So try the tab, and fall
-back rather than fail:
+#### Read the config first, and write it if it isn't there
+
+**`~/.claude/mission-control.json`** — per-machine, user-level:
+
+```json
+{ "spawn": {
+    "platform": "darwin", "terminal": "Apple_Terminal",
+    "placement": "tab", "launchCommand": "claude", "permissionMode": null } }
+```
+
+**This file must never live in the repo.** Preferences are per-person: a clone carrying the
+author's terminal choice is the same class of bug as a workspace missing its gitignored
+`CLAUDE.md` — it looks configured and is wrong. **The repo ships the recipes; the machine
+holds the choice.** That is also the whole answer to "make it work for whoever clones this":
+there is nothing to push, because the first `deploy` on their machine configures itself.
+
+On `deploy`:
+
+1. **Config exists** → use it, no questions.
+2. **No config** → detect, then **ask, then write it**:
+
+   | Signal | Means |
+   |---|---|
+   | `$TERM_PROGRAM=Apple_Terminal` | macOS Terminal.app |
+   | `$TERM_PROGRAM=iTerm.app` | iTerm2 |
+   | `$TERM_PROGRAM=vscode` | VS Code integrated terminal |
+   | `$TERM_PROGRAM=WarpTerminal` / `ghostty` | Warp / Ghostty |
+   | `$WT_SESSION` set | Windows Terminal |
+   | `uname -s` = `Darwin` / `Linux`; `$OS=Windows_NT` | the platform underneath |
+
+   Then **one** `AskUserQuestion`: tab or window, and confirm the detected terminal. Write the
+   answer to the config and carry on. **Detection alone is not consent** — a detected terminal
+   still gets confirmed once, because `$TERM_PROGRAM` says where *Control* is running, not where
+   the user wants stations to appear.
+
+#### The recipes
+
+**macOS Terminal.app — verified 2026-08-17.** A tab needs `System Events` to press ⌘T, which is
+*Accessibility*, a **different** grant from the *Automation* one `do script` uses. Capture the
+tab ⌘T just made and write into **that reference** — never `in front window`, which opens
+another window instead:
 
 ```bash
-WT="$ROOT/.claude/worktrees/$STATION"
 CMD="cd '$WT' && claude '/mc identify $CALLSIGN'"
-
-osascript <<AS 2>/dev/null || osascript -e \
-  "tell application \"Terminal\" to do script \"$CMD\""
+osascript <<AS 2>/dev/null || osascript -e "tell application \"Terminal\" to do script \"$CMD\""
 tell application "Terminal" to activate
-delay 0.3
+delay 0.4
 tell application "System Events" to keystroke "t" using command down
-delay 0.6
-tell application "Terminal" to do script "$CMD" in front window
+delay 0.8
+tell application "Terminal"
+  set theTab to selected tab of front window
+  do script "$CMD" in theTab
+end tell
 AS
 ```
 
-**Say which one you got.** A window when the user asked for a tab is not a silent detail — tell
-them it fell back and why, and where to grant it:
+Missing Accessibility fails with `osascript is not allowed to send keystrokes. (1002)`; match on
+that and fall back to a window. **Say which one you got** — a window when they asked for a tab
+is not a silent detail — and give the path: *System Settings → Privacy & Security →
+Accessibility → enable Terminal*, then restart Terminal.
+
+**iTerm2 — recipe shipped, NOT verified.** `tell current window to create tab with default
+profile`, then `write text` into `current session`. Say it is untested when you use it.
+
+**Windows Terminal — recipe shipped, NOT verified.**
+`wt -w 0 nt -d "<worktree>" cmd /k claude "/mc identify <CALLSIGN>"`.
+
+**VS Code — there is no recipe, and do not invent one.** Nothing outside the editor can open its
+integrated terminal reliably. Use the fallback.
+
+**The fallback is not a failure.** For any terminal you cannot drive — VS Code, Warp, Ghostty,
+an unknown `$TERM_PROGRAM`, a missing grant — **print the exact command and let the human paste
+it**:
 
 ```
-Accessibility not granted, so it opened a WINDOW, not a tab.
-  System Settings → Privacy & Security → Accessibility → enable Terminal
-Automation is already granted — that is a separate permission, which is why
-the window worked and the tab did not.
+Can't drive VS Code's terminal from outside. Open a terminal and paste:
+  cd '<worktree>' && claude '/mc identify CHANNELS'
 ```
 
-The exact error when it is missing is `System Events got an error: osascript is not allowed to
-send keystrokes. (1002)`. Match on the failure, not on a permissions probe — there is no
-reliable way to ask in advance.
+That still beats the old flow, because the call-sign and path are filled in and cannot be
+mistyped. **Never guess AppleScript or PowerShell for a terminal you cannot see.**
+
+#### Two traps that already cost a session
+
+**A slash command DOES execute when passed as the CLI prompt** — measured 2026-08-17, `claude -p
+"/some-command"` runs it rather than treating it as text. So `claude '/mc identify X'` is sound;
+if a station fails to identify, the launch is not the reason. Look at the permission prompt.
 
 **Do not verify a tab by counting tabs.** `count of tabs of window` cannot see macOS window
-tabs: each one is a *separate window* that reports exactly `1` tab, so a spawn that lands as a
-tab on screen reads as "a new window" through that API. On 2026-08-17 that cost four probes and
-a wrong conclusion — Accessibility had already been granted, tabs *were* appearing, and the
-measurement said otherwise. **The user's screen is the instrument here.** Report which call
-succeeded — tab attempt or fallback — and if it matters, ask what they see rather than counting.
-This is the check-your-checks rule: confirm the identifier identifies what you think it does.
-
-**Never use `do script … in front window` on its own as the "tab" method.** Without the ⌘T it
-does not create a tab; it types the command into the session the user is *already sitting in*.
-
-Implement the terminal you are actually on and **fail plainly on the rest** — `unsupported
-terminal: Ghostty — open a session yourself and run /mc identify <call-sign>` is a fine
-outcome. Guessing AppleScript for a terminal you cannot see is not.
+tabs — each is a *separate window* reporting exactly `1` tab, so a spawn that lands as a tab
+reads as "a new window" through that API. On 2026-08-17 that cost four probes and a wrong
+conclusion: Accessibility was already granted, tabs *were* appearing, and the measurement said
+otherwise. **The user's screen is the instrument.** Report which call succeeded, and ask what
+they see rather than counting. Check your checks: confirm the identifier identifies what you
+think it does.
 
 **Yes, deploy runs `cd` — that does not contradict the rule above.** The rule is that a *human*
 must never be the one to remember it, because when they skip it the post stays empty and the
@@ -331,9 +380,31 @@ appears, then **read the board back and confirm the row carries that session nam
 not the proof; the name on the pushed row is, because that is the thing every other station
 needs in order to call it.
 
+**A spawned station will ask permission to push its row — and nobody is looking at that tab.**
+This is the single most likely reason a deploy stalls, and it is invisible by construction: the
+station is alive, the board says reserved, and the prompt is sitting in a window the user has
+not looked at. Observed 2026-08-17, where it cost ten minutes and a wrong diagnosis.
+
+**So end every deploy report by sending the user to the tab:**
+
+```
+CHANNELS is up in a new tab. Switch to it and approve the push — until you do,
+it can't claim its row and no other station can call it.
+```
+
+Deploy **surfaces** this; it does not solve it. **Never spawn with a bypassed permission mode to
+make the prompt go away.** Control does not widen another session's permissions for its own
+convenience — that is the user's setting, in their own config, chosen deliberately.
+
 **If verification fails, say the deploy failed.** A spawned session that never identified is
 worse than no deploy at all — there is now a live window nobody can address, holding a post the
-board still shows as reserved. Report it, name the window, and let the user decide.
+board still shows as reserved. Report it, say which tab it is in, and let the user decide.
+
+**Retrying a failed deploy must be safe.** A station that got half-way may have already written
+part of its row. `identify` therefore has to be idempotent on the **board row** as well as on
+the worktree: re-running it updates the row in place rather than adding a second one, and a
+station finding its own call-sign already on the board with its own session name should treat
+that as success, not a collision.
 
 ### What deploy cannot do for you
 
@@ -502,6 +573,30 @@ thing that maps a call-sign to a session you can actually message:
 To call a station: **look up its session name on the board → confirm it is still listed in
 `ListAgents` → message that exact name.** If the bare name matches two rows, append the
 `[ref]`.
+
+#### A session name is an address, never a name
+
+`ecom-nexus-oss-4d [9a7a96]` is a machine-generated handle. It belongs in exactly two places:
+the `to:` field of a message, and the lookup column of the board. **Nowhere else.**
+
+Everything a human reads — radio traffic, the board report, a sitrep, your summary at the end
+of a watch — uses the **call-sign**:
+
+| Say this | Not this |
+|---|---|
+| `CONTROL TO CHANNELS — Radio check.` | `CONTROL TO ecom-nexus-oss-4d — Radio check.` |
+| "Channels holds the adapters." | "4d holds the adapters." |
+| "We lost contact with Frontend." | "ecom-nexus-oss-1e stopped responding." |
+| "Backlog and Channels both want C24." | "-c7 and -4d both want C24." |
+
+**This is the entire reason call-signs exist.** `CHANNELS` tells every listener what that
+station owns; `ecom-nexus-oss-4d` tells them nothing and cannot be remembered, said aloud, or
+matched to a row at a glance. A report full of session handles has thrown away the one piece of
+information the naming scheme was for.
+
+**A station with no call-sign yet is the one exception** — before it identifies there is nothing
+else to call it, so say *"the unidentified session in the shared checkout"* and get it a
+call-sign. Do not let a handle become its name by habit.
 
 **Re-run the radio check whenever the board looks stale**, because a session that ended still
 has a row but no longer answers. A call that bounces means that station is gone — and its row

@@ -89,6 +89,31 @@ ls ~/.claude/skills/mission-control/SKILL.md ~/.claude/commands/mc.md
 Take only the ones you want; each skill directory is self-contained. To update later, `git pull`
 and copy again.
 
+### Nothing to configure — `deploy` asks you once
+
+`/mc deploy <station>` opens a real session on a real post: it cuts the worktree, spawns a
+terminal, has the session identify itself, and verifies it landed on the board.
+
+That means it has to know **your** terminal, and everyone's differs. The first time you run it,
+it detects what you're on (`$TERM_PROGRAM`, `$WT_SESSION`, `uname`), **confirms it with you**
+along with whether you want a tab or a window, and writes the answer to
+`~/.claude/mission-control.json`. After that it never asks again. See
+`templates/mission-control.json.example` for the shape.
+
+**That file is deliberately not in this repo.** Spawn preferences are per-person; a clone
+carrying the author's terminal choice would look configured and be wrong. The repo ships the
+recipes, your machine holds the choice — so a fresh clone on someone else's laptop configures
+itself on their first deploy, with nothing for you to push.
+
+| Terminal | Status |
+|---|---|
+| macOS Terminal.app | **verified** — tab and window. A tab needs Accessibility granted to Terminal |
+| iTerm2 · Windows Terminal | recipe shipped, **unverified** — it will say so when it uses one |
+| VS Code · Warp · Ghostty · anything else | prints the exact command to paste, call-sign and path filled in |
+
+Deploy never spawns a session with widened permissions. A new station asks you to approve its
+first push, in its own tab — and deploy's report tells you to go and do that.
+
 ---
 
 ## Using it
