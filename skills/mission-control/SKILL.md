@@ -630,6 +630,13 @@ A deploy that ends with a 🚧 row and no session name has produced a lie, not a
 area with unclear boundaries collide more than one station working through it in order. Split
 by *what each owns*, or do not split.
 
+**And ask the harder question first: can this station work RIGHT NOW?** A station with no
+gateable work still costs a board row, a radio check, check-ins and every broadcast it must read.
+On 2026-08-17 three of four stations sat idle because the Docker stack was down — the fleet paid
+full coordination cost for one station's worth of output. **Deploy against available work, not
+against the shape of the backlog.** If the blocker is shared (services down, a decision pending),
+deploying more stations multiplies the waiting, it does not divide it.
+
 ---
 
 ## Stations go down. Sweeps go across.
@@ -729,6 +736,47 @@ already know.
 
 Eleven phrases, and you already knew all eleven. **If you catch yourself wanting a twelfth,
 use ordinary words instead** — "will do" beats "wilco", and nobody has to be taught it.
+
+### Radio discipline — every message costs the user money
+
+**A fleet's running cost is its radio traffic, and verbosity is the failure mode this skill is
+most prone to.** Measured on 2026-08-17: four stations produced *one* product commit and a dozen
+coordination commits, with routine calls running 400–600 words. Stations copy the register they
+are answered in, so a long Control makes a long fleet — the drift is automatic and compounding.
+
+**The caps. Treat them as real limits, not aspirations:**
+
+| Message | Cap | |
+|---|---|---|
+| Routine call, answer, acknowledgement | **≤ 5 lines** | most traffic |
+| Check-in, dependency answer, standdown | **≤ 10 lines** | |
+| Sitrep | **≤ 10 lines** | five facts, no narration |
+| Mayday, sweep announcement, countermeasures | **uncapped** | safety beats brevity, always |
+
+**Six rules that do the actual work:**
+
+1. **Write it to the repo, send the reference.** A finding, a decision, a measurement belongs in
+   the board, the backlog or the log. Then the message is *"C28 filed at `09286a7`"* — not the
+   finding. The repo is the shared memory; the radio is only a pointer to it.
+2. **Never restate the other station's message back to it.** It knows what it said. This alone
+   was half of today's traffic.
+3. **Do not narrate reasoning that belongs in a commit message.** Put it in the commit, name the
+   commit.
+4. **Skip acknowledgements** unless someone is *blocked* on yours. "Roger" costs the same as a
+   fact. A hold needs an ack; a filed finding does not.
+5. **Read before you ask.** If the board, a doc, or the code answers it, that is free and a peer's
+   attention is not.
+6. **Stations call each other directly for lane questions.** Routing through Control doubles the
+   cost of every exchange. Control is for conflicts, sequencing and holds — **not a switchboard.**
+
+**Silence is the default, not the exception.** A station with nothing to coordinate says nothing.
+Traffic should be *unusual*.
+
+**And the biggest saving is structural: do not deploy a station that cannot work right now.**
+Three of today's four had nothing to gate because Docker was down — they still cost check-ins,
+radio checks, board rows and coordination. **Station count should track gateable work, not
+ambition.** One station working through a queue in order beats four stations negotiating over it.
+For one or two stations, skip Control entirely: the board plus direct calls is the whole protocol.
 
 ### `@callsign` — how a human addresses a station
 
