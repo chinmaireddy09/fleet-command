@@ -66,16 +66,26 @@ Two shapes of work, and they need different rules:
 
 ```bash
 git clone https://github.com/chinmaireddy09/fleet-command.git
-cp -r fleet-command/skills/* ~/.claude/skills/
+mkdir -p ~/.claude/skills ~/.claude/commands
+cp -r fleet-command/skills/*   ~/.claude/skills/
+cp -r fleet-command/commands/* ~/.claude/commands/
 ```
 
-Claude Code picks them up immediately — no restart. Check:
+**Copy `commands/` too — that line is what makes the short forms work.** A skill registers one
+slash command, named after its directory: `/mission-control`, `/status-and-backlog`. The short
+forms `/mc` and `/backlog` are separate command files in `commands/`, and if you skip that
+directory they simply will not exist. (Earlier versions declared a `triggers:` list in the skill
+frontmatter and assumed it registered aliases. It never did — nothing reads that field. The
+list is gone; `commands/` replaces it.)
+
+Skills are picked up immediately. **New slash commands are read at session start, so `/mc` and
+`/backlog` appear in your next session, not the current one.** Check:
 
 ```bash
-ls ~/.claude/skills/mission-control/SKILL.md
+ls ~/.claude/skills/mission-control/SKILL.md ~/.claude/commands/mc.md
 ```
 
-Take only the ones you want; each directory is self-contained. To update later, `git pull`
+Take only the ones you want; each skill directory is self-contained. To update later, `git pull`
 and copy again.
 
 ---

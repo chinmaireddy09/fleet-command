@@ -14,10 +14,6 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
-triggers:
-  - /work-lock
-  - claim this task
-  - release the lock
 ---
 
 # work-lock — claim it before you build it

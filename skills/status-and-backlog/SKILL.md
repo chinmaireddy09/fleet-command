@@ -14,10 +14,6 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
-triggers:
-  - /status-and-backlog
-  - /backlog
-  - file a backlog item
 ---
 
 # status-and-backlog — what's left, and how healthy each part is

@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 4.1.0
+version: 4.2.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -16,9 +16,7 @@ allowed-tools:
   - AskUserQuestion
   - ListAgents
   - SendMessage
-triggers:
-  - /mission-control
-  - /mc
+  - EnterWorktree
 ---
 
 ```
@@ -92,26 +90,52 @@ and Fleet Command are the same station** — use whichever you prefer on the rad
 Started by you in a new window, or by the CLI. At this point it has **no call-sign** and is
 invisible to everyone else.
 
-### 3 · It picks up a call-sign — `/mission-control join`
+### 3 · It identifies itself — `/mission-control identify <call-sign>`
 
 The first thing a new session does. It shows what is already taken, suggests what is free,
 and **lets you type your own**:
 
 ```
-MISSION CONTROL — new station joining
+MISSION CONTROL — identify
 
   Repo    ecom-nexus-oss                 Board   docs/WORK-LOCKS.md
   Live    BACKEND · ecom-nexus-oss-28 [e29977]   apps/orders
           FRONTEND · ecom-nexus-oss-85 [6d86b0]  frontend/src/checkout
 
-  Free right now:
-    1  INTEGRATIONS   adapters, third-party APIs
-    2  PLATFORM       core, retry, events
-    3  ALPHA          no area yet — decide later
+  Reserved for you — a post is already cut and waiting:
+    1  CHANNELS       apps/integrations, adapters   .claude/worktrees/channels
+    2  BACKLOG        cross-module                  .claude/worktrees/backlog
+
+  Free, no post cut yet:
+    3  PLATFORM       core, retry, events
     4  TIGER          no area yet — decide later
 
-  Pick a number, or type your own call-sign:  ________
+  Identify as:  ________
 ```
+
+#### The session binds itself. Never the human.
+
+**This is the step that used to fail silently.** The old flow told the user to `cd` into a
+worktree and start a session there. When they didn't — and they often didn't, because opening
+a terminal where you already are is the natural thing to do — the session came up in the shared
+checkout, the board still said 🚧 on post, and **the row was lying from the moment it was
+written.** Three sessions once came up in the shared checkout against three empty posts, and it
+took two stations interrogating each other to notice.
+
+The binding is a tool call, so make it one:
+
+1. **Read the board**, find the row for the call-sign given.
+2. **Take the workspace path from that row** — the board already carries it. Do not ask the
+   user for a path; if the row has none, that is the bug, fix the row.
+3. **`EnterWorktree({path: "<workspace from the row>"})`** — the session moves *itself* into
+   the lane. No `cd`, no restart, no second window.
+4. **Write your `ListAgents` name onto the row** and flip it from reserved to on post, then
+   push. Until that name is on the board, no other station can call you — which is exactly why
+   a board full of 🚧 rows can still leave everyone unable to find anyone.
+
+**A call-sign with no session name on its row is reserved, not manned.** Say so in that state
+and never render it as working — a row that claims a holder it does not have makes free work
+look taken, which is the one failure this whole board exists to prevent.
 
 **How to choose:**
 
@@ -225,6 +249,13 @@ CONTROL TO ALL STATIONS — Deploying a second station on checkout. Call-sign
                           the payment step; FRONTEND-ALPHA keeps the cart.
                           Board updated. Out.
 ```
+
+**Deploying cuts the post. It does not man it.** Control creates the workspace, copies in the
+ignored instruction files, and pushes the row — then the row sits **reserved** until a session
+identifies as it. **Never tell the user to `cd` somewhere and start a session there.** Tell them
+to open a session anywhere and run `/mission-control identify <call-sign>`; the session moves
+itself. A deploy that ends with a 🚧 row and no session name on it has produced a lie, not a
+station.
 
 **Before deploying another station, ask whether the work actually splits.** Two stations in one
 area with unclear boundaries collide more than one station working through it in order. Split
@@ -413,7 +444,10 @@ Integrations' code, and Integrations was interrupted once instead of five times.
 | Type this | What happens |
 |---|---|
 | `/mission-control` | **Board** — who holds what, what's next, what needs attention |
-| `/mission-control join` | **Join** — pick or type a call-sign, then claim it on the board |
+| `/mission-control identify <call-sign>` | **Identify** — take a call-sign, **move yourself into its workspace**, and go on the board |
+| `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
+| `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |
+| `/mission-control state <normal\|sweep running\|mayday>` | **Fleet state** — set what the whole fleet is doing, so nobody has to infer it |
 | `/mission-control station <name>` | **Assign a station** — own workspace, own tests, claim it on the board |
 | `/mission-control checkin <task>` | **Check in** — tell Control what you're starting, before you start |
 | `/mission-control standdown` | **Hand over and close** — push, report, get acknowledged, then exit |
@@ -561,6 +595,75 @@ Carry the three things: who you are, what you need specifically, why it matters 
 
 `/mission-control all-stations` broadcasts the same question to every live station and
 collects the replies into one report.
+
+---
+
+## Sitrep — `/mission-control sitrep`
+
+**The board says what stations *claimed*. A sitrep says what is *true right now*.** Those drift
+apart constantly, because a row is written once and the work moves every minute.
+
+Ask every live station for five things, and collect the replies into **one** report:
+
+1. **call-sign**, and its `ListAgents` name
+2. **where it actually is** — its `pwd` and branch, not what the board says
+3. **what it holds** — the paths it has open right now
+4. **what is uncommitted or unpushed** — the part that dies with the window
+5. **what is blocking it**, if anything
+
+**Ask for the working directory explicitly, every time.** It is the one fact that catches a
+session which came up in the wrong place, and it is the only one a station cannot get wrong.
+A station that reports the repo root instead of its lane is not on post, whatever the board says.
+
+Then **reconcile the replies against the board and fix the board** — a sitrep that ends without
+correcting a stale row was just a conversation. Name the drift out loud:
+
+```
+SITREP — 3 stations, 2 corrections
+
+  CHANNELS   ecom-nexus-oss-4d   lane/channels    apps/integrations/adapters   clean
+  FRONTEND   ecom-nexus-oss-1e   worktree-design-foundation-shell             3 unpushed
+  BACKLOG    —                   —                                            NOT MANNED
+
+  ⚠ BACKLOG's row said working. Nobody is behind it. Flipped to reserved.
+  ⚠ FRONTEND has 3 commits on one disk. Told it to push before anything else.
+```
+
+## Radio silence — `/mission-control silence` and `/mission-control speak`
+
+A station deep in a gate run or mid-edit in a shared file does not want five calls. Let it say so:
+
+```
+CHANNELS TO CONTROL — Going quiet, running the full gate. About 20 minutes.
+                      Mayday still gets through. Out.
+```
+
+Control **holds non-urgent calls** for that station and answers on its behalf from the board
+where it can. **Mayday and all-hands always break through** — silence is about interruptions,
+never about safety.
+
+**Silence and speak are a pair, exactly like standby and all clear.** A station that goes quiet
+and never lifts it looks dead, and someone will start recovering work that was never lost. If a
+silence outlasts its estimate, call the station once; if that bounces, it really is gone.
+
+## Fleet state — `/mission-control state <normal | sweep running | mayday>`
+
+One line at the top of the board saying what the **whole fleet** is doing, so no station has to
+infer it from who is talking:
+
+| State | Means | What stations do |
+|---|---|---|
+| **normal** | ordinary work | carry on |
+| **sweep running** | a cross-area change is open | do not commit in the swept paths until all clear |
+| **mayday** | main is broken, or work is being lost | **stop pushing.** Nothing lands until it is green |
+
+**Named, not numbered.** A number has to be looked up, and half the people who look it up get
+the direction backwards — which is worse than having no state at all, because they act
+confidently on it. Three words nobody has to learn beat five levels everybody misreads.
+
+**The state is on the board, not in someone's memory.** Set it when it changes and clear it the
+moment it is over — a `mayday` nobody lifted freezes the whole fleet just as surely as a sweep
+that never called all clear.
 
 ---
 

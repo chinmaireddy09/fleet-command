@@ -14,10 +14,6 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
-triggers:
-  - /progress-and-log
-  - progress and log
-  - log the progress
 ---
 
 # /progress-and-log — Save Progress, No Gstack, Adapted Per Project
