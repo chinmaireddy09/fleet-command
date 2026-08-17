@@ -71,5 +71,33 @@ everything and when it ends:
 | SWEEP: rename Order.total → total_minor | crosses all | started 14:05, est 20 min | acknowledged: backend, frontend |
 ```
 
+### The hold has an expiry, and it is the estimate you announced
+
+**The estimate in step 1 is not decoration — it is how long the fleet has agreed to hold**, which
+is why the board row carries it. A sweep that blows through it owes every held station a revised
+one, *before* it lapses: one line, "still going, another fifteen." That is the same bargain radio
+silence runs on, and it costs less than one station guessing.
+
+**What a held station does when all-clear never comes** — because every rule above points at the
+sweeper, and a station frozen by a sweep that died had nothing to follow:
+
+1. **The estimate passes → call the sweep once.** Not twice.
+2. **It answers** → take the new estimate and keep holding.
+3. **It bounces, or stays silent after that one call** → the sweep is gone, and **its change is
+   half-landed until proven otherwise.**
+4. **Do not simply resume committing.** `git fetch`, then look at what actually landed in the
+   affected paths. A rename that reached three modules of five leaves the tree building in some
+   places and broken in others, and committing into that is how a dead sweep becomes an
+   unrecoverable one.
+5. **Lift your own hold out loud** — all stations, saying the sweep is gone, what you found in
+   the paths, and that you are releasing. **Never lift silently.** The fleet is holding because
+   it heard *standby*; it can only stop holding if it hears something.
+6. **Then tell Control and the user.** A dead half-landed sweep is a countermeasures situation,
+   not a station-level cleanup.
+
+**A hold with no expiry is the failure this skill names on its own front page** — *a standby
+nobody lifts freezes the whole fleet.* Closing the loop is still the sweeper's job. This is only
+what to do when the sweeper cannot.
+
 ---
 

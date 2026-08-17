@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.1.0
+version: 5.2.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -410,9 +410,14 @@ a library upgrade, a shared rename, a design-system pass.
 
 **The test:** does this change touch files owned by more than one station? If yes it is a sweep.
 
-**Stations have right of way. A sweep has to ask.** Announce it, collect every live station's
-acknowledgement, land it fast, and **always call all clear — even if the sweep failed.** A
-standby nobody lifts freezes the whole fleet. **Only one sweep at a time.**
+**Stations have right of way. A sweep has to ask.** Announce it **with a time estimate**, collect
+every live station's acknowledgement, land it fast, and **always call all clear — even if the
+sweep failed.** A standby nobody lifts freezes the whole fleet. **Only one sweep at a time.**
+
+**The estimate is the hold's expiry.** Overrunning it obliges the sweep to send a revised one
+before it lapses; if it lapses in silence, a held station calls the sweep **once** and, hearing
+nothing, treats the change as half-landed — checks what actually reached the paths, then lifts
+its own hold **out loud**. A station must never be left holding on a sweep that died.
 
 → **Full procedure, the two sweep modes, and how to put one on the board: `references/sweeps.md`.**
 
@@ -599,6 +604,31 @@ CONTROL TO ALL STATIONS — Radio check. Reply with your call-sign, your working
 **Ask for the working directory, not just the branch.** It is the one fact that catches a
 station which came up in the shared checkout against a row claiming it is on post.
 
+##### When to run one — by event, never by clock
+
+**A radio check costs one reply from every live station, so it is triggered by something having
+changed, not by time passing.** Run one when:
+
+- **You come on watch as Control** — before you write anything on the board. You inherited a
+  picture, and you have not verified a line of it.
+- **A call bounced.** The board is now known to be wrong, and it is rarely wrong about only the
+  one row.
+- **You are about to announce a sweep.** Step 2 is collecting every live station's
+  acknowledgement, and you cannot collect from a list you are not sure of.
+- **You are about to delete rows or deploy** — the roster moved under you either way.
+- **You are resuming after silence or a long gap and are about to address someone by call-sign.**
+  Re-reading the board covers what changed; the radio check covers whether the board itself is
+  still true.
+
+**Never on a timer.** With no ceiling on fleet size, a periodic radio check across *n* stations
+costs *n* replies every cycle, produces nothing when nothing has changed, and is precisely the
+traffic the caps exist to suppress. **If you cannot name the event that prompted it, do not send
+it** — read the board instead.
+
+**And a radio check is a question, not a roll call you may score.** Stations that do not answer
+are busy; that is silence, and silence proves nothing. Record the answers you got, leave the
+other rows exactly as they were.
+
 Then put the answers on the board. **The board is the phone directory:**
 
 | Call-sign | Address (from `ListAgents`) | Branch | Holds |
@@ -749,6 +779,32 @@ Carry the three things: who you are, what you need specifically, why it matters 
 
 `/mission-control all-stations` broadcasts the same question to every live station and
 collects the replies into one report.
+
+### A call that goes unanswered is not a call that bounced
+
+**These are two different things and they need two different responses.** A bounce is the
+transport failing — the address is dead, and the station with it. **Silence is the ordinary
+case:** the message arrived and the station is mid-gate, mid-edit, or simply has not looked. It
+is busy, not gone.
+
+**What silence means you do:**
+
+- **Do not send it again.** A second identical call costs exactly what the first did and adds
+  nothing; the station has it. If you must ask twice, it is because you are *blocked*, and then
+  the second call says so — *"still blocked on this, anything you can tell me?"* — once.
+- **Do not wait on it.** Go find the answer where it does not cost anyone: the board, the docs,
+  the code, the log. That is free and a peer's attention is not.
+- **Do the work that does not depend on the answer**, and if nothing is left, park it — put what
+  you are waiting for on the board, in the open, so it is visible rather than a station quietly
+  stalled.
+- **Escalate to Control, or to the user, rather than to a third station.** Asking someone else
+  to chase it multiplies the traffic across a fleet that has no ceiling on its size.
+
+**Silence never proves a station is dead, and it never licenses touching its work.** Do not mark
+its row, do not recover its branch, do not take its paths. **A bounce, or absence from
+`ListAgents`, is the only proof** — the same standard the board uses before a row may be
+deleted. A station that is merely quiet and comes back to find its work adopted is the worst
+outcome this skill has.
 
 ---
 
