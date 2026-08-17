@@ -1,7 +1,18 @@
 # Multi-session protocol — how parallel Claude Code sessions share this repo
 
-> **One human, many sessions.** Every session runs as **chinmaireddy09** and every commit is
-> authored by that identity — that is correct and deliberate, not a defect to work around.
+> **TEMPLATE.** Copy this to `docs/MISSION-CONTROL.md` in your own project and replace
+> everything in `<angle brackets>`, plus the lane table and the test recipe in §2 — those are
+> the parts that are genuinely per-project. **Do not copy the paths, service names or database
+> prefixes verbatim; check them against your own project first.** A protocol asserting a
+> guarantee nobody tested is worse than no protocol.
+>
+> The dated incidents below are kept deliberately. They come from the project this was first
+> written for, they are what each rule is *for*, and a rule whose reason has been deleted is
+> the first one somebody talks themselves out of. Replace them with your own as you collect
+> them.
+
+> **One human, many sessions.** Every session runs as **<your-git-identity>** and every commit
+> is authored by that identity — that is correct and deliberate, not a defect to work around.
 > The consequence is that **`git log --author` cannot tell two sessions apart.** The
 > discriminator is the **branch**, never the author. Do not invent per-session git identities;
 > they would misrepresent who actually wrote the code.
@@ -36,12 +47,19 @@ on it, so a rebase would have cost more than a commit message that under-describ
 Each lane owns a **vertical slice**: its code, **its own tests**, and its backlog IDs. It can
 finish a task alone.
 
+**Replace this table with your own lanes** — the rows below are an example from a Django/React
+e-commerce project, kept to show the shape:
+
 | Lane | Owns | Epics |
 |---|---|---|
 | **A — channels/integrations** | `apps/integrations/`, `apps/connectors/`, adapters | C |
 | **B — finance/orders** | `apps/finance/`, `apps/orders/`, money paths | D |
 | **C — frontend/design** | `frontend/`, design system, UI | F, I, J |
 | **D — platform/infra** | `apps/core/`, retry spine, events, tenancy | H |
+
+**There is no fixed number of lanes and no ceiling.** Standing lanes are the areas that always
+have an owner; a lane can also be cut for a single job and retired when it lands. List the
+standing ones here — the job-shaped ones live on the board, not in this file.
 
 **Why not split by activity** (backlog / testing / design / dev): testing is a *phase of every
 task*, not a category. A lane that must hand every fix to a "testing session" turns routine work
@@ -58,8 +76,8 @@ activity splits maximise it.
 impossible.** Own checkout, own `HEAD`, own branch. Never work directly in the shared checkout.
 
 ```bash
-ROOT=/Users/chinmaireddy/Projects/ecom-nexus-oss
-LANE=channels                      # channels | finance | frontend | platform
+ROOT=$(git rev-parse --show-toplevel)
+LANE=<lane>                         # one of the lanes in the table above
 
 git -C "$ROOT" fetch origin
 git -C "$ROOT" worktree add "$ROOT/.claude/worktrees/$LANE" -b lane/$LANE origin/main
@@ -89,13 +107,19 @@ it costs nothing and the habit is what protects the shared tree when you do have
 
 ## 2. Tests — one database per lane
 
-Django reads `DB_NAME` from the environment (`config/settings/base.py:24`) and derives the test
-database as `test_<DB_NAME>`. So a per-lane database needs **no code change and no compose
-change** — it is a runtime flag. Verified 2026-08-16.
+**⚠️ Everything in this section is an EXAMPLE from a Django + docker-compose project** — the
+settings path, the service name, the database prefix, the install command. **Work out the
+equivalent for your own stack and verify it before writing it down here.** If you cannot prove
+each lane gets its own database, say so in this file and have one lane run the tests for
+everyone; never record a guarantee nobody tested.
+
+In that project, Django read `DB_NAME` from the environment (`config/settings/base.py:24`) and
+derived the test database as `test_<DB_NAME>`, so a per-lane database needed **no code change
+and no compose change** — it was a runtime flag. Verified 2026-08-16.
 
 ```bash
-LANE=channels
-WT=/Users/chinmaireddy/Projects/ecom-nexus-oss/.claude/worktrees/$LANE
+LANE=<lane>
+WT=$(git rev-parse --show-toplevel)/.claude/worktrees/$LANE
 
 docker compose run --rm --entrypoint "" \
   -v "$WT":/app \
@@ -136,7 +160,10 @@ takes both. Either commit it and **name both entries in the message**, or leave 
 
 ## 4. Talking to other lanes
 
-`ListAgents` shows live sessions; `SendMessage` reaches them by name. Asking four peers one
+`ListAgents` shows live sessions; `SendMessage` reaches them by name. **`ListAgents` is not
+scoped to this repo** — it lists every Claude Code session on the machine, including ones
+working entirely different projects, and the listing does not say which is which. Treat the
+board as the roster and address only sessions whose row is on it. Asking four peers one
 question on 2026-08-16 cost a single round-trip and surfaced a stopped container, a mis-owned
 stash pile, and a live publish conflict — it is cheap and it works.
 

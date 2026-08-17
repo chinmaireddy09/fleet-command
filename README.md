@@ -38,8 +38,13 @@ INTEGRATIONS outside APIs, adapters
 SWEEP        not an area — whoever is making a change that crosses all of them
 ```
 
-They talk in eight phrases you already know: **"Control to Backend"**, *go ahead*, *standby*,
-*roger*, *say again*, *all stations*, *all clear*, *out*.
+Those are defaults, not a fixed roster. **There is no ceiling on how many stations run** — a
+call-sign is cut when there is work for it and retired when that work lands, so a call-sign can
+name an area (`PAYMENTS`) or a single job (`CHECKOUT-REFUNDS`). The board is the roster.
+
+They talk in a dozen phrases you already know — these are the ones you will hear most:
+**"Control to Backend"**, *go ahead*, *standby*, *roger*, *say again*, *all stations*,
+*all clear*, *out*.
 
 ```
 CONTROL TO INTEGRATIONS — Frontend is starting the eBay screen and needs the

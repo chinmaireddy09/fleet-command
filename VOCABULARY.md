@@ -20,7 +20,7 @@ If you extend this skill, hold new words to the same test:
 | Word | What it actually is | Say it like this |
 |---|---|---|
 | **a session** | one Claude Code window doing one job | *"the payments session"* |
-| **its own workspace** | a `git worktree` — a separate copy of the project files | *"it has its own copy of the files"* |
+| **its own workspace** | a `git worktree` — a second checkout **of this same repository**, with its own branch and its own `HEAD`, sharing one `.git`. Not a clone, and never a copy of some other repo | *"it has its own copy of the files"* |
 | **go / no-go** | the test run, plus comparing failures against the known list | *"tests are clean — go"* |
 
 ## The three things that happen
@@ -35,7 +35,7 @@ If you extend this skill, hold new words to the same test:
 
 | Word | What it actually is |
 |---|---|
-| **station** | a post: one area of the product, with a call-sign, a workspace and a row on the board. **A station is not a session.** A session *mans* a station — the session dies when its window closes, the station stays on the board waiting for the next one |
+| **station** | a post: one area of the product, with a call-sign, a workspace and a row on the board. **A station is not a session.** A session *mans* a station — the session dies when its window closes, the station outlives it. But not forever: a call-sign is cut when there is work for it and **retired when that work lands**, so the roster is whatever the jobs need. There is no fixed list and no ceiling |
 | **identify** | a session taking a call-sign — and **binding itself to the post**: it reads the row, takes the workspace path from it, and moves in on its own. Replaced *join*, which described what the session did rather than what the fleet learned, and which left the human to do the moving |
 | **a call-sign** | `CHANNELS`, `FRONTEND`, `CONTROL` — what a station is **called**. Say it in every report and every call |
 | **a session name** | `ecom-nexus-oss-4d` — a machine-generated **address**, not a name. It belongs in a message's `to:` field and the board's lookup column, **nowhere else.** A report full of these has thrown away the one thing call-signs are for |
@@ -47,15 +47,16 @@ If you extend this skill, hold new words to the same test:
 | **cut a post** | the first half of a deploy, on its own — workspace, branch and board row, with **nobody in it**. The row reads *reserved*, never *on post*, until a session identifies as it |
 | **countermeasures** | what you do once a collision has already happened — announce it first, then repair *forward*, never by deleting |
 | **the board** | the claim file. Who holds what, and what's next. Not a history |
-| **radio check** | asking every live session for its call-sign, branch and paths, then writing the answers on the board |
-| **hand over** | before a session closes: push everything, write down what only you know, report, wait for acknowledgement |
+| **radio check** | asking every live station for its call-sign, branch and paths, then writing the answers on the board. **Triggered by an event** — coming on watch, a bounced call, before a sweep or a deploy — never by a clock |
+| **hand over** | before a session closes: push everything, write down what only you know, report. **The acknowledgement is confirmation, not a gate** — once the work is pushed and the knowledge is in the repo you are done, whether or not anyone answered |
 
 ## Call phrases
 
 | Phrase | Means |
 |---|---|
 | **"Control to Backend"** | I am calling that station |
-| **"Go ahead"** | I'm listening |
+| **"Backend, go ahead"** | I'm listening, send it |
+| **"Backend to Control"** | replying to the caller |
 | **"Standby"** | wait — stop committing in these paths |
 | **"All clear"** | the hold is over, carry on |
 | **"Clear to proceed"** | I checked, nothing conflicts, go |
@@ -65,6 +66,9 @@ If you extend this skill, hold new words to the same test:
 | **"All hands"** | urgent — stop what you are doing |
 | **"Mayday"** | something is breaking right now, drop everything |
 | **"Out"** | this exchange is finished |
+
+**Twelve phrases, and the skill's own table in `skills/mission-control/SKILL.md` is the
+canonical copy — if these two ever disagree, that one wins.**
 
 **Two pairs that must stay distinct**, or both halves stop meaning anything:
 
@@ -137,7 +141,7 @@ transcript disappear when that session ends.
 
 | Reaching | How | Speed |
 |---|---|---|
-| **your own sessions**, same machine | `ListAgents` + `SendMessage` | instant |
+| **stations on this repo** | `ListAgents` + `SendMessage`, **cross-checked against the board** | instant |
 | **another person**, their own machine | GitHub issue, assigned to them | minutes |
 
 **Messaging between sessions cannot reach another person.** It only reaches your own Claude
