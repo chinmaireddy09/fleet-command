@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.3.0
+version: 5.3.1
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -376,21 +376,33 @@ promise that a session is coming; when the deploy that cut it never produced one
 false and the row is now doing the damage a stale row always does — **making a free job look
 taken**, and offering `identify` a post nobody will ever arrive at.
 
-**A reservation is protected only while its deploy is in flight, or while a live session can be
-accounted for.** Past that, it is stale and gets released.
+**A reservation ends when its promise is known broken — never because nothing has arrived yet.**
+An empty post with no session behind it is the *definition* of a reservation, not evidence
+against one: the user asks for two posts to be cut and then goes off to open terminals, and for
+those minutes the board correctly shows exactly what a dead reservation shows. **You cannot tell
+the two apart by looking**, so do not try.
 
-**Before releasing one, find out which it is** — a reserved row with a *live* session behind it
-is a different animal, and there are four ordinary causes for it, including a session sitting on
-an unanswered permission prompt in a tab nobody is watching. **Diagnose, never guess:**
-`references/deploying-stations.md` covers all four.
+**Only the party who made the promise can declare it broken** — the Control that cut the post, or
+the user:
 
-- **A session is alive and answers for that post** → the row is wrong, not the reservation. Fix
-  the row: write its address on and flip it to on post.
-- **Nothing in `ListAgents` claims it and no deploy is running** → **release it.** Delete the row
-  or return the call-sign to the free list, and **say so on the radio** — the job is available
-  again, and the whole point is that somebody hears it.
-- **You cannot tell** → leave it and say you cannot tell, naming what you checked. An honest
-  unknown on the board beats a confident wrong entry.
+- **You cut it, your deploy failed, and the user has decided** → release it: delete the row or
+  return the call-sign to the free list, and **say so on the radio** so the job is visibly
+  available again. This is the case `references/deploying-stations.md` walks through.
+- **The user says nobody is coming** → same thing. Their call, plainly given.
+- **You did not cut it** → **you do not release it on inspection.** Ask the user, or the Control
+  that cut it. Say what you see — *"CHANNELS has been reserved with nothing behind it since I
+  came on watch; is someone still coming?"* — and leave the row alone until answered.
+
+**A reserved row with a *live* session behind it is a different animal entirely**, and there are
+four ordinary causes, including a session sitting on an unanswered permission prompt in a tab
+nobody is watching. **Diagnose, never guess** — `references/deploying-stations.md` covers all
+four. If a session is alive and answers for that post, the **row** is wrong, not the reservation:
+write its address on and flip it to on post.
+
+**Absence proves nothing here either**, exactly as it proves nothing for a silent station or a
+row you are tempted to delete. It is the same rule in a third costume, and the cost of getting it
+wrong is deleting a post the user asked for thirty seconds ago and announcing it to a fleet they
+are not reading.
 
 ---
 
@@ -913,9 +925,12 @@ end at any moment.
 Integrations for the auth order* — rather than leaving the row looking merely slow. Blocked work
 looks like lazy work if nobody says otherwise.
 
-**Record what would unblock it and who owes it.** A block written as *"blocked on auth"* can
-never end, because nothing tells anyone what "unblocked" looks like. *"Blocked, waiting on
-INTEGRATIONS to land the auth order, est 30 min"* can.
+**Record what would unblock it, who owes it, and when they expect to deliver.** A block written
+as *"blocked on auth"* can never end, because nothing tells anyone what "unblocked" looks like.
+*"Blocked, waiting on INTEGRATIONS to land the auth order, est 30 min"* can. **Ask the holder for
+that estimate when you file the block** — it is one line, and without it the block has no expiry,
+which is the sweep bug again. A holder who will not give one has effectively answered: go to
+step 3 and treat it as a stall.
 
 **5 · A block expires the same way a sweep hold does.** Releasing it is the holder's job and
 Control's — *when you release a hold, tell the station that was waiting* — but a waiting station
