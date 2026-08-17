@@ -387,6 +387,35 @@ stations pushed rows to one file inside twenty minutes with zero collisions. Wha
 | `PROJECT-STATUS-AND-BACKLOG.md` | what to work on next | future | items added, checked off, re-scoped |
 | `MISSION-CONTROL.md` | this project's own rules for running sessions | — | changes rarely |
 
+### Who writes the progress log — every station writes its own
+
+**A logging skill runs in one session and can only write what that session knows.** Run it in
+Control and you get **Control's** log: the board, the radio traffic, and Control's own actions.
+You do **not** get what a station ruled out, the measurement it has not filed yet, or why it
+chose one approach over another — none of that has ever left its window.
+
+**The failure is that a Control-written fleet log reads like the whole story.** It is a summary
+of the radio, and the radio is deliberately sparse — brevity is a rule here. A reader a week
+later cannot tell the difference between *"the fleet did these six things"* and *"these are the
+six things that happened to get mentioned"*, and they will trust it because it is written down.
+Same family as a filed-but-resolved item: a blank space costs nothing, a confident partial record
+costs somebody a day.
+
+**So the split is:**
+
+- **Each station logs its own, at standdown, before the window closes.** It is the only thing
+  that knows its own dead ends. This is the same step as *"write down anything only you know"* —
+  the log is where it goes.
+- **Control logs the watch**, and says so in the entry: what the fleet held, what crossed
+  stations, what is parked and where, what is still open. **Not a summary of the stations' work
+  — a record of the coordination**, which is the part only Control saw.
+- **When a station ends without logging**, Control records *that*, names the branch and newest
+  commit, and marks the entry as second-hand. **An entry that says "reported over the radio, not
+  written by the station" is honest; the same entry without that clause is a quiet lie.**
+
+**A good test of whether this is working is the restart question**: if a station were restarted
+right now, would its log already hold what it knows? If not, that is what standdown is for.
+
 At the end of a watch, progress goes into **`PROGRESS-LOG.md`** — use the project's own
 progress-logging skill if it has one, rather than inventing a format.
 

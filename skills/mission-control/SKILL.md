@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.7.0
+version: 6.8.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -397,7 +397,9 @@ finish the handover first:
 
 1. **Push everything.** Commits, branch, all of it. Unpushed work dies with the window.
 2. **Write down anything only you know** — findings, decisions, dead ends. If it is not in the
-   repo it does not exist.
+   repo it does not exist. **This is your own progress-log entry and nobody can write it for
+   you:** a logging skill run in Control captures the board and the radio, never what you ruled
+   out or why you chose what you chose. Control logs the *watch*; each station logs its own work.
 3. **Report to Control** — what landed, what is unfinished, where it is parked:
 
 ```
