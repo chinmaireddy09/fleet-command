@@ -155,23 +155,37 @@ The binding is a tool call, so make it one:
    ancestry underneath the commit* — which is how feature code has reached `main` by accident
    here. One commit, one file, parent = `origin/main`, pushed `HEAD:main`.
 
-   Two ways to get there, and **which one is available depends on whether you are isolated**:
+   **Use a throwaway worktree. It is the route that works from anywhere:**
 
-   | | How | When |
-   |---|---|---|
-   | **Throwaway worktree** | cut from `origin/main`, edit, push `HEAD:main`, remove it | you identified *in place* and were never `EnterWorktree`d |
-   | **Fast-forward the lane** | FF lane to `origin/main`, commit the row, push `HEAD:main` | you moved in with `EnterWorktree` — **the worktree route is refused** |
+   ```bash
+   git worktree add <scratchpad>/board-flip --detach origin/main   # NO -C
+   # edit docs/WORK-LOCKS.md, commit, then:
+   git push origin HEAD:main
+   git worktree remove <scratchpad>/board-flip
+   ```
 
-   **A worktree-isolated session cannot create a worktree.** Observed 2026-08-17: the harness
-   refuses with *"a worktree-isolated session's git operations must target its own worktree."*
-   A station that identified from inside its lane is not isolated and can use either route; one
-   that moved itself in with `EnterWorktree` has only the second.
+   **Run it from inside your own worktree, with no `-C`.** What a worktree-isolated session is
+   blocked from is *redirecting git at the shared checkout* — `git -C <root> worktree add` is
+   refused with *"a worktree-isolated session's git operations must target its own worktree."*
+   **Creating a worktree is not blocked; the `-C` redirect is.** Two stations reached opposite
+   conclusions about this on 2026-08-17 — one hit the refusal using `-C <root>` and concluded the
+   recipe was unavailable, the other cut and removed one cleanly from inside its lane without
+   `-C`. The error message is about the redirect, and it means what it says.
 
-   **The fast-forward route has a precondition you must MEASURE, not assume:
-   `git merge-base --is-ancestor <lane> origin/main` and zero commits of your own.** If the lane
-   holds unpushed work, a fast-forward is not a fast-forward — and if `origin/main` contains a
-   revert of anything your lane carries, syncing **silently deletes it with no conflict raised**.
-   Check before you merge, not after.
+   **Do NOT reach for "just fast-forward the lane and push `HEAD:main`" as the fallback.** It
+   looks tidier and it is the more dangerous option, for two independent reasons:
+
+   - **`HEAD:main` from a lane pushes every commit underneath it.** One lane on 2026-08-17 held
+     **four commits written by sessions that had since died** — pushing the row from it would
+     have put other sessions' work on `main` under a docs commit message. That is standing
+     order 6 ("only push commits you wrote") broken silently, and it is the same mechanism that
+     leaked C24 to `main` in the first place.
+   - **If `origin/main` holds a revert of anything your lane carries, the fast-forward deletes
+     it with no conflict raised.** Live in one lane in this repo right now.
+
+   If you somehow must use it, **measure both preconditions first, never assume them**:
+   `git merge-base --is-ancestor <lane> origin/main` is TRUE, **and** the lane has zero commits
+   of its own. The throwaway worktree needs neither check, which is the whole reason it exists.
 
 **A call-sign with no address on its row is reserved, not manned.** Say so in that state
 and never render it as working — a row that claims a holder it does not have makes free work
