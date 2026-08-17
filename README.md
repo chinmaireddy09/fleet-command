@@ -39,7 +39,7 @@ SWEEP        not an area — whoever is making a change that crosses all of them
 ```
 
 Those are defaults, not a fixed roster. **There is no ceiling on how many stations run** — a
-call-sign is cut when there is work for it and retired when that work lands, so a call-sign can
+call-sign is initiated when there is work for it and retired when that work lands, so a call-sign can
 name an area (`PAYMENTS`) or a single job (`CHECKOUT-REFUNDS`). The board is the roster.
 
 They talk in a dozen phrases you already know — these are the ones you will hear most:
@@ -96,7 +96,7 @@ and copy again.
 
 ### Nothing to configure — `deploy` asks you once
 
-`/mc deploy <station>` opens a real session on a real post: it cuts the worktree, spawns a
+`/mc deploy <station>` opens a real session on a real post: it initiates the worktree, spawns a
 terminal, has the session identify itself, and verifies it landed on the board.
 
 That means it has to know **your** terminal, and everyone's differs. The first time you run it,

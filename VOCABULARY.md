@@ -35,16 +35,17 @@ If you extend this skill, hold new words to the same test:
 
 | Word | What it actually is |
 |---|---|
-| **station** | a post: one area of the product, with a call-sign, a workspace and a row on the board. **A station is not a session.** A session *mans* a station — the session dies when its window closes, the station outlives it. But not forever: a call-sign is cut when there is work for it and **retired when that work lands**, so the roster is whatever the jobs need. There is no fixed list and no ceiling |
+| **station** | a post: one area of the product, with a call-sign, a workspace and a row on the board. **A station is not a session.** A session *mans* a station — the session dies when its window closes, the station outlives it. But not forever: a call-sign is initiated when there is work for it and **retired when that work lands**, so the roster is whatever the jobs need. There is no fixed list and no ceiling |
 | **identify** | a session taking a call-sign — and **binding itself to the post**: it reads the row, takes the workspace path from it, and moves in on its own. Replaced *join*, which described what the session did rather than what the fleet learned, and which left the human to do the moving |
 | **a call-sign** | `CHANNELS`, `FRONTEND`, `CONTROL` — what a station is **called**. Say it in every report and every call |
 | **a session name** | `ecom-nexus-oss-4d` — a machine-generated **address**, not a name. It belongs in a message's `to:` field and the board's lookup column, **nowhere else.** A report full of these has thrown away the one thing call-signs are for |
 | **sitrep** | asking every live station where it actually is, what it holds and what is blocking it — then **fixing the board where the answers disagree with it.** A sitrep that ends without correcting a stale row was just a conversation |
 | **radio silence** | a station saying *don't interrupt me* — mid-gate, mid-edit. Control holds non-urgent calls and answers from the board where it can. **Mayday always breaks through**; silence is about interruptions, never safety |
 | **fleet state** | one line on the board saying what **everyone** is doing: *normal*, *sweep running*, *mayday*. **Named, never numbered** — a DEFCON-style scale gets read backwards by half the people who read it, and a state acted on confidently in the wrong direction is worse than no state at all |
-| **sweep** | one change that has to be made in *every* area at once — a colour token, a renamed field, a library upgrade |
-| **deploy a station** | cut the post **and man it**: create the workspace, open a session, have it identify, and verify it landed on the board. Nobody types a path. **⚠️ Not the software meaning** — shipping code to production is a different thing. Where both could be meant, say *"ship to production"* for one and *"deploy a station"* for the other, and never a bare "deploy" |
-| **cut a post** | the first half of a deploy, on its own — workspace, branch and board row, with **nobody in it**. The row reads *reserved*, never *on post*, until a session identifies as it |
+| **sweep** | one change that has to be made across areas **owned by more than one station** — a colour token, a renamed field, a library upgrade. **The test is ownership, not size.** A 438-file mechanical change living entirely inside one station's own lane is *not* a sweep, however sweeping it feels — it is ordinary lane work, and announcing it as a sweep freezes a fleet that has no stake in it. Observed 2026-08-17: a frontend-only job was called "the 438 logical sweep" by two stations, and no second station owned a line of it |
+| **deploy a station** | initiate the post **and man it**: create the workspace, open a session, have it identify, and verify it landed on the board. Nobody types a path. **⚠️ Not the software meaning** — shipping code to production is a different thing. Where both could be meant, say *"ship to production"* for one and *"deploy a station"* for the other, and never a bare "deploy" |
+| **initiate** | **start something** — a station, a task, a sweep, a gate run. The plain word for beginning, and it replaced *cut*, which read equally as *create* and as *delete* — fatal in a skill where rows genuinely get deleted. *"Initiating the FRONTEND post"* cannot be misread; *"cutting the FRONTEND row"* could mean either |
+| **initiate a post** | the first half of a deploy, on its own — workspace, branch and board row, with **nobody in it**. The row reads *reserved*, never *on post*, until a session identifies as it |
 | **countermeasures** | what you do once a collision has already happened — announce it first, then repair *forward*, never by deleting |
 | **the board** | the claim file. Who holds what, and what's next. Not a history |
 | **alert** | reaching **a person**, not a session — `/mission-control alert`. It opens a GitHub issue **assigned to them**, and GitHub emails them, so they need neither the repo open nor a pull. Two uses: *"I'm holding this, don't start it"* and *"nobody owns this, can you take it or help"*. **The only thing in this skill that reaches a human being**; everything else talks to Claude Code windows. Always show the user the exact title and body and get a yes first — it mails a real person |
@@ -102,7 +103,7 @@ program — can rely on these meanings.
 
 | Mark | Means | Safe to start this job? |
 |---|---|---|
-| 🔒 **claimed / reserved** | reserved, not started yet. **Also a post that has been cut but that no session has identified as** — the workspace exists, the chair is empty | **No** — ask the owner first |
+| 🔒 **claimed / reserved** | reserved, not started yet. **Also a post that has been initiated but that no session has identified as** — the workspace exists, the chair is empty | **No** — ask the owner first |
 | 🚧 **in progress** | someone is actively working it now. **A station row earns 🚧 only once its session name is in the table** — the name is the proof, not the intent | **No** |
 | ⏸ **paused** | started, then stopped. Work is parked somewhere | **Ask first** — read the parked branch before restarting |
 | ✅ **done** | finished and landed | Yes — row can be deleted |

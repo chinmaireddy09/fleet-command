@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.6.0
+version: 5.7.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -49,7 +49,7 @@ force-push. Never push a commit you did not write.
 
 Each session is assigned one station.
 
-**There is no fixed roster and no ceiling on how many stations run.** A call-sign is cut when
+**There is no fixed roster and no ceiling on how many stations run.** A call-sign is initiated when
 there is work for it and retired when that work lands, so the fleet is however many sessions the
 jobs in front of you need — three today, nine tomorrow, two the day after. **The board is the
 roster.** The table below is seed names, not a closed set, and nothing in this skill breaks
@@ -57,7 +57,7 @@ because a call-sign it has never seen appears on the board.
 
 **A call-sign works when hearing it tells you instantly whether it concerns you.** That is the
 whole naming rule, and it covers both shapes a station takes: one that holds **a part of the
-product** (`PAYMENTS`, `CHECKOUT`) and one cut to drive **a single job** (`CHECKOUT-REFUNDS`,
+product** (`PAYMENTS`, `CHECKOUT`) and one initiated to drive **a single job** (`CHECKOUT-REFUNDS`,
 `ORDER-IMPORT`). Never name a station after a ship department — "Supply" and "CIC" mean nothing
 to anyone. A call-sign lives exactly as long as the work behind it.
 
@@ -81,7 +81,7 @@ The board records who is actually running it.
 anyone who has seen the codebase, with nothing to learn.
 
 Read the project's own `MISSION-CONTROL.md` first (Step 0) — its station names win. It lists the
-**standing** stations, the ones an area always has; the job-shaped ones are cut and retired as
+**standing** stations, the ones an area always has; the job-shaped ones are initiated and retired as
 the work arrives and do not need writing down in advance. Small projects often run only
 **CONTROL**, **BACKEND** and **FRONTEND**.
 
@@ -115,11 +115,11 @@ MISSION CONTROL — identify
   Live    BACKEND · BACKEND [e29977]             apps/orders
           FRONTEND · ecom-nexus-oss-85 [6d86b0]  frontend/src/checkout  ← unnamed, came up by hand
 
-  Reserved for you — a post is already cut and waiting:
+  Reserved for you — a post is already initiated and waiting:
     1  CHANNELS       apps/integrations, adapters   .claude/worktrees/channels
     2  BACKLOG        cross-module                  .claude/worktrees/backlog
 
-  Free, no post cut yet:
+  Free, nothing initiated yet:
     3  PLATFORM       core, retry, events
     4  TIGER          no area yet — decide later
 
@@ -257,6 +257,20 @@ The binding is a tool call, so make it one:
    Do this at identify and **do it again if you ever change call-sign.** A tab pinned to the
    wrong call-sign is worse than an unpinned one.
 
+   **Then make it readable, which is a Terminal setting the script cannot reach.** Terminal
+   builds a title out of parts — `<working directory> — <custom title> — <process> — <size>` —
+   and `label-tab.sh` sets only the custom title. Seen on 2026-08-17: a correctly pinned station
+   read `fleet-command — FRONTEND — caffeinate • claude --name FRONTEND /mc identify FRONTEND —
+   269×58`. The call-sign was there and was the least visible thing in the line.
+
+   **Tell the user once:** *Terminal → Settings → Profiles → Window → Title*, and untick
+   *Working directory*, *Shell command name*, *Active process name*, *Active process argument*,
+   *TTY name* and *Window size*. The tab then reads `FRONTEND` and nothing else.
+
+   **Setting the tab's custom title covers both places** — the tab in the tab bar, and the
+   window title bar while that tab is selected. One call, both. The tab is the one that matters
+   more, because choosing between tabs is when a prompt goes to the wrong station.
+
    **What the re-verification actually showed, and what it did not.** On Terminal.app 470.2 the
    script found its own tty through the parent chain — necessary, because the Bash tool's own
    process has no tty and only the `claude` process above it does — set the title, and held it
@@ -382,7 +396,7 @@ offering a list of ghosts.
 4. *Then* **Control deletes the row** and pushes. With no Control manned, the next station to
    come on watch clears the rows it can *prove* are dead — a call-sign that **had** a session,
    completed its handover, and is now absent from `ListAgents`. Never on a hunch, and **never a
-   reserved row while its deploy is still in flight**: that post was cut for someone who has not
+   reserved row while its deploy is still in flight**: that post was initiated for someone who has not
    arrived yet, and it is waiting, not dead.
 
 **Never delete the row of a station that is still running.** That reproduces the exact failure
@@ -398,25 +412,25 @@ ago.
 #### A reservation expires too — otherwise a failed deploy holds a post forever
 
 **"Waiting, not dead" is only true while someone is actually on the way.** A reserved row is a
-promise that a session is coming; when the deploy that cut it never produced one, the promise is
+promise that a session is coming; when the deploy that initiated it never produced one, the promise is
 false and the row is now doing the damage a stale row always does — **making a free job look
 taken**, and offering `identify` a post nobody will ever arrive at.
 
 **A reservation ends when its promise is known broken — never because nothing has arrived yet.**
 An empty post with no session behind it is the *definition* of a reservation, not evidence
-against one: the user asks for two posts to be cut and then goes off to open terminals, and for
+against one: the user asks for two posts to be initiated and then goes off to open terminals, and for
 those minutes the board correctly shows exactly what a dead reservation shows. **You cannot tell
 the two apart by looking**, so do not try.
 
-**Only the party who made the promise can declare it broken** — the Control that cut the post, or
+**Only the party who made the promise can declare it broken** — the Control that initiated the post, or
 the user:
 
-- **You cut it, your deploy failed, and the user has decided** → release it: delete the row or
+- **You initiated it, your deploy failed, and the user has decided** → release it: delete the row or
   return the call-sign to the free list, and **say so on the radio** so the job is visibly
   available again. This is the case `references/deploying-stations.md` walks through.
 - **The user says nobody is coming** → same thing. Their call, plainly given.
-- **You did not cut it** → **you do not release it on inspection.** Ask the user, or the Control
-  that cut it. Say what you see — *"CHANNELS has been reserved with nothing behind it since I
+- **You did not initiate it** → **you do not release it on inspection.** Ask the user, or the Control
+  that initiated it. Say what you see — *"CHANNELS has been reserved with nothing behind it since I
   came on watch; is someone still coming?"* — and leave the row alone until answered.
 
 **A reserved row with a *live* session behind it is a different animal entirely**, and there are
@@ -452,7 +466,7 @@ has actually gone wrong, not before.
 the software meaning; say **"ship to production"** for that, and never a bare "deploy" in a repo
 where both are possible.
 
-`deploy` cuts the post, spawns the session **named `--name <CALLSIGN>`**, lets it identify itself,
+`deploy` initiates the post, spawns the session **named `--name <CALLSIGN>`**, lets it identify itself,
 and **verifies the row carries its address** — a deploy that ends with a 🚧 row and no session
 name has produced a lie, not a station.
 
@@ -469,7 +483,7 @@ broadcast it reads. Station count tracks *gateable work*, not ambition.
 A **station** owns an area. A **sweep** owns a *change* that touches files several stations own —
 a library upgrade, a shared rename, a design-system pass.
 
-**The test:** does this change touch files owned by more than one station? If yes it is a sweep.
+**The test is ownership, not size:** does this change touch files owned by **more than one station**? If yes it is a sweep. If no, it is ordinary lane work no matter how many files it spans — **a 438-file mechanical change inside one station's own paths is not a sweep**, and announcing it as one freezes a fleet with no stake in it. Observed 2026-08-17: a `frontend/`-only job was called "the 438 logical sweep" by two stations while no other station owned a line of it. **What a job like that may actually need is a scope extension from Control** — if it reaches past the paths on your row — which is a different request with a different answer.
 
 **Stations have right of way. A sweep has to ask.** Announce it **with a time estimate**, collect
 every live station's acknowledgement, land it fast, and **always call all clear — even if the
@@ -585,6 +599,8 @@ should never have to find the right window first.
 **Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
 `BACKEND`; the board and the radio always render it `BACKEND`.
 
+**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ ecom-nexus-oss-75>` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads.
+
 **This is the antidote to the fleet's most expensive human error.** With four identical-looking
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
 done work nobody wanted, in a lane that does not own it. `@callsign` puts the target in the text
@@ -648,6 +664,27 @@ This is not theoretical. On 2026-08-17 three stations in a row hit it within fif
 and each one correctly refused to guess — one explicitly retracted a plan to write the row
 "with the name pending", on the grounds that a row naming a holder it cannot prove is exactly
 the lie the board exists to prevent. A lone first session has no way to comply at all.
+
+**But "I cannot see myself" is NOT the same as "I came up unnamed", and the difference is
+readable in one command.** Observed 2026-08-17: a station spawned `--name FRONTEND` reported
+*"I came up unnamed and cannot see myself in ListAgents"* and spent a radio round-trip asking
+Control for an address it already had. It was not unnamed; it just could not tell — because
+**named and unnamed sessions look identical from inside `ListAgents`, which shows neither.**
+
+**Read your own launch arguments instead.** Walk the parents to the `claude` process — the same
+walk `label-tab.sh` does for the tty — and the `--name` is sitting right there:
+
+```bash
+ps -o args= -p <the claude pid>
+```
+
+**Measured 2026-08-17:** a deployed station printed `claude --name FRONTEND /mc identify FRONTEND`;
+a hand-started one printed a bare `claude`. So **before you tell anyone you came up unnamed,
+check** — the answer is local, free, and needs no peer.
+
+**What this does NOT give you is the `[ref]`.** That appears in neither the process arguments
+nor the scratchpad path — both checked — so a peer is still the only source for the bracketed
+part, and you only need it when a bare call-sign matches two rows.
 
 **`--name` is the fix, because a station named after its call-sign already knows its own
 address — it does not have to look it up.** Two consequences worth stating:
@@ -732,7 +769,7 @@ not an unnamed station and must not be treated as one:
 - **If you cannot match a listed session to a board row, leave it alone and say so.** It is
   probably a colleague's other window, doing work that has nothing to do with you.
 
-**This also cuts the other way:** a session missing from `ListAgents` is gone, but a session
+**This also works the other way:** a session missing from `ListAgents` is gone, but a session
 *present* in it proves only that some Claude Code window is open somewhere — not that your
 station is manned.
 
@@ -804,6 +841,7 @@ everything a station needs on post. The rest loads only when the command in hand
 | `references/sweeps.md` | a change crosses areas several stations own | whoever runs the sweep |
 | `references/countermeasures.md` | something has already gone wrong | anyone, at the time |
 | `label-tab.sh` | at identify — pins your call-sign to your terminal tab | every station |
+| `spawn-station.sh` | at deploy — opens the station's tab in **your own** window and verifies a session actually started in it | Control |
 
 **Do not read them speculatively.** The whole point of the split is that four stations no longer
 each carry Control's 25KB of procedure they will never run. **Every KB in `SKILL.md` is paid once
@@ -825,8 +863,8 @@ is what makes four sessions cost more than one doing the same work rather than t
 | `/mission-control call <station>` | **Call a station** — ask one specific thing |
 | `/mission-control all-stations` | **Broadcast** — ask every live station to report |
 | `/mission-control depends <what>` | **Dependency check** — who else touches this, and what must I know first |
-| `/mission-control station <name>` | **Cut a post** — workspace, branch, board row. Nobody is in it yet |
-| `/mission-control deploy <station>` | **Deploy a station** — cut the post, **open the session named `--name <CALLSIGN>`, identify it, and verify** it landed. No keyboard |
+| `/mission-control station <name>` | **Initiate a post** — workspace, branch, board row. Nobody is in it yet |
+| `/mission-control deploy <station>` | **Deploy a station** — initiate the post, **open the session named `--name <CALLSIGN>`, identify it, and verify** it landed. No keyboard |
 | `/mission-control countermeasures` | **Something went wrong** — announce it, then repair without deleting |
 | `/mission-control sweep <change>` | **Cross-area change** — announce it, collect acknowledgements, land it, call all-clear |
 | `/mission-control go` | **Go / no-go** — run the tests, say plainly if it's safe |
@@ -1065,7 +1103,18 @@ Control keeps these. They look alike and are not interchangeable.
 
 | File | Answers | When | Behaviour |
 |---|---|---|---|
-| `WORK-LOCKS.md` | **who holds what, and what's next** | now | rows cut and deleted with the fleet; live stations only; stays short |
+| `WORK-LOCKS.md` | **who holds what, and what's next** | now | rows initiated and deleted with the fleet; live stations only; stays short |
+
+**"Short" is a real constraint, and it is the one most often broken.** Measured 2026-08-17: a
+live board had grown to **289 KB** — a file whose own protocol section says *"keep this board
+short — it tracks active work, not history."* Every station reads it at identify and again after
+every gap, so its size is paid **per station, per read**, which is precisely the parallelism tax
+this skill exists to keep down.
+
+**A row's history belongs in the progress log, not in its Status cell.** When a row's story
+outgrows a couple of sentences, move the story and leave the pointer — *"see PROGRESS-LOG
+2026-08-17"*. A board nobody can scan in ten seconds has stopped being a board and become an
+archive that also happens to block people.
 | `PROGRESS-LOG.md` | what happened, and why | past | append-only; never edit an old entry |
 | `PROJECT-STATUS-AND-BACKLOG.md` | what to work on next | future | items added, checked off, re-scoped |
 | `MISSION-CONTROL.md` | this project's own rules for running sessions | — | changes rarely |

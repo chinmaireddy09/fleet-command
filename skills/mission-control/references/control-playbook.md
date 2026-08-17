@@ -284,7 +284,7 @@ running station makes it invisible to the whole fleet. Still running, work finis
 
 Offer to write `docs/MISSION-CONTROL.md`: the **standing** stations and what each owns — the
 areas that always have a holder, not every call-sign that will ever run, since job-shaped
-stations are cut and retired as work arrives and belong on the board rather than in a doc; the
+stations are initiated and retired as work arrives and belong on the board rather than in a doc; the
 workspace commands; the per-station test-database settings **checked against this project
 first**; what stays shared; how stations call each other; and the standing orders above.
 

@@ -58,7 +58,7 @@ e-commerce project, kept to show the shape:
 | **D — platform/infra** | `apps/core/`, retry spine, events, tenancy | H |
 
 **There is no fixed number of lanes and no ceiling.** Standing lanes are the areas that always
-have an owner; a lane can also be cut for a single job and retired when it lands. List the
+have an owner; a lane can also be initiated for a single job and retired when it lands. List the
 standing ones here — the job-shaped ones live on the board, not in this file.
 
 **Why not split by activity** (backlog / testing / design / dev): testing is a *phase of every

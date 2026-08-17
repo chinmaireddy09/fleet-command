@@ -14,13 +14,13 @@ CONTROL TO ALL STATIONS — Deploying a second station on checkout. Call-sign
                           Board updated. Out.
 ```
 
-### Deploy does the whole thing — cut, spawn, identify, verify
+### Deploy does the whole thing — initiate, spawn, identify, verify
 
-`station <name>` cuts a post and stops. **`deploy <station>` carries it all the way to a manned
+`station <name>` initiates a post and stops. **`deploy <station>` carries it all the way to a manned
 station with nobody touching a keyboard.** Four steps, and it is not finished until the fourth
 one passes:
 
-**1 · Cut the post.** Exactly `station <name>`: worktree, branch, copy the ignored instruction
+**1 · Initiate the post.** Exactly `station <name>`: worktree, branch, copy the ignored instruction
 files, write the row, push it.
 
 **2 · Spawn the session** — in whatever terminal *this* user actually runs, the way *they* want
@@ -92,19 +92,35 @@ on the board and `channels` in `ListAgents` is a directory that fails at its one
 tab ⌘T just made and write into **that reference** — never `in front window`, which opens
 another window instead:
 
+**The recipe ships as a file. Do not paste it inline** — the same reason `label-tab.sh` does:
+a worktree-isolated session refuses multi-line blocks, and the old inline form failed silently.
+
 ```bash
-CMD="cd '$WT' && claude --name '$CALLSIGN' '/mc identify $CALLSIGN'"
-osascript <<AS 2>/dev/null || osascript -e "tell application \"Terminal\" to do script \"$CMD\""
-tell application "Terminal" to activate
-delay 0.4
-tell application "System Events" to keystroke "t" using command down
-delay 0.8
-tell application "Terminal"
-  set theTab to selected tab of front window
-  do script "$CMD" in theTab
-end tell
-AS
+bash <skill-dir>/spawn-station.sh CHANNELS "$WT"
 ```
+
+It prints `TAB ok · window <id> · <tty>`, or `WINDOW (...)` when it had to fall back, or
+`FAILED:` with the new tab's scrollback tail.
+
+**Three things it fixes, all of which happened on 2026-08-17 in one deploy:**
+
+1. **`keystroke "t" using command down` is a race, and losing it corrupts the command.** The
+   modifier failed to register, the bare `t` reached the shell, `do script` appended to that
+   same line, and the station tried to run **`tcd '/path' && claude …`**. `zsh: command not
+   found: tcd`, nothing else ran, and the deploy reported only that the station never came up.
+2. **`front window` is whichever window has FOCUS** — someone else's. The station's tab opened
+   in an unrelated window, and Terminal then titled it with *that* window's directory, so a
+   station working `ecom-nexus-oss` advertised `fleet-command` in its title bar. **This is the
+   identical bug already fixed for tab-labelling**; the lesson was learned there and never
+   carried across. The script resolves its own window by tty and focuses that one.
+3. **It never read the tab back.** `label-tab.sh` has read its result back since it shipped;
+   this had no equivalent, so both failures above were invisible. The script now checks
+   `processes of tab` for a live `claude` and, when it is missing, returns the scrollback tail —
+   which is where `command not found` is already written down.
+
+**Verified 2026-08-17** that both readback hooks exist in Terminal's AppleScript: `processes of
+tab` returns e.g. `login-zshclaudemcp@latestnodecaffeinate`, and `history of tab` returns the
+scrollback.
 
 Missing Accessibility fails with `osascript is not allowed to send keystrokes. (1002)`; match on
 that and fall back to a window. **Say which one you got** — a window when they asked for a tab
@@ -179,6 +195,7 @@ can address, and a post that reads free while somebody sits in it. Four things c
 | **Cannot read its own address** | It is *asking* for its name. `ListAgents` never shows a session itself — see the bootstrap trap |
 | **The human interrupted `identify` mid-flow** | It stopped at a step *by instruction* and is waiting on the human to resume. Observed 2026-08-17 |
 | **The session died** | Calls bounce. Now it is a recovery job, not a deploy job |
+| **The command never ran** | The tab exists and sits at a plain shell prompt, with an error in the scrollback. Nothing is listed, because no session was ever started. **This is the cause that was missing on 2026-08-17**, when a mangled `cd` meant the four causes above were all wrong and Control had to ask a human what was on screen |
 
 **Ask which one it is. Do not diagnose it from the outside.** On 2026-08-17 Control announced a
 stuck permission prompt; the station replied that there was none — the user had typed
@@ -205,7 +222,7 @@ worse than no deploy at all — there is now a live window nobody can address, h
 board still shows as reserved. Report it, say which tab it is in, and let the user decide.
 
 **Then come back for the row.** A failed deploy leaves a reservation behind, and a reservation
-outlives the deploy that cut it unless somebody ends it — at which point it is a stale row making
+outlives the deploy that initiated it unless somebody ends it — at which point it is a stale row making
 a free job look taken, which is the thing the board exists to prevent. **The reservation is
 protected only while this deploy is in flight.** Once it has failed and the user has decided:
 either a session is accounted for and the row gets its address, or nothing claims it in
@@ -233,7 +250,7 @@ Say all three out loud rather than discovering them mid-deploy:
   with `not allowed to send keystrokes (1002)`. If a spawn fails before *any* dialog appears,
   suspect the sandbox rather than macOS, and surface it instead of trying variations.
 
-**Deploying cuts the post; identifying mans it.** A row is 🚧 only once a session name is on it.
+**Deploying initiates the post; identifying mans it.** A row is 🚧 only once a session name is on it.
 A deploy that ends with a 🚧 row and no session name has produced a lie, not a station.
 
 **Before deploying another station, ask whether the work actually splits.** Two stations in one
