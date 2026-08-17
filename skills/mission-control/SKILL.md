@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.4.0
+version: 6.5.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -331,6 +331,26 @@ can reach it. Record what `ListAgents` prints, exactly.
   holder carrying the old intent. Take a fresh name until the previous row is gone *and* the
   previous session is confirmed closed.
 - **Anything the user types wins** — suggestions are suggestions.
+
+### What a restart would cost is the measure of how well you have been filing
+
+**"Write it to the repo" is easy to agree with and hard to audit. This is the audit:** if this
+station were restarted right now, what would actually be lost?
+
+- **Only the thread of the current conversation** → the discipline is working. Findings, gate
+  results and decisions are in the repo, the branch is pushed, and the row says where everything
+  is. **A station in that state is cheap to restart**, which is precisely why it can be.
+- **Anything else — a measurement, a diagnosis, a dead end, a decision** → **that is the thing
+  that should already have been filed.** The answer is not to avoid restarting; it is to file it
+  now, and then the restart is cheap.
+
+**A station that cannot be restarted without losing knowledge is telling you it has been keeping
+knowledge somewhere that dies with a window.** Observed 2026-08-18: a station offered a restart
+and could price it exactly — a detached gate that survives it, work already pushed, everything
+else in the repo — and that precision is what made the offer easy to accept.
+
+**A restart is the only fix for some things, `--name` among them**, so it is worth being the kind
+of station that can take one.
 
 **If you came up unnamed, say so once and offer the fix.** A running session cannot rename
 itself — `--name` is set at launch. So a hand-started station keeps its generated handle for
@@ -893,6 +913,22 @@ information the naming scheme was for.
 **A station with no call-sign yet is the one exception** — before it identifies there is nothing
 else to call it, so say *"the unidentified session in the shared checkout"* and get it a
 call-sign. Do not let a handle become its name by habit.
+
+**When a human asks who is who, produce the mapping — do not explain it in prose.** The `@` list
+shows every session on the machine, so what they are looking at genuinely does not match the
+fleet, and that is the tool's doing rather than theirs. Two columns settle it:
+
+```
+  What @ shows you        What it actually is
+  FRONTEND                ✅ correct — spawned with --name FRONTEND
+  acme-shop-75            INTEGRATIONS — started by hand, so it never got a name
+  acme-shop-9a            CONTROL — same, started by hand
+  other-project-db        a different project entirely. Never address this one
+```
+
+**Then name the prevention, because there is exactly one:** `/mc deploy <STATION>` passes
+`--name`; opening a terminal by hand does not. **That is the whole reason one row in that table
+is right and the rest are not.**
 
 **Re-run the radio check whenever the board looks stale**, because a session that ended still
 has a row but no longer answers. A call that bounces means that station is gone — and its row
