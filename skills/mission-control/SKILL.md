@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.8.0
+version: 5.9.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1122,6 +1122,30 @@ new". Check the **clock** too: a broken run is usually *faster* than a good one,
 Then say **"go"** or **"no-go"**, and if no-go, name exactly what broke. **Never soften a
 no-go into a go.**
 
+### A test that cannot fail is decoration — mutate it and watch it red
+
+**Writing a guard against a defect coming back is not finished when the guard passes.** A test
+that would pass whether or not the defect exists proves nothing, and it is worse than no test,
+because everyone downstream now believes the hole is covered.
+
+**So make it fail on purpose before you believe it:**
+
+1. **Reintroduce the exact defect** the guard exists to catch — one instance is enough, and do it
+   in each *kind* of file the guard covers, not just the easiest one.
+2. **Confirm the test reds**, and that its message **names the real location**.
+3. **Revert your mutations**, and confirm green again.
+
+**Both halves matter, and the second is the one that gets skipped.** Observed 2026-08-18: a
+freshly written guard did go red under mutation — and reported the offence at `ErrorHelp.tsx:36`
+when the declaration was on **line 43**. The guard stripped comments before scanning, which
+deleted their newlines and shifted every line number after them. It would have caught the
+regression and then sent whoever fixed it to the wrong line. **The mutation check found a real
+defect in the check itself**, which is exactly what it is for. The fix was to blank comments *in
+place* rather than delete them, so the line count is preserved.
+
+**The mutations are yours, made deliberately, and they come straight back out.** Say so while
+they are in the tree, in case the window dies holding them.
+
 ---
 
 ## Standing orders
@@ -1153,6 +1177,11 @@ no-go into a go.**
     station, so it needs a reason you can name.
 13. **If a peer is blocked behind you, post progress at intervals** — on the board, not over the
     radio. Silence is the default everywhere except in front of somebody who is waiting.
+14. **Never put backticks in a `-m` commit message.** The shell runs them as substitutions and
+    eats the text — the commit lands with a message describing less than it did. Observed
+    2026-08-18. **Write the message to a file and use `-F`**, or a quoted heredoc. **Then read
+    the message back** (`git log -1`), because the damage is invisible at the moment you make it.
+    Amending is safe *only* while the commit is unpushed; once it is shared, fix forward.
 
 ---
 

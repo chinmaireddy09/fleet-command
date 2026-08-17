@@ -265,7 +265,7 @@ Then:
 
 ```bash
 git -C "$WT" add <name the files>            # never -A
-git -C "$WT" commit -m "..."
+git -C "$WT" commit -F <message-file>      # -F, not -m: backticks in -m are eaten by the shell
 git -C "$WT" push origin HEAD:lane/$STATION  # once pushed, anyone can pick it up
 # record branch + newest commit in the log, then take the row off the board
 git worktree remove "$WT"
