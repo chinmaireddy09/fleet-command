@@ -18,7 +18,7 @@
   },
 
   "_terminalsVerified": {
-    "Apple_Terminal": "verified 2026-08-17 — tab and window both work",
+    "Apple_Terminal": "print path VERIFIED end-to-end 2026-08-18. Tab path FAILED TWICE IN THE FIELD on 2026-08-17 -- a lost modifier race corrupted the command into `tcd`, and the synthetic keypress opened the tab in whichever window had focus. Since rewritten to target its own window by tty and to verify a claude process really started, and to print the paste-able command whenever it cannot; that rewrite is dry-run checked but its full spawn has NOT been re-run in the field. Window fallback works.",
     "iTerm.app": "recipe shipped, UNVERIFIED",
     "WindowsTerminal": "recipe shipped, UNVERIFIED",
     "vscode": "no recipe exists — nothing outside the editor can open its integrated terminal reliably. Falls back to printing the exact command to paste.",

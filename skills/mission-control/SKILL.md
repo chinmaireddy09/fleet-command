@@ -47,12 +47,14 @@ force-push. Never push a commit you did not write.
 
 ## The automation boundary — one process, and only one
 
-**Exactly one thing in this skill runs without a human asking for it each time:**
+**Exactly one thing in this skill, once asked for, runs to completion without you typing again:**
 
 > **open a terminal tab · enter the workspace path · initiate mission control**
 
-That is the whole list. `deploy` automates those three steps so nobody types a path — that is
-its entire reason to exist, and it stops the moment the station says hello.
+That is the whole list, and it still needs the ask — **`/mc deploy <station>` is the ask**, and
+it means *put this on post without me typing anything*. Nothing here fires on its own; deploy
+automates those three steps so nobody types a path, and **it stops the moment the station says
+hello.**
 
 **Everything else waits to be asked.** Claiming a task. Writing code. Committing. Pushing.
 Merging. Running a gate. Standing a station down. Deleting a row. Starting a sweep. Alerting a
@@ -1361,7 +1363,7 @@ stations pushed rows to one file inside twenty minutes with zero collisions. Wha
 - **Edit your own row. Never reformat, retrim or "tidy" another station's** — even when it is
   6,000 words and you are right about it. Say it on the radio instead.
 - **Push immediately**, before code. The push race is the one mechanism with teeth.
-- **On rejection, re-cut from the new `origin/main`** and reapply your row — do not merge the
+- **On rejection, start again from the new `origin/main`** and reapply your row — do not merge the
   board by hand. One station kept a peer's line and rebased its own underneath it rather than
   overwriting; that is the behaviour to copy.
 | `PROGRESS-LOG.md` | what happened, and why | past | append-only; never edit an old entry |
