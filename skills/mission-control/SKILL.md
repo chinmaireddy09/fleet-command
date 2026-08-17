@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 4.3.0
+version: 4.3.1
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -267,14 +267,44 @@ one passes:
 **1 · Cut the post.** Exactly `station <name>`: worktree, branch, copy the ignored instruction
 files, write the row, push it.
 
-**2 · Spawn the session.** Detect the terminal from `$TERM_PROGRAM` and open a new one running
-`claude` with `identify` as its opening prompt:
+**2 · Spawn the session — as a tab, falling back to a window.** Detect the terminal from
+`$TERM_PROGRAM` and open a new one running `claude` with `identify` as its opening prompt.
+
+**Terminal.app cannot make a tab from its own AppleScript.** `do script` always opens a
+*window*; a tab needs `System Events` to press ⌘T, and that is a **different macOS permission**
+from the one `do script` uses — *Accessibility*, not *Automation*. So try the tab, and fall
+back rather than fail:
 
 ```bash
 WT="$ROOT/.claude/worktrees/$STATION"
-osascript -e "tell application \"Terminal\" to do script \
-  \"cd '$WT' && claude '/mc identify $CALLSIGN'\""
+CMD="cd '$WT' && claude '/mc identify $CALLSIGN'"
+
+osascript <<AS 2>/dev/null || osascript -e \
+  "tell application \"Terminal\" to do script \"$CMD\""
+tell application "Terminal" to activate
+delay 0.3
+tell application "System Events" to keystroke "t" using command down
+delay 0.6
+tell application "Terminal" to do script "$CMD" in front window
+AS
 ```
+
+**Say which one you got.** A window when the user asked for a tab is not a silent detail — tell
+them it fell back and why, and where to grant it:
+
+```
+Accessibility not granted, so it opened a WINDOW, not a tab.
+  System Settings → Privacy & Security → Accessibility → enable Terminal
+Automation is already granted — that is a separate permission, which is why
+the window worked and the tab did not.
+```
+
+The exact error when it is missing is `System Events got an error: osascript is not allowed to
+send keystrokes. (1002)`. Match on the failure, not on a permissions probe — there is no
+reliable way to ask in advance.
+
+**Never use `do script … in front window` on its own as the "tab" method.** Without the ⌘T it
+does not create a tab; it types the command into the session the user is *already sitting in*.
 
 Implement the terminal you are actually on and **fail plainly on the rest** — `unsupported
 terminal: Ghostty — open a session yourself and run /mc identify <call-sign>` is a fine
@@ -306,9 +336,11 @@ Say all three out loud rather than discovering them mid-deploy:
   widen another session's permissions because it is convenient — that is the user's setting to
   make, not deploy's to assume.
 - **Every spawned session bills.** Announce how many you are opening *before* opening them.
-- **The first automation of a terminal may need a one-time macOS grant.** If the spawn fails
-  before any dialog appears, suspect the sandbox rather than macOS, and surface it instead of
-  trying variations.
+- **Two separate macOS grants, and they fail differently.** *Automation* lets you open a window;
+  *Accessibility* lets you open a tab. Having the first tells you nothing about the second —
+  observed 2026-08-17: the window spawned with no dialog at all, and the tab failed outright
+  with `not allowed to send keystrokes (1002)`. If a spawn fails before *any* dialog appears,
+  suspect the sandbox rather than macOS, and surface it instead of trying variations.
 
 **Deploying cuts the post; identifying mans it.** A row is 🚧 only once a session name is on it.
 A deploy that ends with a 🚧 row and no session name has produced a lie, not a station.
