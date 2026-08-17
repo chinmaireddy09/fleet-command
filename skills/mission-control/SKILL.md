@@ -99,8 +99,8 @@ and **lets you type your own**:
 MISSION CONTROL — identify
 
   Repo    ecom-nexus-oss                 Board   docs/WORK-LOCKS.md
-  Live    BACKEND · ecom-nexus-oss-28 [e29977]   apps/orders
-          FRONTEND · ecom-nexus-oss-85 [6d86b0]  frontend/src/checkout
+  Live    BACKEND · BACKEND [e29977]             apps/orders
+          FRONTEND · ecom-nexus-oss-85 [6d86b0]  frontend/src/checkout  ← unnamed, came up by hand
 
   Reserved for you — a post is already cut and waiting:
     1  CHANNELS       apps/integrations, adapters   .claude/worktrees/channels
@@ -137,13 +137,31 @@ The binding is a tool call, so make it one:
    **Make this check, don't assume either way.** A session reached by `deploy` and a session
    started by hand both run `identify`, and calling `EnterWorktree` from inside the target is a
    different situation from calling it from outside.
-4. **Write your `ListAgents` name onto the row** and flip it from reserved to on post, then
-   push. Until that name is on the board, no other station can call you — which is exactly why
-   a board full of 🚧 rows can still leave everyone unable to find anyone.
+4. **Write your `ListAgents` address onto the row** and flip it from reserved to on post, then
+   push. Until that address is on the board, no other station can call you — which is exactly
+   why a board full of 🚧 rows can still leave everyone unable to find anyone.
 
-**A call-sign with no session name on its row is reserved, not manned.** Say so in that state
+   **If `deploy` spawned you, you already know it: it is your call-sign**, because you were
+   started `--name <CALLSIGN>`. Write it and move on.
+
+   **If you came up by hand and unnamed, you cannot look it up** — `ListAgents` never shows you
+   yourself. **Ask a peer or Control** — *"what address does this message arrive from?"* — and
+   write back what they read out. **Never invent it, and never write the row with the name
+   pending.** Both produce a row that fails at its one job.
+
+5. **Push the row from a branch cut off current `origin/main`, never from your lane.** A row
+   committed to a lane branch updates a board nobody reads. And `HEAD:main` from a lane pushes
+   *the lane's whole ancestry*, which is how feature code has reached `main` by accident here. A
+   throwaway worktree cut from `origin/main`, one file, one commit, then removed — same command,
+   nothing underneath it to leak.
+
+**A call-sign with no address on its row is reserved, not manned.** Say so in that state
 and never render it as working — a row that claims a holder it does not have makes free work
 look taken, which is the one failure this whole board exists to prevent.
+
+**A row whose address is not a real `ListAgents` name fails the same way, more quietly.** A cell
+reading `channels-1b` looks filled in and is uncallable; the row renders as manned while nothing
+can reach it. Record what `ListAgents` prints, exactly.
 
 **How to choose:**
 
@@ -155,6 +173,13 @@ look taken, which is the one failure this whole board exists to prevent.
   letters are actually for.
 - **Never take a call-sign already on the board.** Check first.
 - **Anything the user types wins** — suggestions are suggestions.
+
+**If you came up unnamed, say so once and offer the fix.** A running session cannot rename
+itself — `--name` is set at launch. So a hand-started station keeps its generated handle for
+life, and every peer must address it by that instead of its call-sign. That works; it is just
+worse. Tell the user plainly: *"I'm on post as CHANNELS but my address is
+`ecom-nexus-oss-4d` — restart me with `claude --name CHANNELS` if you want the tab and the
+radio to agree."* Their call, and never worth losing session state over mid-task.
 
 ### 4 · The call-sign goes on the board
 
@@ -281,6 +306,10 @@ terminal. **Ask once, remember it, never ask again.**
     "placement": "tab", "launchCommand": "claude", "permissionMode": null } }
 ```
 
+`launchCommand` is the **bare binary only**. `deploy` appends `--name "$CALLSIGN"` and the
+identify prompt itself — do not bake either into the config, or every station on this machine
+spawns wearing one call-sign.
+
 **This file must never live in the repo.** Preferences are per-person: a clone carrying the
 author's terminal choice is the same class of bug as a workspace missing its gitignored
 `CLAUDE.md` — it looks configured and is wrong. **The repo ships the recipes; the machine
@@ -306,6 +335,25 @@ On `deploy`:
    still gets confirmed once, because `$TERM_PROGRAM` says where *Control* is running, not where
    the user wants stations to appear.
 
+#### Always spawn with `--name <CALLSIGN>`
+
+**Every recipe below passes `claude --name "$CALLSIGN"`, and none of them is optional.** That
+flag sets the session's display name, which is simultaneously:
+
+- what **`ListAgents` shows other stations**, so the call-sign *is* the `SendMessage` address;
+- what the **user sees on that window's prompt box** and terminal title, so they can tell four
+  identical windows apart at a glance;
+- what the station **knows about itself** — closing the bootstrap trap described under *Who is
+  who*, where an unnamed session cannot read its own address and therefore cannot honestly fill
+  in its own row.
+
+**Verified 2026-08-17:** a session spawned `--name TESTRIG-CALLSIGN` appeared to its peers as
+`TESTRIG-CALLSIGN [eefa7c]`. Without the flag the same session would have listed as
+`ecom-nexus-oss-4d [9a7a96]` — an address nobody can remember, say aloud, or match to a row.
+
+Pass the call-sign in **exactly the form the board uses** — same case, same spelling. `CHANNELS`
+on the board and `channels` in `ListAgents` is a directory that fails at its one job.
+
 #### The recipes
 
 **macOS Terminal.app — verified 2026-08-17.** A tab needs `System Events` to press ⌘T, which is
@@ -314,7 +362,7 @@ tab ⌘T just made and write into **that reference** — never `in front window`
 another window instead:
 
 ```bash
-CMD="cd '$WT' && claude '/mc identify $CALLSIGN'"
+CMD="cd '$WT' && claude --name '$CALLSIGN' '/mc identify $CALLSIGN'"
 osascript <<AS 2>/dev/null || osascript -e "tell application \"Terminal\" to do script \"$CMD\""
 tell application "Terminal" to activate
 delay 0.4
@@ -333,10 +381,11 @@ is not a silent detail — and give the path: *System Settings → Privacy & Sec
 Accessibility → enable Terminal*, then restart Terminal.
 
 **iTerm2 — recipe shipped, NOT verified.** `tell current window to create tab with default
-profile`, then `write text` into `current session`. Say it is untested when you use it.
+profile`, then `write text` into `current session` — the same `cd … && claude --name '$CALLSIGN'
+'/mc identify $CALLSIGN'` string as above. Say it is untested when you use it.
 
 **Windows Terminal — recipe shipped, NOT verified.**
-`wt -w 0 nt -d "<worktree>" cmd /k claude "/mc identify <CALLSIGN>"`.
+`wt -w 0 nt -d "<worktree>" cmd /k claude --name "<CALLSIGN>" "/mc identify <CALLSIGN>"`.
 
 **VS Code — there is no recipe, and do not invent one.** Nothing outside the editor can open its
 integrated terminal reliably. Use the fallback.
@@ -347,11 +396,15 @@ it**:
 
 ```
 Can't drive VS Code's terminal from outside. Open a terminal and paste:
-  cd '<worktree>' && claude '/mc identify CHANNELS'
+  cd '<worktree>' && claude --name 'CHANNELS' '/mc identify CHANNELS'
 ```
 
 That still beats the old flow, because the call-sign and path are filled in and cannot be
 mistyped. **Never guess AppleScript or PowerShell for a terminal you cannot see.**
+
+**Keep `--name` in the pasted command too.** It is the easiest thing to drop when a human is
+copying by hand, and dropping it is silent — the station comes up, works fine, and is simply
+unaddressable by its call-sign until someone reads its handle back to it over the radio.
 
 #### Two traps that already cost a session
 
@@ -373,19 +426,39 @@ board lies. A script cannot forget. And `identify` still checks its own director
 it is correct either way.
 
 **3 · Let the session identify itself.** It comes up already inside the lane, runs `identify`,
-takes the row, and writes its own `ListAgents` name onto it.
+takes the row, and writes its own address onto it — which, because you spawned it
+`--name <CALLSIGN>`, it already knows without having to ask anyone.
 
-**4 · Verify — and this is the step that matters.** Poll `ListAgents` until a new session
-appears, then **read the board back and confirm the row carries that session name.** Liveness is
-not the proof; the name on the pushed row is, because that is the thing every other station
-needs in order to call it.
+**4 · Verify — and this is the step that matters.** Poll `ListAgents` until **the call-sign
+appears as a session name** — that is the confirmation the `--name` took — then **read the board
+back from `origin` and confirm the row carries it.** Liveness is not the proof; the address on
+the pushed row is, because that is the thing every other station needs in order to call it.
 
-**A spawned station will ask permission to push its row — and nobody is looking at that tab.**
-This is the single most likely reason a deploy stalls, and it is invisible by construction: the
-station is alive, the board says reserved, and the prompt is sitting in a window the user has
-not looked at. Observed 2026-08-17, where it cost ten minutes and a wrong diagnosis.
+**Read the board back from the remote, not from a local copy.** A station that verifies its own
+push against its own working tree has checked nothing.
 
-**So end every deploy report by sending the user to the tab:**
+#### Live session, reserved row: four causes, and you must not guess which
+
+A station that is alive while its row still reads 🔒 is the **two-sided lie** — a session nobody
+can address, and a post that reads free while somebody sits in it. Four things cause it:
+
+| Cause | Tell |
+|---|---|
+| **Waiting on a permission prompt** | Station alive, silent, no traffic. The prompt is in a tab nobody is looking at |
+| **Cannot read its own address** | It is *asking* for its name. `ListAgents` never shows a session itself — see the bootstrap trap |
+| **The human interrupted `identify` mid-flow** | It stopped at a step *by instruction* and is waiting on the human to resume. Observed 2026-08-17 |
+| **The session died** | Calls bounce. Now it is a recovery job, not a deploy job |
+
+**Ask which one it is. Do not diagnose it from the outside.** On 2026-08-17 Control announced a
+stuck permission prompt; the station replied that there was none — the user had typed
+`/mc identify`, interrupted it, and asked for a radio check instead, so it had stopped at step 3
+exactly as told. Sending the user to a tab to approve a dialog that does not exist costs them a
+context switch and costs you credibility on the next call, when it *is* the prompt.
+
+The three that are not death look identical from Control's chair: live session, stale row, no
+traffic explaining why. One question resolves it; a guess resolves nothing and may mislead.
+
+**When it IS the prompt, end the deploy report by sending the user to the tab:**
 
 ```
 CHANNELS is up in a new tab. Switch to it and approve the push — until you do,
@@ -542,8 +615,22 @@ loop, even if the sweep failed.**
 
 ### Who is who — the radio check
 
-**A call-sign is not something the system knows. You have to establish it.** `ListAgents`
-returns machine-generated names, not call-signs:
+**Name the session after its call-sign, and this problem mostly disappears.** `claude --name
+<CALLSIGN>` sets the session's display name — and that name is what `ListAgents` shows other
+stations, what appears in their `SendMessage` address, and what the user sees on the prompt box
+of that window. **Verified 2026-08-17:** a session spawned `--name TESTRIG-CALLSIGN` listed to
+its peers as `TESTRIG-CALLSIGN [eefa7c]`, not as a generated handle. So `deploy` always passes
+it, and the call-sign becomes the address:
+
+```
+CONTROL [3f1a02]    ·  the shared checkout, holding the board
+CHANNELS [5ea498]   ·  busy
+FRONTEND [7b6568]   ·  busy
+BACKLOG [028df2]    ·  waiting
+```
+
+That listing is readable. Compare what you get without `--name`, which is what every station
+saw before this was fixed:
 
 ```
 ecom-nexus-oss-d9 [864a63]   busy
@@ -554,30 +641,57 @@ ecom-nexus-oss-85 [6d86b0]   waiting
 
 Nothing there says which one is Frontend. **Names can even repeat** — when they do, the
 `[ref]` in brackets is the only way to tell them apart, and you must pass it exactly as shown.
+Naming by call-sign makes repeats far less likely, because two stations must not share a
+call-sign in the first place.
 
-So do a **radio check** before anything else, and write the answers down:
+#### The bootstrap trap: a session cannot see itself
+
+**`ListAgents` never lists the session calling it.** So a station that came up unnamed **cannot
+read its own address**, and identify's step 4 — *write your `ListAgents` name onto the row* — is
+**unsatisfiable alone**. It needs a peer or Control to read the name back over the radio.
+
+This is not theoretical. On 2026-08-17 three stations in a row hit it within fifteen minutes,
+and each one correctly refused to guess — one explicitly retracted a plan to write the row
+"with the name pending", on the grounds that a row naming a holder it cannot prove is exactly
+the lie the board exists to prevent. A lone first session has no way to comply at all.
+
+**`--name` is the fix, because a station named after its call-sign already knows its own
+address — it does not have to look it up.** Two consequences worth stating:
+
+- **A named station can write its own row immediately**, with no radio check and no peer.
+- **If you are unnamed, you must still ask.** Say so plainly — *"I cannot see myself; what
+  address does this message arrive from?"* — and **never invent a name or leave the cell
+  blank.** A nameless row is reserved, not manned.
+
+**Control: when any station asks for its own address, answer it immediately and exactly**,
+including the `[ref]`. It is a two-second lookup for you and a hard block for them.
+
+So do a **radio check** whenever names are unknown or the board looks stale:
 
 ```
-CONTROL TO ALL STATIONS — Radio check. Reply with your call-sign, your branch,
-                          and the paths you hold. Out.
+CONTROL TO ALL STATIONS — Radio check. Reply with your call-sign, your working
+                          directory, your branch, and the paths you hold. Out.
 ```
 
-Then put the answers on the board. **The board is the phone directory** — it is the only
-thing that maps a call-sign to a session you can actually message:
+**Ask for the working directory, not just the branch.** It is the one fact that catches a
+station which came up in the shared checkout against a row claiming it is on post.
 
-| Call-sign | Session (from `ListAgents`) | Branch | Holds |
+Then put the answers on the board. **The board is the phone directory:**
+
+| Call-sign | Address (from `ListAgents`) | Branch | Holds |
 |---|---|---|---|
-| FRONTEND | `ecom-nexus-oss-85 [6d86b0]` | `lane/frontend` | `frontend/src/checkout` |
+| FRONTEND | `FRONTEND [6d86b0]` | `lane/frontend` | `frontend/src/checkout` |
 | BACKEND | `ecom-nexus-oss-28 [e29977]` | `lane/backend` | `apps/orders` |
 
-To call a station: **look up its session name on the board → confirm it is still listed in
-`ListAgents` → message that exact name.** If the bare name matches two rows, append the
-`[ref]`.
+Both forms are valid — the second is a station that came up by hand without `--name`. **Record
+what `ListAgents` actually prints, never what it ought to print.** To call a station: look up its
+address on the board → confirm it is still listed in `ListAgents` → message that exact name. If
+the bare name matches two rows, append the `[ref]`.
 
-#### A session name is an address, never a name
+#### An address is an address, never a name
 
-`ecom-nexus-oss-4d [9a7a96]` is a machine-generated handle. It belongs in exactly two places:
-the `to:` field of a message, and the lookup column of the board. **Nowhere else.**
+A machine-generated handle like `ecom-nexus-oss-4d [9a7a96]` belongs in exactly two places: the
+`to:` field of a message, and the address column of the board. **Nowhere else.**
 
 Everything a human reads — radio traffic, the board report, a sitrep, your summary at the end
 of a watch — uses the **call-sign**:
@@ -645,7 +759,7 @@ Integrations' code, and Integrations was interrupted once instead of five times.
 | `/mission-control all-stations` | **Broadcast** — ask every live station to report |
 | `/mission-control depends <what>` | **Dependency check** — who else touches this, and what must I know first |
 | `/mission-control station <name>` | **Cut a post** — workspace, branch, board row. Nobody is in it yet |
-| `/mission-control deploy <station>` | **Deploy a station** — cut the post, **open the session, identify it, and verify** it landed. No keyboard |
+| `/mission-control deploy <station>` | **Deploy a station** — cut the post, **open the session named `--name <CALLSIGN>`, identify it, and verify** it landed. No keyboard |
 | `/mission-control countermeasures` | **Something went wrong** — announce it, then repair without deleting |
 | `/mission-control sweep <change>` | **Cross-area change** — announce it, collect acknowledgements, land it, call all-clear |
 | `/mission-control go` | **Go / no-go** — run the tests, say plainly if it's safe |
