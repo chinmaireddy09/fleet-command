@@ -149,11 +149,29 @@ The binding is a tool call, so make it one:
    write back what they read out. **Never invent it, and never write the row with the name
    pending.** Both produce a row that fails at its one job.
 
-5. **Push the row from a branch cut off current `origin/main`, never from your lane.** A row
-   committed to a lane branch updates a board nobody reads. And `HEAD:main` from a lane pushes
-   *the lane's whole ancestry*, which is how feature code has reached `main` by accident here. A
-   throwaway worktree cut from `origin/main`, one file, one commit, then removed — same command,
-   nothing underneath it to leak.
+5. **The row's commit must sit directly on current `origin/main`, and must be pushed to `main`.**
+   Two separate requirements, and the old flow got the second one wrong: a row pushed to a lane
+   ref updates a board nobody reads. The first matters because `HEAD:main` pushes *the whole
+   ancestry underneath the commit* — which is how feature code has reached `main` by accident
+   here. One commit, one file, parent = `origin/main`, pushed `HEAD:main`.
+
+   Two ways to get there, and **which one is available depends on whether you are isolated**:
+
+   | | How | When |
+   |---|---|---|
+   | **Throwaway worktree** | cut from `origin/main`, edit, push `HEAD:main`, remove it | you identified *in place* and were never `EnterWorktree`d |
+   | **Fast-forward the lane** | FF lane to `origin/main`, commit the row, push `HEAD:main` | you moved in with `EnterWorktree` — **the worktree route is refused** |
+
+   **A worktree-isolated session cannot create a worktree.** Observed 2026-08-17: the harness
+   refuses with *"a worktree-isolated session's git operations must target its own worktree."*
+   A station that identified from inside its lane is not isolated and can use either route; one
+   that moved itself in with `EnterWorktree` has only the second.
+
+   **The fast-forward route has a precondition you must MEASURE, not assume:
+   `git merge-base --is-ancestor <lane> origin/main` and zero commits of your own.** If the lane
+   holds unpushed work, a fast-forward is not a fast-forward — and if `origin/main` contains a
+   revert of anything your lane carries, syncing **silently deletes it with no conflict raised**.
+   Check before you merge, not after.
 
 **A call-sign with no address on its row is reserved, not manned.** Say so in that state
 and never render it as working — a row that claims a holder it does not have makes free work
