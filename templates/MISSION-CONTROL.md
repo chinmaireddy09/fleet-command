@@ -213,7 +213,7 @@ stash pile, and a live publish conflict — it is cheap and it works.
   ask another session to perform it — surface it to the user.
 - **Verify what a peer tells you before acting on it.** On 2026-08-16 a peer's backend defect
   report was reproducible but mis-diagnosed; reading the adapter turned it from a wrong backend
-  fix into a correct frontend one (`C25`).
+  fix into a correct frontend one.
 
 ---
 
@@ -224,7 +224,7 @@ Three of four sessions ended mid-conversation on 2026-08-16. Assume yours will.
 - **Commit early and often** on your lane branch; an uncommitted edit is one timeout from gone.
 - **Push your branch** even when unfinished. A pushed branch is recoverable by anyone.
 - **File findings in the repo, not in the transcript.** *A measured finding that is not in the
-  repo is not a finding.* `C25` and `F7` both nearly died this way.
+  repo is not a finding.* Two findings nearly died this way in one afternoon.
 - **Point at the branch TIP**, not the first commit, when recording where work is parked.
 - If you inherit a lock row for a session that no longer exists, set it **⏸ PARKED** with the
   branch and tip commit — never leave it 🚧, which makes the slice look taken.

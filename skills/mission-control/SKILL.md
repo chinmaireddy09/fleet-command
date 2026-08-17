@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.2.0
+version: 6.2.1
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -138,9 +138,9 @@ the board, and no list has to be edited first.
 ```
 MISSION CONTROL — identify
 
-  Repo    ecom-nexus-oss                 Board   docs/WORK-LOCKS.md
+  Repo    acme-shop                 Board   docs/WORK-LOCKS.md
   Live    BACKEND · BACKEND [e29977]             apps/orders
-          FRONTEND · ecom-nexus-oss-85 [6d86b0]  frontend/src/checkout  ← unnamed, came up by hand
+          FRONTEND · acme-shop-85 [6d86b0]  frontend/src/checkout  ← unnamed, came up by hand
 
   Reserved for you — a post is already initiated and waiting:
     1  CHANNELS       apps/integrations, adapters   .claude/worktrees/channels
@@ -232,7 +232,7 @@ The binding is a tool call, so make it one:
      **four commits written by sessions that had since died** — pushing the row from it would
      have put other sessions' work on `main` under a docs commit message. That is standing
      order 6 ("only push commits you wrote") broken silently, and it is the same mechanism that
-     leaked C24 to `main` in the first place.
+     leaked a lane's code to `main` in the first place.
    - **If `origin/main` holds a revert of anything your lane carries, the fast-forward deletes
      it with no conflict raised.** Live in one lane in this repo right now.
 
@@ -267,8 +267,8 @@ The binding is a tool call, so make it one:
    `zsh → claude → login`, and the tab matched on it regardless of which window was frontmost.
    Terminal.app's `custom title` **overrides** the title Claude Code writes and survives its
    constant status updates: the window went from
-   `ecom-nexus-oss — ✳ Initiate mission control — caffeinate • claude` to
-   `ecom-nexus-oss — CONTROL — node ◂ claude` and stayed there. The tab bar shows just the
+   `acme-shop — ✳ Initiate mission control — caffeinate • claude` to
+   `acme-shop — CONTROL — node ◂ claude` and stayed there. The tab bar shows just the
    call-sign.
 
    **This works on a session that is ALREADY RUNNING**, which matters because `--name` is
@@ -336,7 +336,7 @@ can reach it. Record what `ListAgents` prints, exactly.
 itself — `--name` is set at launch. So a hand-started station keeps its generated handle for
 life, and every peer must address it by that instead of its call-sign. That works; it is just
 worse. Tell the user plainly: *"I'm on post as CHANNELS but my address is
-`ecom-nexus-oss-4d` — restart me with `claude --name CHANNELS` if you want the tab and the
+`acme-shop-4d` — restart me with `claude --name CHANNELS` if you want the tab and the
 radio to agree."* Their call, and never worth losing session state over mid-task.
 
 ### 4 · The call-sign goes on the board
@@ -587,7 +587,7 @@ to catch a live bug in the other station's own commit, which a terse version wou
 **Six rules that do the actual work:**
 
 1. **Write it to the repo, send the reference.** A finding, a decision, a measurement belongs in
-   the board, the backlog or the log. Then the message is *"C28 filed at `09286a7`"* — not the
+   the board, the backlog or the log. Then the message is *"the finding is filed at `09286a7`"* — not the
    finding. The repo is the shared memory; the radio is only a pointer to it.
 2. **Never restate the other station's message back to it.** It knows what it said. This alone
    was half of today's traffic.
@@ -624,7 +624,7 @@ should never have to find the right window first.
 
 ```
 @backend sitrep
-@channels do you hold adapters/ebay.py?
+@channels do you hold adapters/vendor.py?
 @all-stations standby, sweep incoming
 ```
 
@@ -647,7 +647,7 @@ should never have to find the right window first.
 **Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
 `BACKEND`; the board and the radio always render it `BACKEND`.
 
-**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ ecom-nexus-oss-75>` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads.
+**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75>` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads.
 
 **This is the antidote to the fleet's most expensive human error.** With four identical-looking
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
@@ -691,10 +691,10 @@ That listing is readable. Compare what you get without `--name`, which is what e
 saw before this was fixed:
 
 ```
-ecom-nexus-oss-d9 [864a63]   busy
-ecom-nexus-oss-d9 [e92446]   busy      ← same name as the one above
-ecom-nexus-oss-28 [e29977]   busy
-ecom-nexus-oss-85 [6d86b0]   waiting
+acme-shop-d9 [864a63]   busy
+acme-shop-d9 [e92446]   busy      ← same name as the one above
+acme-shop-28 [e29977]   busy
+acme-shop-85 [6d86b0]   waiting
 ```
 
 Nothing there says which one is Frontend. **Names can even repeat** — when they do, the
@@ -828,7 +828,7 @@ Then put the answers on the board. **The board is the phone directory:**
 | Call-sign | Address (from `ListAgents`) | Branch | Holds |
 |---|---|---|---|
 | FRONTEND | `FRONTEND [6d86b0]` | `lane/frontend` | `frontend/src/checkout` |
-| BACKEND | `ecom-nexus-oss-28 [e29977]` | `lane/backend` | `apps/orders` |
+| BACKEND | `acme-shop-28 [e29977]` | `lane/backend` | `apps/orders` |
 
 Both forms are valid — the second is a station that came up by hand without `--name`. **Record
 what `ListAgents` actually prints, never what it ought to print.** To call a station: look up its
@@ -838,7 +838,7 @@ the bare name matches two rows, append the `[ref]`.
 #### `ListAgents` is not your fleet — it is every session on the machine
 
 **Measured 2026-08-17, in this repo:** a session working `fleet-command` ran `ListAgents` and the
-only peer it saw was `ecom-nexus-oss-f3 [6db8a8]` — **a session in a different repository
+only peer it saw was `acme-shop-f3 [6db8a8]` — **a session in a different repository
 entirely**, five hours into unrelated work. Nothing in the listing said so. The handle hinted at
 it; the listing itself carried no repo, no path, no way to tell.
 
@@ -866,7 +866,7 @@ station is manned.
 
 #### An address is an address, never a name
 
-A machine-generated handle like `ecom-nexus-oss-4d [9a7a96]` belongs in exactly two places: the
+A machine-generated handle like `acme-shop-4d [9a7a96]` belongs in exactly two places: the
 `to:` field of a message, and the address column of the board. **Nowhere else.**
 
 Everything a human reads — radio traffic, the board report, a sitrep, your summary at the end
@@ -874,13 +874,13 @@ of a watch — uses the **call-sign**:
 
 | Say this | Not this |
 |---|---|
-| `CONTROL TO CHANNELS — Radio check.` | `CONTROL TO ecom-nexus-oss-4d — Radio check.` |
+| `CONTROL TO CHANNELS — Radio check.` | `CONTROL TO acme-shop-4d — Radio check.` |
 | "Channels holds the adapters." | "4d holds the adapters." |
-| "We lost contact with Frontend." | "ecom-nexus-oss-1e stopped responding." |
-| "Backlog and Channels both want C24." | "-c7 and -4d both want C24." |
+| "We lost contact with Frontend." | "acme-shop-1e stopped responding." |
+| "Backlog and Channels both want the same item." | "-c7 and -4d both want it." |
 
 **This is the entire reason call-signs exist.** `CHANNELS` tells every listener what that
-station owns; `ecom-nexus-oss-4d` tells them nothing and cannot be remembered, said aloud, or
+station owns; `acme-shop-4d` tells them nothing and cannot be remembered, said aloud, or
 matched to a row at a glance. A report full of session handles has thrown away the one piece of
 information the naming scheme was for.
 
@@ -899,16 +899,16 @@ scratchpad path — useful when two windows look identical.
 **A call must carry three things**, or it wastes the other station's attention:
 
 1. **Who you are and who you want** — *"Control to Integrations"*
-2. **What you need, specifically** — not "any update?" but *"do you hold `adapters/ebay.py`?"*
+2. **What you need, specifically** — not "any update?" but *"do you hold `adapters/vendor.py`?"*
 3. **Why it matters to them** — *"Frontend is blocked on it"*
 
 Example of the whole exchange:
 
 ```
 CONTROL TO INTEGRATIONS — Frontend is starting the eBay connect screen and needs to know
-                   the two-step auth order. Do you hold apps/integrations/adapters/ebay.py,
+                   the two-step auth order. Do you hold apps/integrations/adapters/vendor.py,
                    and is the second begin-auth call confirmed?
-INTEGRATIONS TO CONTROL — Roger. I hold ebay.py on branch lane/integrations. Confirmed: creds first,
+INTEGRATIONS TO CONTROL — Roger. I hold vendor.py on branch lane/integrations. Confirmed: creds first,
                    then a SECOND begin-auth returns the redirect. Do not make `code`
                    optional. Out.
 CONTROL TO FRONTEND — Integrations confirms two-step. Creds, then a second begin-auth.
@@ -1007,14 +1007,14 @@ Carry the three things: who you are, what you need specifically, why it matters 
   wrong conclusion**, because the evidence checks out and the inference rides in behind it.
 
   Measured 2026-08-18, and it is the clearest case this skill has: a station reported that
-  eBay's `begin_auth` reads a model field that does not exist, and concluded the CSRF defence
+  one adapter's `begin_auth` reads a model field that does not exist, and concluded the CSRF defence
   had shipped as a no-op. **Control confirmed the first half exactly** — no field, no migration
   anywhere — **and the conclusion was wrong, in the direction that produces a bad fix.** State
   is decoded and verified for every channel before a connection resolves, returning 401; the
   system is fail-closed, not open. The real consequence was narrower and worse for the user:
   **every eBay connect attempt dies at the callback**, because the state sent is empty and comes
   back falsy. And the fix inverted with the diagnosis — not a model field and a migration, but
-  **one line** calling the HMAC state helper eight sibling adapters already use.
+  **one line** calling the HMAC state helper its sibling adapters already use.
 
   **Verifying changed the diagnosis and the fix, and the wrong version was a schema change.**
   That is the whole reason this rule exists.
@@ -1146,8 +1146,8 @@ after a perfect frontend fix. Landing them in the wrong order means the second i
 the flow still fails, and its owner re-debugs from scratch **something already understood and
 written down**. Control put the cross-reference on both rows rather than the one it was found on.
 
-**Say the ordering, not just the link:** *"C31 lands before or with C25"* is actionable;
-*"related to C25"* is trivia. And say what happens if the order is broken — that sentence is what
+**Say the ordering, not just the link:** *"A-31 lands before or with A-25"* is actionable;
+*"related to A-25"* is trivia. And say what happens if the order is broken — that sentence is what
 stops someone deciding it looks optional.
 
 **5 · Pass the answer on, and record it.** When a station answers a dependency question, the
@@ -1188,7 +1188,7 @@ work re-landed on `main` and **the hazard inverted**: a fast-forward would now *
 change rather than destroy it, and the warning had quietly become wrong. Nothing prompted anyone
 to notice — it was caught only because someone re-measured after verifying an unrelated merge.
 
-**So a hold records the condition that ends it, inside the hold** — *"until C24 is back on
+**So a hold records the condition that ends it, inside the hold** — *"until the reverted change is back on
 `main`"*, never a bare *"never sync this lane"*. **And whoever changes that condition re-reads
 the holds**, because they are the only person who knows it changed. A hold whose trigger has
 passed is not merely stale; it is advice pointing the wrong way, trusted because it is written
@@ -1258,7 +1258,7 @@ because everyone downstream now believes the hole is covered.
 3. **Revert your mutations**, and confirm green again.
 
 **Both halves matter, and the second is the one that gets skipped.** Observed 2026-08-18: a
-freshly written guard did go red under mutation — and reported the offence at `ErrorHelp.tsx:36`
+freshly written guard did go red under mutation — and reported the offence at a source file at line 36
 when the declaration was on **line 43**. The guard stripped comments before scanning, which
 deleted their newlines and shifted every line number after them. It would have caught the
 regression and then sent whoever fixed it to the wrong line. **The mutation check found a real

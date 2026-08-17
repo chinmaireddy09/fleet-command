@@ -48,7 +48,7 @@ They talk in a dozen phrases you already know — these are the ones you will he
 
 ```
 CONTROL TO INTEGRATIONS — Frontend is starting the eBay screen and needs the
-                          auth order. Do you hold adapters/ebay.py?
+                          auth order. Do you hold adapters/vendor.py?
 
 INTEGRATIONS TO CONTROL — Roger. Confirmed: credentials first, then a SECOND
                           begin-auth returns the redirect. Out.

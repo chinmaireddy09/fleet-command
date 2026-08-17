@@ -80,7 +80,7 @@ flag sets the session's display name, which is simultaneously:
 
 **Verified 2026-08-17:** a session spawned `--name TESTRIG-CALLSIGN` appeared to its peers as
 `TESTRIG-CALLSIGN [eefa7c]`. Without the flag the same session would have listed as
-`ecom-nexus-oss-4d [9a7a96]` — an address nobody can remember, say aloud, or match to a row.
+`acme-shop-4d [9a7a96]` — an address nobody can remember, say aloud, or match to a row.
 
 Pass the call-sign in **exactly the form the board uses** — same case, same spelling. `CHANNELS`
 on the board and `channels` in `ListAgents` is a directory that fails at its one job.
@@ -132,7 +132,7 @@ whoever opens the tab.**
    found: tcd`, nothing else ran, and the deploy reported only that the station never came up.
 2. **`front window` is whichever window has FOCUS** — someone else's. The station's tab opened
    in an unrelated window, and Terminal then titled it with *that* window's directory, so a
-   station working `ecom-nexus-oss` advertised `fleet-command` in its title bar. **This is the
+   station working `acme-shop` advertised a different project in its title bar. **This is the
    identical bug already fixed for tab-labelling**; the lesson was learned there and never
    carried across. The script resolves its own window by tty and focuses that one.
 3. **It never read the tab back.** `label-tab.sh` has read its result back since it shipped;

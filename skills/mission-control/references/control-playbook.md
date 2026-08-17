@@ -35,7 +35,7 @@ BOARD — 3 stations manned
 
   ⚠ The board says Integrations holds the eBay audit, but that session is gone.
   ⚠ Two files unsaved, and they are not yours.
-  NEXT: C25 is unowned and blocks the eBay work.
+  NEXT: A-25 is unowned and blocks the connect work.
 ```
 
 Always end by naming **the single most urgent thing** in one sentence.
@@ -118,8 +118,8 @@ correcting a stale row was just a conversation. Name the drift out loud:
 ```
 SITREP — 3 stations, 2 corrections
 
-  CHANNELS   ecom-nexus-oss-4d   lane/channels    apps/integrations/adapters   clean
-  FRONTEND   ecom-nexus-oss-1e   worktree-design-foundation-shell             3 unpushed
+  CHANNELS   acme-shop-4d   lane/channels    apps/integrations/adapters   clean
+  FRONTEND   acme-shop-1e   worktree-design-system             3 unpushed
   BACKLOG    —                   —                                            NOT MANNED
 
   ⚠ BACKLOG's row said working. Nobody is behind it. Flipped to reserved.
