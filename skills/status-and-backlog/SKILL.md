@@ -58,7 +58,7 @@ grep -rilE "backlog|epic|roadmap" "$ROOT"/CLAUDE.md "$ROOT"/README.md 2>/dev/nul
 - **Several** → read each and ask the user once which is the live backlog.
 - **None** → offer to create one, and say clearly you're creating it.
 
-**Match what's there.** If the project uses `- [ ] **C22** …` inside epics A–J, use that. Do
+**Match what's there.** If the project uses `- [ ] **A-22** …` inside lettered epics, use that. Do
 not introduce a new numbering scheme alongside an existing one.
 
 ---

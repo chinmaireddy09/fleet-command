@@ -307,4 +307,89 @@ the tests for everyone. Never write down a guarantee you have not tested.
 
 ---
 
+## Rigour is not the deliverable — check the output against the ask
+
+**A fleet optimises for what it can verify, and what it can verify is not always what was
+wanted.** Measured 2026-08-18: asked for a surface where a designer could *work*, three stations
+produced **audit documents** — reproducible counts, refuted mechanisms, corrected arithmetic, all
+of it correct. The user's verdict was the useful one: *"the output didn't meet the
+expectations."* Control's reply named it exactly — **"a census is an input to a design tool, not
+a substitute for one."**
+
+**This is a coordination failure, not a work failure, which is why it belongs here.** Every rule
+in this skill points inward: verify the claim, prove the run, diff the names, hold the paths.
+None of them ask *is this still the thing they asked for?* — so a fleet can be rigorous,
+well-coordinated, honest about its evidence, and building the wrong artifact all afternoon.
+
+**Control owns this one.** It is the station with the whole picture and the only one positioned
+to notice drift, and on the day it *steered* the drift — *"I steered FRONTEND toward the worklist
+framing, so that's on me as much as it."*
+
+**So, at every check-in and before anything is called done:**
+
+- **Read the ask again, in the user's words, not your summary of it.** Summaries drift toward
+  what turned out to be measurable.
+- **Name the deliverable in one line** — *"a page they can design on"*, not *"an analysis of the
+  design system"* — and say whether what exists matches it.
+- **When rigour and the ask diverge, say so out loud and ask.** Producing the verifiable thing
+  because it is verifiable is the failure; announcing the divergence is the fix.
+- **A correction from the user is data, not a rebuke.** *"That's a miss, not a
+  misunderstanding on your end"* is the right register to answer it in.
+
+---
+
+### The board has a size limit, and it is enforced by the tools, not by taste
+
+**Measured 2026-08-18: a live board reached 313 KB and 109 done rows, and `Read` refused it** —
+*"File content (282.5KB) exceeds maximum allowed size (256KB)."* **The skill's own first
+instruction — read the board — failed outright.** Nothing had enforced "short", nothing defined
+it, and nothing said what to do about a board that is already too big.
+
+**The ceiling: ~150 rows or ~100 KB, whichever comes first, and no board should exceed what
+`Read` accepts.** Past that it is not a board, it is an archive that also blocks people.
+
+**Done rows move to `docs/WORK-LOCKS-ARCHIVE.md` at standdown — not at some later tidy-up**,
+because "later" is what produced 109 of them. Closing a row *is* moving it.
+
+**A row is capped too, and this matters more than the file size.** One row measured ~6,000 words
+inside a single table cell — a re-land sequence, two gate results, migration notes and four
+historical corrections. All true, much of it valuable, and **a row that takes ten minutes to read
+is not a row.**
+
+> **A row is: who · what · where · status · a pointer.** The reasoning goes in
+> `PROGRESS-LOG.md`, which exists to answer *what happened and why*. This skill caps radio
+> traffic to five lines and then let rows run to six thousand words — **same instinct, apply it
+> in both places.**
+
+**Recovering a board that is already oversized — `Read` will not open it:**
+
+```bash
+git show origin/main:docs/WORK-LOCKS.md > <scratchpad>/board.md   # then awk the active section
+awk '/^## Active/,/^## Done/' <scratchpad>/board.md
+```
+
+**Say that you did this**, and file trimming the board as real work — it is the one file every
+station pays for on every read.
+
+### Three stations write this file at once, and it works by convention
+
+**Nothing in git prevents two stations mangling one board; what prevented it was manners, and
+manners that were never written down do not survive a new station.** Measured 2026-08-18: three
+stations pushed rows to one file inside twenty minutes with zero collisions. What made that work:
+
+- **Edit your own row. Never reformat, retrim or "tidy" another station's** — even when it is
+  6,000 words and you are right about it. Say it on the radio instead.
+- **Push immediately**, before code. The push race is the one mechanism with teeth.
+- **On rejection, start again from the new `origin/main`** and reapply your row — do not merge the
+  board by hand. One station kept a peer's line and rebased its own underneath it rather than
+  overwriting; that is the behaviour to copy.
+| `PROGRESS-LOG.md` | what happened, and why | past | append-only; never edit an old entry |
+| `PROJECT-STATUS-AND-BACKLOG.md` | what to work on next | future | items added, checked off, re-scoped |
+| `MISSION-CONTROL.md` | this project's own rules for running sessions | — | changes rarely |
+
+At the end of a watch, progress goes into **`PROGRESS-LOG.md`** — use the project's own
+progress-logging skill if it has one, rather than inventing a format.
+
+---
+
 *Mission Control by Chinmai Reddy (@chinmaireddy09), under the Fleet Command License 1.1.*
