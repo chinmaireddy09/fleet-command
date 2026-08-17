@@ -192,12 +192,36 @@ The binding is a tool call, so make it one:
    right prompt into the wrong window** — and every tab in a repo looks identical, because they
    all show the same directory and the same rotating status text.
 
+   **Find your own tab by its tty. Never by `front window`** — that is whichever window has
+   focus, which for any station but the one the human is looking at is *somebody else's tab*, and
+   mislabelling another station's window is worse than not labelling your own.
+
+   The Bash tool has no tty of its own (`tty` returns *not a tty*), but the `claude` process
+   above it does — walk up the parents until one has a real tty:
+
    ```bash
-   osascript -e 'tell application "Terminal" to set custom title of selected tab of front window to "CHANNELS"'
+   CALLSIGN=CHANNELS
+   p=$$; MYTTY=""
+   while [ "$p" -gt 1 ]; do
+     t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
+     if [ -n "$t" ] && [ "$t" != "??" ]; then MYTTY="/dev/$t"; break; fi
+     p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+   done
+   osascript <<AS
+   tell application "Terminal"
+     repeat with w in windows
+       repeat with t in tabs of w
+         if tty of t is "$MYTTY" then set custom title of t to "$CALLSIGN"
+       end repeat
+     end repeat
+   end tell
+   AS
    ```
 
-   **Verified 2026-08-17.** Terminal.app's `custom title` **overrides** the title Claude Code
-   writes, and it survives Claude Code's constant status updates — the window went from
+   **Verified 2026-08-17**, both halves. The tty walk resolved `/dev/ttys000` through
+   `zsh → claude → login`, and the tab matched on it regardless of which window was frontmost.
+   Terminal.app's `custom title` **overrides** the title Claude Code writes and survives its
+   constant status updates: the window went from
    `ecom-nexus-oss — ✳ Initiate mission control — caffeinate • claude` to
    `ecom-nexus-oss — CONTROL — node ◂ claude` and stayed there. The tab bar shows just the
    call-sign.
