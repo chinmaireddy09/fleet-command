@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.7.0
+version: 5.8.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -42,6 +42,31 @@ wrong term.
 **Never destroy another station's work.** No `docker compose down`. No `git stash pop`/`drop`
 on a stash you did not create *and verify*. No `git add -A`. No `git checkout --`. No
 force-push. Never push a commit you did not write.
+
+---
+
+## The automation boundary — one process, and only one
+
+**Exactly one thing in this skill runs without a human asking for it each time:**
+
+> **open a terminal tab · enter the workspace path · initiate mission control**
+
+That is the whole list. `deploy` automates those three steps so nobody types a path — that is
+its entire reason to exist, and it stops the moment the station says hello.
+
+**Everything else waits to be asked.** Claiming a task. Writing code. Committing. Pushing.
+Merging. Running a gate. Standing a station down. Deleting a row. Starting a sweep. Alerting a
+person. **None of these are ever triggered by a session deciding the moment is right** — they
+happen when a human asks for them, and not before.
+
+**This holds even when you are certain.** The dangerous case is not a session that knows it is
+guessing; it is a session that has reasoned its way to complete confidence that the next step is
+obvious, safe and wanted. **Certainty is not authority.** A fleet moves fast enough to do a great
+deal of unwanted work between one human glance and the next, and every station is holding a
+worktree with push rights.
+
+**So if you find yourself about to automate something that is not those three steps — stop and
+ask, however well justified it feels.** Being sure is the symptom, not the exemption.
 
 ---
 
@@ -707,30 +732,56 @@ CONTROL TO ALL STATIONS — Radio check. Reply with your call-sign, your working
 **Ask for the working directory, not just the branch.** It is the one fact that catches a
 station which came up in the shared checkout against a row claiming it is on post.
 
-##### When to run one — by event, never by clock
+##### Two different things wear the name "radio check", and only one of them costs anything
 
-**A radio check costs one reply from every live station, so it is triggered by something having
-changed, not by time passing.** Run one when:
+**Separate them, because they have opposite rules:**
 
-- **You come on watch as Control** — before you write anything on the board. You inherited a
-  picture, and you have not verified a line of it.
-- **A call bounced.** The board is now known to be wrong, and it is rarely wrong about only the
-  one row.
-- **You are about to announce a sweep.** Step 2 is collecting every live station's
-  acknowledgement, and you cannot collect from a list you are not sure of.
+| | **Liveness check** | **Broadcast radio check** |
+|---|---|---|
+| What it is | `ListAgents` + read the board | *"all stations, report"* — everyone replies |
+| Costs | **nothing.** You ask no one anything | one reply from **every** live station |
+| Tells you | who is **active, idle, or gone** | call-signs, working directories, branches, held paths |
+| When | **on a schedule** | **on an event** |
+
+**The liveness check is free, so run it regularly.** `ListAgents` already reports each session as
+active or idle, and absence from it is what proves a station gone. That is the sweep for *"is
+anyone stuck, finished, or dead and still holding a row?"*, and it interrupts nobody — so there
+is no reason to be stingy with it. Do it when you come on watch, between tasks, and whenever the
+board has been quiet for a while. **A station that went idle an hour ago while holding paths is
+exactly what this finds**, and it finds it without spending anyone's attention.
+
+**Then only escalate to the radio when the free check leaves a real question** — a station listed
+but silent for a long stretch, a row with nobody behind it, an address that will not resolve.
+
+**The broadcast radio check is the expensive one, and it stays event-triggered.** Run it when:
+
+- **You come on watch as Control** — you inherited a picture and have verified none of it.
+- **A call bounced.** The board is now known wrong, and rarely about only that row.
+- **You are about to announce a sweep.** You cannot collect every acknowledgement from a list you
+  are unsure of.
 - **You are about to delete rows or deploy** — the roster moved under you either way.
-- **You are resuming after silence or a long gap and are about to address someone by call-sign.**
-  Re-reading the board covers what changed; the radio check covers whether the board itself is
-  still true.
+- **You are resuming after a gap** and about to address someone by call-sign.
 
-**Never on a timer.** With no ceiling on fleet size, a periodic radio check across *n* stations
-costs *n* replies every cycle, produces nothing when nothing has changed, and is precisely the
-traffic the caps exist to suppress. **If you cannot name the event that prompted it, do not send
-it** — read the board instead.
+**Never broadcast on a timer.** Across *n* stations it costs *n* replies every cycle and produces
+nothing when nothing has changed — and the fleet has no ceiling on *n*. **If you cannot name what
+prompted it, run the free check instead.**
 
-**And a radio check is a question, not a roll call you may score.** Stations that do not answer
-are busy; that is silence, and silence proves nothing. Record the answers you got, leave the
-other rows exactly as they were.
+### Traffic that IS worth scheduling: a post that somebody is waiting on
+
+**Silence is the default — but not when another station's work depends on yours.** A station
+holding something a peer is blocked behind does not go quiet until it finishes; it **posts
+progress at intervals**, so the peer can plan instead of guess.
+
+**Post it to the board, not over the radio.** One line on the row — *"schema landed, adapters
+next, ~20 min"* — reaches everyone who reads the board, costs no one an interruption, and
+survives the session. A call reaches one station and dies with the window. **This is the existing
+rule doing double duty: write it to the repo, send the reference.**
+
+**Judge every other message by one question: does this move somebody's work?** Sharing something
+a peer needs, asking something you cannot answer from the repo, unblocking a hold — send it.
+Anything else — status nobody is waiting on, acknowledgements nobody is blocked on, restating
+what the other station just said — **do not send it at all.** Traffic should be unusual, and it
+should be *load-bearing*.
 
 Then put the answers on the board. **The board is the phone directory:**
 
@@ -1094,6 +1145,14 @@ no-go into a go.**
 10. **Silence is never evidence.** It does not acknowledge a sweep, release a hold, prove a
     station dead, or free a reserved post. Only a positive signal does — an answer, a bounce,
     absence from `ListAgents`, or the user saying so.
+11. **Automate exactly one thing: open a tab, enter the workspace, initiate mission control.**
+    Everything else is asked for. **Certainty that the next step is obvious is not permission to
+    take it** — that feeling is the symptom, not the exemption.
+12. **Check liveness on a schedule; broadcast only on an event.** `ListAgents` and the board cost
+    nobody anything, so run them often. Asking every station to reply costs a reply from every
+    station, so it needs a reason you can name.
+13. **If a peer is blocked behind you, post progress at intervals** — on the board, not over the
+    radio. Silence is the default everywhere except in front of somebody who is waiting.
 
 ---
 

@@ -97,6 +97,25 @@ cd "$ROOT/.claude/worktrees/$LANE"
 purpose. Copying is the correct remedy; re-copy after editing the canonical copy in the
 shared checkout, since the copies do not stay in sync by themselves.
 
+**A fresh worktree also has no installed dependencies, and that failure looks exactly like
+success.** `node_modules`, `.venv`, build caches — all gitignored, so none of them exist in a new
+worktree. Observed 2026-08-18: a frontend lane ran its test baseline, got **exit code 0 with zero
+failures**, and had run nothing at all — `Cannot find package 'vitest'`, resolved *up* into the
+shared checkout's `node_modules`. **A zero exit code and no FAIL lines is what green looks like.**
+
+```bash
+# in the new worktree, before claiming any gate result
+npm ci        # or pnpm i / poetry install / whatever this project uses
+```
+
+**Install them; do not symlink the shared checkout's.** A symlink puts every lane back on one set
+of shared files that another session can change underneath a running test — the exact hazard the
+worktree exists to remove.
+
+**And check the run actually ran.** A gate result is only a result if the test count is non-zero.
+Exit status alone cannot tell "everything passed" from "nothing executed" — the same mistake in a
+different costume as reading `docker ps` instead of the output file's mtime.
+
 Then claim the task in `docs/WORK-LOCKS.md` **before writing code**, recording the branch —
 that row plus the branch name is how other sessions identify you.
 
