@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.2.0
+version: 5.3.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -356,8 +356,8 @@ offering a list of ghosts.
 4. *Then* **Control deletes the row** and pushes. With no Control manned, the next station to
    come on watch clears the rows it can *prove* are dead — a call-sign that **had** a session,
    completed its handover, and is now absent from `ListAgents`. Never on a hunch, and **never a
-   reserved row**: a post with no address was cut for someone who has not arrived yet, and it is
-   waiting, not dead.
+   reserved row while its deploy is still in flight**: that post was cut for someone who has not
+   arrived yet, and it is waiting, not dead.
 
 **Never delete the row of a station that is still running.** That reproduces the exact failure
 this whole procedure exists to prevent — a session doing real work that nobody can see, holding
@@ -368,6 +368,29 @@ deleted.
 parked. The row is deleted with the branch and newest commit recorded in the log, so the next
 station picks it up from the repo rather than from a stale row claiming a holder who left hours
 ago.
+
+#### A reservation expires too — otherwise a failed deploy holds a post forever
+
+**"Waiting, not dead" is only true while someone is actually on the way.** A reserved row is a
+promise that a session is coming; when the deploy that cut it never produced one, the promise is
+false and the row is now doing the damage a stale row always does — **making a free job look
+taken**, and offering `identify` a post nobody will ever arrive at.
+
+**A reservation is protected only while its deploy is in flight, or while a live session can be
+accounted for.** Past that, it is stale and gets released.
+
+**Before releasing one, find out which it is** — a reserved row with a *live* session behind it
+is a different animal, and there are four ordinary causes for it, including a session sitting on
+an unanswered permission prompt in a tab nobody is watching. **Diagnose, never guess:**
+`references/deploying-stations.md` covers all four.
+
+- **A session is alive and answers for that post** → the row is wrong, not the reservation. Fix
+  the row: write its address on and flip it to on post.
+- **Nothing in `ListAgents` claims it and no deploy is running** → **release it.** Delete the row
+  or return the call-sign to the free list, and **say so on the radio** — the job is available
+  again, and the whole point is that somebody hears it.
+- **You cannot tell** → leave it and say you cannot tell, naming what you checked. An honest
+  unknown on the board beats a confident wrong entry.
 
 ---
 
@@ -512,8 +535,13 @@ should never have to find the right window first.
 2. **Resolve the call-sign to an address** off the board, then `SendMessage` the text after the
    token, saying who it is really from: *"CONTROL relaying from the user: sitrep"*.
 3. **Report the reply back** in the window the human typed in.
-4. **`@all-stations` / `@all-hands`** broadcast to every live station.
-5. **Unknown call-sign → say so and list the manned ones. Never guess** — a near-miss delivers
+4. **Report a non-reply too, and do not sit on it.** The human cannot see the other window and
+   has no board to check, so silence from you is indistinguishable from silence from the
+   station. Say which it is: *"delivered to BACKEND, no answer yet — it went quiet for a gate
+   run"*, or *"that call bounced; BACKEND is gone"*. **Never answer in the target's place** —
+   relay what you know and say it is your read, not theirs.
+5. **`@all-stations` / `@all-hands`** broadcast to every live station.
+6. **Unknown call-sign → say so and list the manned ones. Never guess** — a near-miss delivers
    someone else's instruction to the wrong station.
 
 **Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
@@ -884,6 +912,27 @@ end at any moment.
 **4 · If it is genuinely blocked**, say so plainly on the board — *blocked, waiting on
 Integrations for the auth order* — rather than leaving the row looking merely slow. Blocked work
 looks like lazy work if nobody says otherwise.
+
+**Record what would unblock it and who owes it.** A block written as *"blocked on auth"* can
+never end, because nothing tells anyone what "unblocked" looks like. *"Blocked, waiting on
+INTEGRATIONS to land the auth order, est 30 min"* can.
+
+**5 · A block expires the same way a sweep hold does.** Releasing it is the holder's job and
+Control's — *when you release a hold, tell the station that was waiting* — but a waiting station
+is never entitled to wait forever on someone remembering:
+
+1. **At the estimate, look before you ask.** `git fetch` and check whether the thing you are
+   waiting on has actually landed. **Most holds end without anyone announcing it**, and this is
+   the cheapest move by a wide margin — on 2026-08-17 a station sat on a file that had been
+   released twenty minutes earlier, purely because the release was never relayed.
+2. **Still held → call the holder once**, asking for a revised estimate, not for the work.
+3. **No answer → it has stopped being a hold and become a stall.** Say exactly that on the
+   board, tell Control and the user, and **go do the work that does not depend on it.**
+4. **Never sit on a block silently.** A blocked row nobody has revisited is indistinguishable
+   from abandoned work, and the fleet will eventually treat it as such.
+
+**What you must not do is take the paths anyway.** A stall is a scheduling problem; helping
+yourself to another station's files turns it into a merge problem on top.
 
 ---
 

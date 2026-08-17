@@ -185,6 +185,13 @@ honestly that the person won't see it until they pull.
 **Be straight about the limit: there is no lock in git.** None of this stops someone editing
 the same file. What it buys is that they *know*, early, through a channel they watch.
 
+**A person has no expiry, and this skill will not pretend otherwise.** Every other hold here is
+bounded by an estimate its holder declared; a human collaborator never agreed to one, may be
+asleep, and is not yours to time out. So do not write a deadline into the issue and do not treat
+silence as consent. **Treat it as a block instead** — record what you asked and who owes it, work
+what does not depend on the answer, and when it starts costing real time, that is a decision for
+the user, not a rule for you to apply.
+
 ---
 
 ## Find lost work — `/mission-control recover`

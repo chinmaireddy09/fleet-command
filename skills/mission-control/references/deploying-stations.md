@@ -204,6 +204,14 @@ convenience — that is the user's setting, in their own config, chosen delibera
 worse than no deploy at all — there is now a live window nobody can address, holding a post the
 board still shows as reserved. Report it, say which tab it is in, and let the user decide.
 
+**Then come back for the row.** A failed deploy leaves a reservation behind, and a reservation
+outlives the deploy that cut it unless somebody ends it — at which point it is a stale row making
+a free job look taken, which is the thing the board exists to prevent. **The reservation is
+protected only while this deploy is in flight.** Once it has failed and the user has decided:
+either a session is accounted for and the row gets its address, or nothing claims it in
+`ListAgents` and **the row is released and the release is announced.** Never leave it sitting as
+"reserved" because the deploy that created it is over and nobody owns the cleanup.
+
 **Retrying a failed deploy must be safe.** A station that got half-way may have already written
 part of its row. `identify` therefore has to be idempotent on the **board row** as well as on
 the worktree: re-running it updates the row in place rather than adding a second one, and a
