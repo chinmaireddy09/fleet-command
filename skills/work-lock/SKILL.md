@@ -1,7 +1,7 @@
 ---
 name: work-lock
 version: 1.0.0
-description: Claims and releases work on a project's board so two people or two sessions never start the same job. Finds whatever claim file the project already uses, adds or flips your row, pushes it immediately so the claim is real, and clears it when you're done. Also spots rows left behind by sessions that ended. Runs only when explicitly invoked.
+description: Claims and releases work on a project's board so two people or two sessions never start the same job. Finds whatever claim file the project already uses, adds or flips your row, and pushes it immediately — the rejected second push is the only part of this with real teeth. Edits your own row and never reformats anyone else's, clears it when you are done, and spots rows left behind by sessions that ended, marking them paused rather than deleting work it cannot prove is finished. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1

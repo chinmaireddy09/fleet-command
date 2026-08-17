@@ -82,7 +82,7 @@ flag sets the session's display name, which is simultaneously:
 `TESTRIG-CALLSIGN [eefa7c]`. Without the flag the same session would have listed as
 `acme-shop-4d [9a7a96]` — an address nobody can remember, say aloud, or match to a row.
 
-Pass the call-sign in **exactly the form the board uses** — same case, same spelling. `CHANNELS`
+Pass the call-sign in **exactly the form the board uses** — same case, same spelling. `INTEGRATIONS`
 on the board and `channels` in `ListAgents` is a directory that fails at its one job.
 
 #### The recipes
@@ -95,8 +95,8 @@ another window instead:
 **Both paths exist, and which one you get is decided by what was asked for.**
 
 ```bash
-bash <skill-dir>/spawn-station.sh CHANNELS "$WT"            # deploy: opens the tab and types it
-bash <skill-dir>/spawn-station.sh CHANNELS "$WT" --print    # prints the command to paste
+bash <skill-dir>/spawn-station.sh INTEGRATIONS "$WT"            # deploy: opens the tab and types it
+bash <skill-dir>/spawn-station.sh INTEGRATIONS "$WT" --print    # prints the command to paste
 ```
 
 | The ask | What happens |
@@ -165,7 +165,7 @@ it**:
 
 ```
 Can't drive VS Code's terminal from outside. Open a terminal and paste:
-  cd '<worktree>' && claude --name 'CHANNELS' '/mc identify CHANNELS'
+  cd '<worktree>' && claude --name 'INTEGRATIONS' '/mc identify INTEGRATIONS'
 ```
 
 That still beats the old flow, because the call-sign and path are filled in and cannot be
@@ -254,7 +254,7 @@ never present either as the other.
 **When it IS the prompt, end the deploy report by sending the user to the tab:**
 
 ```
-CHANNELS is up in a new tab. Switch to it and approve the push — until you do,
+INTEGRATIONS is up in a new tab. Switch to it and approve the push — until you do,
 it can't claim its row and no other station can call it.
 ```
 

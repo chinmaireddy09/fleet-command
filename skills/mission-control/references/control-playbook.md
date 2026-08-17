@@ -118,11 +118,11 @@ correcting a stale row was just a conversation. Name the drift out loud:
 ```
 SITREP — 3 stations, 2 corrections
 
-  CHANNELS   acme-shop-4d   lane/channels    apps/integrations/adapters   clean
+  INTEGRATIONS   acme-shop-4d   lane/integrations    apps/integrations/adapters   clean
   FRONTEND   acme-shop-1e   worktree-design-system             3 unpushed
-  BACKLOG    —                   —                                            NOT MANNED
+  PLATFORM    —                   —                                            NOT MANNED
 
-  ⚠ BACKLOG's row said working. Nobody is behind it. Flipped to reserved.
+  ⚠ PLATFORM's row said working. Nobody is behind it. Flipped to reserved.
   ⚠ FRONTEND has 3 commits on one disk. Told it to push before anything else.
 ```
 

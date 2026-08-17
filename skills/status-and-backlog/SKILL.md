@@ -1,7 +1,7 @@
 ---
 name: status-and-backlog
 version: 1.0.0
-description: Keeps a project's backlog and status document honest. Files a new item with enough detail that someone else could pick it up cold, closes one with what actually shipped, and re-scopes one when the facts change. Finds whatever backlog file the project already uses and matches its conventions rather than imposing a format. Runs only when explicitly invoked.
+description: Keeps a project's backlog and status document honest. Files a new item with enough detail that someone else could pick it up cold — what was measured, what was ruled out, and how NOT to fix it — closes one with what actually shipped, and re-scopes it when the facts change. Records an unexplained cause as unexplained rather than implying a diagnosis, and cross-references items that must land in a given order onto both. Finds whatever backlog file the project already uses and matches its conventions rather than imposing a format. Runs only when explicitly invoked, as /status-and-backlog or /backlog.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1

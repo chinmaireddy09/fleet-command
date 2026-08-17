@@ -1,5 +1,5 @@
 ---
-description: File, close, or re-scope a backlog item (alias for /status-and-backlog)
+description: File, close, or re-scope a backlog item — with what was measured and how not to fix it (alias for /status-and-backlog)
 argument-hint: [file <item> | close <item> | rescope <item>]
 ---
 

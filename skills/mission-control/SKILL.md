@@ -1,7 +1,7 @@
 ---
 name: mission-control
-version: 6.2.1
-description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
+version: 6.3.0
+description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1
@@ -104,7 +104,7 @@ needs to know is *"this crosses everything and it is temporary"*, not who is at 
 The board records who is actually running it.
 
 **Better: use this project's real area names.** In an e-commerce platform that might be
-`CHANNELS`, `FINANCE`, `FRONTEND`, `PLATFORM`. Then *"Control to Finance"* is understood by
+`INTEGRATIONS`, `FINANCE`, `FRONTEND`, `PLATFORM`. Then *"Control to Finance"* is understood by
 anyone who has seen the codebase, with nothing to learn.
 
 Read the project's own `MISSION-CONTROL.md` first (Step 0) — its station names win. It lists the
@@ -143,11 +143,11 @@ MISSION CONTROL — identify
           FRONTEND · acme-shop-85 [6d86b0]  frontend/src/checkout  ← unnamed, came up by hand
 
   Reserved for you — a post is already initiated and waiting:
-    1  CHANNELS       apps/integrations, adapters   .claude/worktrees/channels
-    2  BACKLOG        cross-module                  .claude/worktrees/backlog
+    1  INTEGRATIONS       apps/integrations, adapters   .claude/worktrees/integrations
+    2  PLATFORM        cross-module                  .claude/worktrees/platform
 
   Free, nothing initiated yet:
-    3  PLATFORM       core, retry, events
+    3  PAYMENTS       billing, refunds, invoices
     4  TIGER          no area yet — decide later
 
   Identify as:  ________
@@ -257,11 +257,11 @@ The binding is a tool call, so make it one:
    guard; see the shape rule above). Running a file is one plain command:
 
    ```bash
-   bash <skill-dir>/label-tab.sh CHANNELS
+   bash <skill-dir>/label-tab.sh INTEGRATIONS
    ```
 
    It finds its own tab by tty, aborts loudly if the tty walk yields nothing, and reads the title
-   back so a silent no-op cannot pass as success. Prints `<tty> -> CHANNELS`, or `NO-MATCH`.
+   back so a silent no-op cannot pass as success. Prints `<tty> -> INTEGRATIONS`, or `NO-MATCH`.
 
    **Verified 2026-08-17**, both halves. The tty walk resolved `/dev/ttys000` through
    `zsh → claude → login`, and the tab matched on it regardless of which window was frontmost.
@@ -335,8 +335,8 @@ can reach it. Record what `ListAgents` prints, exactly.
 **If you came up unnamed, say so once and offer the fix.** A running session cannot rename
 itself — `--name` is set at launch. So a hand-started station keeps its generated handle for
 life, and every peer must address it by that instead of its call-sign. That works; it is just
-worse. Tell the user plainly: *"I'm on post as CHANNELS but my address is
-`acme-shop-4d` — restart me with `claude --name CHANNELS` if you want the tab and the
+worse. Tell the user plainly: *"I'm on post as INTEGRATIONS but my address is
+`acme-shop-4d` — restart me with `claude --name INTEGRATIONS` if you want the tab and the
 radio to agree."* Their call, and never worth losing session state over mid-task.
 
 ### 4 · The call-sign goes on the board
@@ -457,7 +457,7 @@ the user:
   available again. This is the case `references/deploying-stations.md` walks through.
 - **The user says nobody is coming** → same thing. Their call, plainly given.
 - **You did not initiate it** → **you do not release it on inspection.** Ask the user, or the Control
-  that initiated it. Say what you see — *"CHANNELS has been reserved with nothing behind it since I
+  that initiated it. Say what you see — *"INTEGRATIONS has been reserved with nothing behind it since I
   came on watch; is someone still coming?"* — and leave the row alone until answered.
 
 **A reserved row with a *live* session behind it is a different animal entirely**, and there are
@@ -682,9 +682,9 @@ it, and the call-sign becomes the address:
 
 ```
 CONTROL [3f1a02]    ·  the shared checkout, holding the board
-CHANNELS [5ea498]   ·  busy
+INTEGRATIONS [5ea498]   ·  busy
 FRONTEND [7b6568]   ·  busy
-BACKLOG [028df2]    ·  waiting
+PLATFORM [028df2]    ·  waiting
 ```
 
 That listing is readable. Compare what you get without `--name`, which is what every station
@@ -874,12 +874,12 @@ of a watch — uses the **call-sign**:
 
 | Say this | Not this |
 |---|---|
-| `CONTROL TO CHANNELS — Radio check.` | `CONTROL TO acme-shop-4d — Radio check.` |
+| `CONTROL TO INTEGRATIONS — Radio check.` | `CONTROL TO acme-shop-4d — Radio check.` |
 | "Channels holds the adapters." | "4d holds the adapters." |
 | "We lost contact with Frontend." | "acme-shop-1e stopped responding." |
 | "Backlog and Channels both want the same item." | "-c7 and -4d both want it." |
 
-**This is the entire reason call-signs exist.** `CHANNELS` tells every listener what that
+**This is the entire reason call-signs exist.** `INTEGRATIONS` tells every listener what that
 station owns; `acme-shop-4d` tells them nothing and cannot be remembered, said aloud, or
 matched to a row at a glance. A report full of session handles has thrown away the one piece of
 information the naming scheme was for.
@@ -1058,7 +1058,7 @@ outcome this skill has.
 A station deep in a gate run or mid-edit in a shared file does not want five calls. Let it say so:
 
 ```
-CHANNELS TO CONTROL — Going quiet, running the full gate. About 20 minutes.
+INTEGRATIONS TO CONTROL — Going quiet, running the full gate. About 20 minutes.
                       Mayday still gets through. Out.
 ```
 

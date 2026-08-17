@@ -37,7 +37,7 @@ If you extend this skill, hold new words to the same test:
 |---|---|
 | **station** | a post: one area of the product, with a call-sign, a workspace and a row on the board. **A station is not a session.** A session *mans* a station — the session dies when its window closes, the station outlives it. But not forever: a call-sign is initiated when there is work for it and **retired when that work lands**, so the roster is whatever the jobs need. There is no fixed list and no ceiling |
 | **identify** | a session taking a call-sign — and **binding itself to the post**: it reads the row, takes the workspace path from it, and moves in on its own. Replaced *join*, which described what the session did rather than what the fleet learned, and which left the human to do the moving |
-| **a call-sign** | `CHANNELS`, `FRONTEND`, `CONTROL` — what a station is **called**. Say it in every report and every call |
+| **a call-sign** | `INTEGRATIONS`, `FRONTEND`, `CONTROL` — what a station is **called**. Say it in every report and every call |
 | **a session name** | `acme-shop-4d` — a machine-generated **address**, not a name. It belongs in a message's `to:` field and the board's lookup column, **nowhere else.** A report full of these has thrown away the one thing call-signs are for |
 | **sitrep** | asking every live station where it actually is, what it holds and what is blocking it — then **fixing the board where the answers disagree with it.** A sitrep that ends without correcting a stale row was just a conversation |
 | **radio silence** | a station saying *don't interrupt me* — mid-gate, mid-edit. Control holds non-urgent calls and answers from the board where it can. **Mayday always breaks through**; silence is about interruptions, never safety |
@@ -131,7 +131,7 @@ interchangeable.
 
 - Will it matter in a month? → **PROGRESS-LOG**
 - Does someone need it before they start? → **WORK-LOCKS**
-- Is it still to be done? → **BACKLOG**
+- Is it still to be done? → **PLATFORM**
 - Is it a step someone should follow? → **PROTOCOL** (or the skill)
 
 Blur them and each fails a specific way: history in the board makes it too long to scan;

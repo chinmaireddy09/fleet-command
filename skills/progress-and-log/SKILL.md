@@ -1,7 +1,7 @@
 ---
 name: progress-and-log
 version: 4.0.0
-description: Lightweight, user-owned progress checkpoint — no gstack dependency, no init/preamble. Detects whatever progress/status/backlog document(s) a project already has (by content and purpose, not a fixed filename list), asks once how to split updates across multiple such files if more than one exists, remembers that mapping, and only creates a new file when none exists at all. Runs only when explicitly invoked — never on generic "save progress" phrasing.
+description: Lightweight, user-owned progress checkpoint — no gstack dependency, no init or preamble. Detects whatever progress, status or backlog document a project already keeps, by content and purpose rather than a fixed filename list, asks once how to split updates when several exist, remembers that mapping, and creates a new file only when none exists at all. Writes what happened and why so it survives the session that learned it. Runs only when explicitly invoked — never on generic "save progress" phrasing.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1
