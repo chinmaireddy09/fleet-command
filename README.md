@@ -47,7 +47,7 @@ They talk in a dozen phrases you already know — these are the ones you will he
 *all clear*, *out*.
 
 ```
-CONTROL TO INTEGRATIONS — Frontend is starting the eBay screen and needs the
+CONTROL TO INTEGRATIONS — Frontend is starting the connect screen and needs the
                           auth order. Do you hold adapters/vendor.py?
 
 INTEGRATIONS TO CONTROL — Roger. Confirmed: credentials first, then a SECOND
@@ -62,8 +62,54 @@ Two shapes of work, and they need different rules:
 - **Stations go down.** A station owns an area and works inside it. Two stations rarely
   collide because they touch different files.
 - **Sweeps go across.** Some changes — a colour token, a renamed field, a library upgrade —
-  touch *every* area at once. A sweep conflicts with everyone by definition, so it announces
-  itself, waits for acknowledgement, lands fast, and calls all clear.
+  touch files **more than one station owns**. A sweep conflicts with everyone by definition, so
+  it announces itself with an estimate, waits for acknowledgement, lands fast, and calls all
+  clear. **The test is ownership, not size:** a 400-file mechanical change inside one station's
+  own paths is not a sweep, and announcing it as one freezes a fleet with no stake in it.
+
+---
+
+## What a day of real use changed
+
+The first version was reasoned. Then three sessions ran a real job with it for a night, and the
+rules that survived contact look different from the ones that did not:
+
+- **Verify the pushed row, not the live session.** A deploy reported success against a tab whose
+  session had never registered. The unclaimed row is what proved it.
+- **Silence is never evidence.** It does not acknowledge a sweep, release a hold, prove a station
+  dead, or free a reserved post. Only an answer, a bounce, or absence from `ListAgents` does.
+- **Nothing may block forever on another station answering.** Every wait carries an estimate, one
+  follow-up call, and a defined move for when the answer never comes.
+- **A check must be able to see what it claims to measure.** Four times in one day a check looked
+  authoritative and was structurally blind — an exit code that belonged to `tail`, a name-diff
+  against a run that never started, a guard reporting the wrong line, a recommendation reasoned
+  from import paths about files nobody had opened.
+- **`ListAgents` is not your fleet.** It lists every Claude Code session on the machine, other
+  projects included. The board is the roster.
+- **Rigour is not the deliverable.** Three stations produced correct audit documents when what
+  was asked for was a surface to work on. A census is an input to a design tool, not one.
+
+Each of those is a rule in the skill with a one-line reason and a pointer into
+[`references/field-notes.md`](skills/mission-control/references/field-notes.md), which holds the
+incident itself — for the moment a rule looks arbitrary and you are about to talk yourself out
+of it.
+
+---
+
+## What's in the skill
+
+`SKILL.md` holds what a station needs on post. Everything else loads only when the job calls for
+it, so four stations do not each carry procedure they will never run:
+
+| File | Read it when | Who |
+|---|---|---|
+| `references/control-playbook.md` | the board report, sitreps, alerting a person, recovering lost work, keeping the board small | Control |
+| `references/deploying-stations.md` | putting a station on post — terminal recipes, verification, the known stalls | Control |
+| `references/sweeps.md` | a change crosses areas more than one station owns | whoever runs it |
+| `references/countermeasures.md` | something has already gone wrong | anyone, at the time |
+| `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost | anyone, rarely |
+| `label-tab.sh` | at identify — pins your call-sign to your terminal tab | every station |
+| `spawn-station.sh` | at deploy — opens the tab in *your* window and verifies a session really started | Control |
 
 ---
 
@@ -96,8 +142,16 @@ and copy again.
 
 ### Nothing to configure — `deploy` asks you once
 
-`/mc deploy <station>` opens a real session on a real post: it initiates the worktree, spawns a
-terminal, has the session identify itself, and verifies it landed on the board.
+`/mc deploy <station>` opens a real session on a real post: it initiates the worktree, opens a
+terminal tab, has the session identify itself, and **verifies the row on `origin/main` carries
+its address** — not that the tab looks right. Those two came apart in practice: a spawn once
+reported success and left a tab whose session had never registered at all.
+
+**Asking to deploy is what authorises the automation.** `/mc deploy X` means *put X on post
+without me typing anything*. Anything short of that — initiating a post nobody is walking to yet,
+or a session you open by hand — **prints one command for you to paste instead**, call-sign and
+path already filled in. And the automated path prints it too the moment it cannot prove a session
+started, so you are never left with a tab that looks fine and a station that does not exist.
 
 That means it has to know **your** terminal, and everyone's differs. The first time you run it,
 it detects what you're on (`$TERM_PROGRAM`, `$WT_SESSION`, `uname`), **confirms it with you**
@@ -112,9 +166,10 @@ itself on their first deploy, with nothing for you to push.
 
 | Terminal | Status |
 |---|---|
-| macOS Terminal.app | **verified** — tab and window. A tab needs Accessibility granted to Terminal |
-| iTerm2 · Windows Terminal | recipe shipped, **unverified** — it will say so when it uses one |
-| VS Code · Warp · Ghostty · anything else | prints the exact command to paste, call-sign and path filled in |
+| **any terminal — the printed command** | **verified end to end.** No permissions, no timing, nothing to mistype |
+| macOS Terminal.app — tab | works, and **failed twice in the field before being rewritten**: a synthesised ⌘T lost its modifier race and corrupted the command, and the keypress landed in whichever window had focus. Now targets its own window by tty and checks a real session started. Needs Accessibility |
+| iTerm2 · Windows Terminal | recipe shipped, **unverified** — it says so when it uses one |
+| VS Code · Warp · Ghostty · anything else | prints the command, which is the default anyway |
 
 Deploy never spawns a session with widened permissions. A new station asks you to approve its
 first push, in its own tab — and deploy's report tells you to go and do that.
