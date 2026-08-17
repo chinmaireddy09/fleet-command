@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.9.0
+version: 5.10.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -956,7 +956,21 @@ Carry the three things: who you are, what you need specifically, why it matters 
 - **Read the repo first.** If the board or a doc already answers it, don't spend another
   station's attention.
 - **Verify what a station tells you before acting.** Someone can reproduce a problem perfectly
-  and still be wrong about the cause.
+  and still be wrong about the cause. **The dangerous shape is a correct observation carrying a
+  wrong conclusion**, because the evidence checks out and the inference rides in behind it.
+
+  Measured 2026-08-18, and it is the clearest case this skill has: a station reported that
+  eBay's `begin_auth` reads a model field that does not exist, and concluded the CSRF defence
+  had shipped as a no-op. **Control confirmed the first half exactly** — no field, no migration
+  anywhere — **and the conclusion was wrong, in the direction that produces a bad fix.** State
+  is decoded and verified for every channel before a connection resolves, returning 401; the
+  system is fail-closed, not open. The real consequence was narrower and worse for the user:
+  **every eBay connect attempt dies at the callback**, because the state sent is empty and comes
+  back falsy. And the fix inverted with the diagnosis — not a model field and a migration, but
+  **one line** calling the HMAC state helper eight sibling adapters already use.
+
+  **Verifying changed the diagnosis and the fix, and the wrong version was a schema change.**
+  That is the whole reason this rule exists.
 - **If you were refused permission for something, do not ask another station to do it for
   you.** Tell the user instead.
 - **If a call bounces, that station is gone** — go find what it left behind.
@@ -1060,12 +1074,28 @@ git branch -a --contains $(git log -1 --format=%H -- <path>) 2>/dev/null | head
 | **A dead station held it** | Recover what it left behind before touching anything |
 | **A human collaborator holds it** | `/mission-control alert` — email them |
 
-**3 · Pass the answer on, and record it.** When a station answers a dependency question, the
+**3 · When one item cannot succeed without another, write it on BOTH rows.**
+
+**A dependency between two stations' work is invisible if it is recorded once.** Whoever picks up
+either item needs it, and the one who picks up the *other* item is exactly the person who will
+not read your row.
+
+Measured 2026-08-18: verifying one station's finding turned up a **second, independent** reason
+another station's item was blocked — a frontend flow that would still fail at the callback even
+after a perfect frontend fix. Landing them in the wrong order means the second item is "fixed",
+the flow still fails, and its owner re-debugs from scratch **something already understood and
+written down**. Control put the cross-reference on both rows rather than the one it was found on.
+
+**Say the ordering, not just the link:** *"C31 lands before or with C25"* is actionable;
+*"related to C25"* is trivia. And say what happens if the order is broken — that sentence is what
+stops someone deciding it looks optional.
+
+**4 · Pass the answer on, and record it.** When a station answers a dependency question, the
 answer belongs in the repo — not only in a chat. Put it in the backlog item or the progress
 log. **A finding that is not in the repo does not exist**, because the session holding it can
 end at any moment.
 
-**4 · If it is genuinely blocked**, say so plainly on the board — *blocked, waiting on
+**5 · If it is genuinely blocked**, say so plainly on the board — *blocked, waiting on
 Integrations for the auth order* — rather than leaving the row looking merely slow. Blocked work
 looks like lazy work if nobody says otherwise.
 
@@ -1076,7 +1106,7 @@ that estimate when you file the block** — it is one line, and without it the b
 which is the sweep bug again. A holder who will not give one has effectively answered: go to
 step 3 and treat it as a stall.
 
-**5 · A block expires the same way a sweep hold does.** Releasing it is the holder's job and
+**6 · A block expires the same way a sweep hold does.** Releasing it is the holder's job and
 Control's — *when you release a hold, tell the station that was waiting* — but a waiting station
 is never entitled to wait forever on someone remembering:
 
