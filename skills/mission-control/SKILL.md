@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 4.2.0
+version: 4.3.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -127,8 +127,16 @@ The binding is a tool call, so make it one:
 1. **Read the board**, find the row for the call-sign given.
 2. **Take the workspace path from that row** — the board already carries it. Do not ask the
    user for a path; if the row has none, that is the bug, fix the row.
-3. **`EnterWorktree({path: "<workspace from the row>"})`** — the session moves *itself* into
-   the lane. No `cd`, no restart, no second window.
+3. **Move in, if you are not already there.** Compare your working directory to the row's
+   workspace:
+   - **already there** → skip the move entirely and go to step 4. This is the normal case when
+     `deploy` spawned you, because it starts you inside the lane.
+   - **somewhere else** → **`EnterWorktree({path: "<workspace from the row>"})`**. The session
+     moves *itself*. No `cd`, no restart, no second window.
+
+   **Make this check, don't assume either way.** A session reached by `deploy` and a session
+   started by hand both run `identify`, and calling `EnterWorktree` from inside the target is a
+   different situation from calling it from outside.
 4. **Write your `ListAgents` name onto the row** and flip it from reserved to on post, then
    push. Until that name is on the board, no other station can call you — which is exactly why
    a board full of 🚧 rows can still leave everyone unable to find anyone.
@@ -250,12 +258,60 @@ CONTROL TO ALL STATIONS — Deploying a second station on checkout. Call-sign
                           Board updated. Out.
 ```
 
-**Deploying cuts the post. It does not man it.** Control creates the workspace, copies in the
-ignored instruction files, and pushes the row — then the row sits **reserved** until a session
-identifies as it. **Never tell the user to `cd` somewhere and start a session there.** Tell them
-to open a session anywhere and run `/mission-control identify <call-sign>`; the session moves
-itself. A deploy that ends with a 🚧 row and no session name on it has produced a lie, not a
-station.
+### Deploy does the whole thing — cut, spawn, identify, verify
+
+`station <name>` cuts a post and stops. **`deploy <station>` carries it all the way to a manned
+station with nobody touching a keyboard.** Four steps, and it is not finished until the fourth
+one passes:
+
+**1 · Cut the post.** Exactly `station <name>`: worktree, branch, copy the ignored instruction
+files, write the row, push it.
+
+**2 · Spawn the session.** Detect the terminal from `$TERM_PROGRAM` and open a new one running
+`claude` with `identify` as its opening prompt:
+
+```bash
+WT="$ROOT/.claude/worktrees/$STATION"
+osascript -e "tell application \"Terminal\" to do script \
+  \"cd '$WT' && claude '/mc identify $CALLSIGN'\""
+```
+
+Implement the terminal you are actually on and **fail plainly on the rest** — `unsupported
+terminal: Ghostty — open a session yourself and run /mc identify <call-sign>` is a fine
+outcome. Guessing AppleScript for a terminal you cannot see is not.
+
+**Yes, deploy runs `cd` — that does not contradict the rule above.** The rule is that a *human*
+must never be the one to remember it, because when they skip it the post stays empty and the
+board lies. A script cannot forget. And `identify` still checks its own directory in step 3, so
+it is correct either way.
+
+**3 · Let the session identify itself.** It comes up already inside the lane, runs `identify`,
+takes the row, and writes its own `ListAgents` name onto it.
+
+**4 · Verify — and this is the step that matters.** Poll `ListAgents` until a new session
+appears, then **read the board back and confirm the row carries that session name.** Liveness is
+not the proof; the name on the pushed row is, because that is the thing every other station
+needs in order to call it.
+
+**If verification fails, say the deploy failed.** A spawned session that never identified is
+worse than no deploy at all — there is now a live window nobody can address, holding a post the
+board still shows as reserved. Report it, name the window, and let the user decide.
+
+### What deploy cannot do for you
+
+Say all three out loud rather than discovering them mid-deploy:
+
+- **The spawned session has its own permissions**, and will prompt for its own pushes and edits.
+  **Never paper over this by deploying with a bypassed permission mode.** Control does not get to
+  widen another session's permissions because it is convenient — that is the user's setting to
+  make, not deploy's to assume.
+- **Every spawned session bills.** Announce how many you are opening *before* opening them.
+- **The first automation of a terminal may need a one-time macOS grant.** If the spawn fails
+  before any dialog appears, suspect the sandbox rather than macOS, and surface it instead of
+  trying variations.
+
+**Deploying cuts the post; identifying mans it.** A row is 🚧 only once a session name is on it.
+A deploy that ends with a 🚧 row and no session name has produced a lie, not a station.
 
 **Before deploying another station, ask whether the work actually splits.** Two stations in one
 area with unclear boundaries collide more than one station working through it in order. Split
@@ -448,13 +504,13 @@ Integrations' code, and Integrations was interrupted once instead of five times.
 | `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
 | `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |
 | `/mission-control state <normal\|sweep running\|mayday>` | **Fleet state** — set what the whole fleet is doing, so nobody has to infer it |
-| `/mission-control station <name>` | **Assign a station** — own workspace, own tests, claim it on the board |
 | `/mission-control checkin <task>` | **Check in** — tell Control what you're starting, before you start |
 | `/mission-control standdown` | **Hand over and close** — push, report, get acknowledged, then exit |
 | `/mission-control call <station>` | **Call a station** — ask one specific thing |
 | `/mission-control all-stations` | **Broadcast** — ask every live station to report |
 | `/mission-control depends <what>` | **Dependency check** — who else touches this, and what must I know first |
-| `/mission-control deploy <station>` | **Deploy a station** — put another session on post |
+| `/mission-control station <name>` | **Cut a post** — workspace, branch, board row. Nobody is in it yet |
+| `/mission-control deploy <station>` | **Deploy a station** — cut the post, **open the session, identify it, and verify** it landed. No keyboard |
 | `/mission-control countermeasures` | **Something went wrong** — announce it, then repair without deleting |
 | `/mission-control sweep <change>` | **Cross-area change** — announce it, collect acknowledgements, land it, call all-clear |
 | `/mission-control go` | **Go / no-go** — run the tests, say plainly if it's safe |
