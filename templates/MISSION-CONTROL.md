@@ -112,9 +112,27 @@ npm ci        # or pnpm i / poetry install / whatever this project uses
 of shared files that another session can change underneath a running test — the exact hazard the
 worktree exists to remove.
 
-**And check the run actually ran.** A gate result is only a result if the test count is non-zero.
-Exit status alone cannot tell "everything passed" from "nothing executed" — the same mistake in a
-different costume as reading `docker ps` instead of the output file's mtime.
+**And check the run actually ran.** A gate result is only a result if the **test count** is
+non-zero. Exit status alone cannot tell "everything passed" from "nothing executed" — the same
+mistake in a different costume as reading `docker ps` instead of the output file's mtime.
+
+**Two mechanisms conspire here, and both were measured on 2026-08-18:**
+
+1. **A shell reports the LAST command's status, not the interesting one.** The gate ran as
+   `npx vitest run > log 2>&1; echo "EXIT=$?"; tail -20 log` — and **the exit code reported for
+   the whole run was `tail`'s**, not the test runner's. Proved directly: `false; echo "EXIT=$?";
+   tail -1 /etc/hosts` reports EXIT=1 and *still* exits 0 overall. The runner's real exit on a
+   startup error was 1 the whole time; nothing ever read it.
+2. **A startup error emits zero failure lines.** Nothing ran, so nothing failed.
+
+**Together they defeat name-diffing, which is this file's own gate rule.** Diff failure names in
+both directions against a run that never started and you get **0 new, 0 fixed — the exact
+signature of a clean run.** Every check agreed the lane was green; none of them asked whether
+anything had executed.
+
+**So capture the status of the command you care about, immediately** — `npx vitest run > log
+2>&1; RC=$?` before anything else touches `$?` — **and assert a non-zero test count before you
+believe any name diff.**
 
 Then claim the task in `docs/WORK-LOCKS.md` **before writing code**, recording the branch —
 that row plus the branch name is how other sessions identify you.

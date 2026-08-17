@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.10.0
+version: 5.11.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1074,7 +1074,20 @@ git branch -a --contains $(git log -1 --format=%H -- <path>) 2>/dev/null | head
 | **A dead station held it** | Recover what it left behind before touching anything |
 | **A human collaborator holds it** | `/mission-control alert` — email them |
 
-**3 · When one item cannot succeed without another, write it on BOTH rows.**
+**3 · When you cannot explain something, file it as unexplained — never as a diagnosis.**
+
+**A filing that implies a cause you have not proved sends the next reader to the wrong place, and
+they trust it because it is written down.** Say what you measured, say what you ruled out, and
+say plainly that the trigger is unpinned.
+
+Observed 2026-08-18: Control confirmed the structural half of a fault, could not reproduce the
+mechanism, and wrote *"real and unexplained"* into the entry with the ruled-out cause named —
+rather than implying an explanation it did not have. **The station that hit the fault later
+pinned the real mechanism**, and it could do that precisely because the entry described a gap
+instead of a wrong answer. **An honest unknown is a working handover; a confident guess is a
+trap.**
+
+**4 · When one item cannot succeed without another, write it on BOTH rows.**
 
 **A dependency between two stations' work is invisible if it is recorded once.** Whoever picks up
 either item needs it, and the one who picks up the *other* item is exactly the person who will
@@ -1090,12 +1103,12 @@ written down**. Control put the cross-reference on both rows rather than the one
 *"related to C25"* is trivia. And say what happens if the order is broken — that sentence is what
 stops someone deciding it looks optional.
 
-**4 · Pass the answer on, and record it.** When a station answers a dependency question, the
+**5 · Pass the answer on, and record it.** When a station answers a dependency question, the
 answer belongs in the repo — not only in a chat. Put it in the backlog item or the progress
 log. **A finding that is not in the repo does not exist**, because the session holding it can
 end at any moment.
 
-**5 · If it is genuinely blocked**, say so plainly on the board — *blocked, waiting on
+**6 · If it is genuinely blocked**, say so plainly on the board — *blocked, waiting on
 Integrations for the auth order* — rather than leaving the row looking merely slow. Blocked work
 looks like lazy work if nobody says otherwise.
 
@@ -1106,7 +1119,7 @@ that estimate when you file the block** — it is one line, and without it the b
 which is the sweep bug again. A holder who will not give one has effectively answered: go to
 step 3 and treat it as a stall.
 
-**6 · A block expires the same way a sweep hold does.** Releasing it is the holder's job and
+**7 · A block expires the same way a sweep hold does.** Releasing it is the holder's job and
 Control's — *when you release a hold, tell the station that was waiting* — but a waiting station
 is never entitled to wait forever on someone remembering:
 
@@ -1145,6 +1158,24 @@ both, or stations collide. Take the exact service and commands from the project'
 **Before starting:** services healthy; nobody else running tests (ask if unsure); **nobody
 edits code while a run is going.**
 
+**First, prove the run happened. Absence of failures is not evidence that anything passed** —
+that is standing order 10 wearing a different hat, and gates are where it does the most damage.
+
+**Require a positive assertion: the `N passed` count.** Not a zero exit code, not an empty
+failure list, not a clean name diff. Measured 2026-08-18, all three of those agreed a lane was
+green while **not one test had executed**:
+
+- **The exit code belonged to the wrong command.** `npx vitest run > log 2>&1; echo "EXIT=$?";
+  tail -20 log` reports **`tail`'s** status, because a shell reports the *last* command's. Proved
+  directly: `false; echo "EXIT=$?"; tail -1 /etc/hosts` prints EXIT=1 and still exits 0 overall.
+  The runner's real exit was 1 the whole time and nothing read it.
+- **A startup error emits zero FAIL lines.** Nothing ran, so nothing failed.
+- **So the name diff returned `0 new, 0 fixed`** — the exact signature of a clean run.
+
+**Capture the status of the command you care about, immediately**: `npx vitest run > log 2>&1;
+RC=$?` before anything else touches `$?`. Then read the count. **A gate with no test count is not
+a gate result, whatever colour it reports.**
+
 **Reading it.** If the project keeps a list of already-known failures, compare the **names**,
 **both directions** — never the count. A count cannot tell "the same 21" from "20 old plus 1
 new". Check the **clock** too: a broken run is usually *faster* than a good one, never slower.
@@ -1175,6 +1206,12 @@ place* rather than delete them, so the line count is preserved.
 
 **The mutations are yours, made deliberately, and they come straight back out.** Say so while
 they are in the tree, in case the window dies holding them.
+
+**And check the test sits at the seam the question is answered at.** A green suite proves nothing
+if it never reaches the code under suspicion. Measured 2026-08-18: a station's tests called an
+inner function directly and passed, while the defect lived in **the view that calls it** — so the
+station reproduced the very bug it was fixing, in its own first commit, and its tests stayed
+green. **Ask which layer actually decides the thing you are testing**, and test there.
 
 ---
 
