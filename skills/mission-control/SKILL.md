@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.4.0
+version: 5.5.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -250,12 +250,21 @@ The binding is a tool call, so make it one:
 
    | Terminal | How |
    |---|---|
-   | **macOS Terminal.app** | the `osascript` above — verified, overrides Claude Code |
-   | **iTerm2** | `tell current session of current window to set name to "<CALLSIGN>"` — untested |
+   | **macOS Terminal.app** | the `osascript` above — re-verified 2026-08-17, holds while the session works |
+   | **iTerm2** | `tell current session of current window to set name to "<CALLSIGN>"` — **still untested**, nobody has run it |
    | **Anything else** | `printf '\033]0;%s\007' "<CALLSIGN>"` — works widely, but Claude Code may overwrite it on its next status update |
 
    Do this at identify and **do it again if you ever change call-sign.** A tab pinned to the
    wrong call-sign is worse than an unpinned one.
+
+   **What the re-verification actually showed, and what it did not.** On Terminal.app 470.2 the
+   script found its own tty through the parent chain — necessary, because the Bash tool's own
+   process has no tty and only the `claude` process above it does — set the title, and held it
+   across a dozen tool calls. **But Claude Code writes that same field**: the tab already read
+   `◑ Support multiple sessions and callsign management` before the script ran. So the two are
+   competing for one property, and *"overrides Claude Code"* is more than was measured. **Treat
+   the pin as durable while the station is working and re-runnable at any time** — if a tab ever
+   shows the wrong call-sign, run the script again rather than trusting it to have stuck.
 
 **A call-sign with no address on its row is reserved, not manned.** Say so in that state
 and never render it as working — a row that claims a holder it does not have makes free work
@@ -314,6 +323,17 @@ CONTROL TO FRONTEND — Roger. Backend holds apps/orders — no overlap. But Swe
 **This call is what puts the task on the board**, and it is where a conflict gets caught
 while it is still cheap. A station that starts work without checking in is invisible until it
 collides with someone.
+
+**If Control does not answer — unmanned, busy, or one of the one-or-two-station setups that
+never had one — write the row and start.** The board is the check-in; Control's reply is the
+conflict check laid on top of it, and the two are not equally urgent. Claim your paths on the
+board, push it, say plainly that you are proceeding without a conflict check, and do your own:
+`/mission-control depends` on the paths you are about to touch answers most of what Control
+would have told you, straight from the repo.
+
+**What you must not do is start quietly** — that is the invisible station again, and it is
+worse than starting uncleared. Uncleared and on the board can be corrected by anyone who reads
+it; uncleared and unwritten cannot.
 
 ### 6 · Before the session ends — hand over, then close
 
@@ -686,6 +706,35 @@ Both forms are valid — the second is a station that came up by hand without `-
 what `ListAgents` actually prints, never what it ought to print.** To call a station: look up its
 address on the board → confirm it is still listed in `ListAgents` → message that exact name. If
 the bare name matches two rows, append the `[ref]`.
+
+#### `ListAgents` is not your fleet — it is every session on the machine
+
+**Measured 2026-08-17, in this repo:** a session working `fleet-command` ran `ListAgents` and the
+only peer it saw was `ecom-nexus-oss-f3 [6db8a8]` — **a session in a different repository
+entirely**, five hours into unrelated work. Nothing in the listing said so. The handle hinted at
+it; the listing itself carried no repo, no path, no way to tell.
+
+**So the two lists mean different things, and only one of them is the fleet:**
+
+- **The board** says who is a station on *this* repo. It is the roster, and it is authoritative.
+- **`ListAgents`** says which sessions are running on this computer. It is a phone book for the
+  whole building, not for your floor.
+
+**Address a session only if its address is on this repo's board.** A stranger in `ListAgents` is
+not an unnamed station and must not be treated as one:
+
+- **Never broadcast to it.** An "all stations" that reaches someone else's project is noise at
+  best; a *standby* that reaches it is a hold nobody there understands and nobody will lift.
+- **Never resolve an `@callsign` onto it.** That is the misdirected-prompt failure with a whole
+  extra repository added.
+- **Never count it as a live station** when deciding whether a sweep has everyone's
+  acknowledgement — it owes you nothing, and waiting on it is waiting forever.
+- **If you cannot match a listed session to a board row, leave it alone and say so.** It is
+  probably a colleague's other window, doing work that has nothing to do with you.
+
+**This also cuts the other way:** a session missing from `ListAgents` is gone, but a session
+*present* in it proves only that some Claude Code window is open somewhere — not that your
+station is manned.
 
 #### An address is an address, never a name
 
