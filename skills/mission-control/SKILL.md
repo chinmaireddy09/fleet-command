@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.3.0
+version: 6.4.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -589,6 +589,12 @@ to catch a live bug in the other station's own commit, which a terse version wou
 1. **Write it to the repo, send the reference.** A finding, a decision, a measurement belongs in
    the board, the backlog or the log. Then the message is *"the finding is filed at `09286a7`"* — not the
    finding. The repo is the shared memory; the radio is only a pointer to it.
+
+   **But filing is not producing, and a pile of documents is not progress.** This rule has an
+   obvious failure mode and the fleet hit it on 2026-08-18: every finding became its own artifact
+   until the user said *"creating endless artifacts is useless — delete them or combine them into
+   one."* **Add to an existing document before you create a new one**, and when two say related
+   things, merge them. **The test is whether a reader can act from it**, not whether it exists.
 2. **Never restate the other station's message back to it.** It knows what it said. This alone
    was half of today's traffic.
 3. **Do not narrate reasoning that belongs in a commit message.** Put it in the commit, name the
@@ -1199,6 +1205,35 @@ yourself to another station's files turns it into a merge problem on top.
 
 ---
 
+## Rigour is not the deliverable — check the output against the ask
+
+**A fleet optimises for what it can verify, and what it can verify is not always what was
+wanted.** Measured 2026-08-18: asked for a surface where a designer could *work*, three stations
+produced **audit documents** — reproducible counts, refuted mechanisms, corrected arithmetic, all
+of it correct. The user's verdict was the useful one: *"the output didn't meet the
+expectations."* Control's reply named it exactly — **"a census is an input to a design tool, not
+a substitute for one."**
+
+**This is a coordination failure, not a work failure, which is why it belongs here.** Every rule
+in this skill points inward: verify the claim, prove the run, diff the names, hold the paths.
+None of them ask *is this still the thing they asked for?* — so a fleet can be rigorous,
+well-coordinated, honest about its evidence, and building the wrong artifact all afternoon.
+
+**Control owns this one.** It is the station with the whole picture and the only one positioned
+to notice drift, and on the day it *steered* the drift — *"I steered FRONTEND toward the worklist
+framing, so that's on me as much as it."*
+
+**So, at every check-in and before anything is called done:**
+
+- **Read the ask again, in the user's words, not your summary of it.** Summaries drift toward
+  what turned out to be measurable.
+- **Name the deliverable in one line** — *"a page they can design on"*, not *"an analysis of the
+  design system"* — and say whether what exists matches it.
+- **When rigour and the ask diverge, say so out loud and ask.** Producing the verifiable thing
+  because it is verifiable is the failure; announcing the divergence is the fix.
+- **A correction from the user is data, not a rebuke.** *"That's a miss, not a
+  misunderstanding on your end"* is the right register to answer it in.
+
 ## Go / no-go — `/mission-control go`
 
 Run the tests **on this station's own database**, so no other station waits.
@@ -1218,6 +1253,30 @@ both, or stations collide. Take the exact service and commands from the project'
 
 **Before starting:** services healthy; nobody else running tests (ask if unsure); **nobody
 edits code while a run is going.**
+
+### A check must be able to observe the thing it claims to measure
+
+**This was the recurring defect of 2026-08-18 — four separate instances in one day, each with a
+check that looked authoritative and could not physically see what it reported on:**
+
+| The check | What it could actually observe |
+|---|---|
+| A gate's exit code | the status of `tail`, the last command in the chain — never the test runner's |
+| A failure-name diff, both directions | names produced by a run that never started: none, which reads as clean |
+| A regression guard's line numbers | positions in a comment-stripped copy, not in the file anyone would open |
+| A component recommendation from import paths, barrels and file location | **metadata about files nobody had opened** — and "dead" and "nobody needed it" look identical from outside |
+
+**The fourth is the purest form:** a station reasoned confidently about components from their
+*location and import graph*, and the peer who simply **read both files** found the recommendation
+was built on a mechanism that did not exist. Two components sharing a name turned out to be a
+16-line shell and a 630-line feature — different things, and no amount of metadata says so.
+
+**So before trusting any check, ask the one question: could this have seen the thing it is
+reporting on?** If it could only see a proxy — an exit status, a count, a path, a name — then it
+can only tell you about the proxy. **Open the file. Read the output. Count what actually ran.**
+
+**And when a check of yours turns out to have been blind, say which one it was and who it
+misled** — all four of these were caught by a peer, not by the station that made them.
 
 **First, prove the run happened. Absence of failures is not evidence that anything passed** —
 that is standing order 10 wearing a different hat, and gates are where it does the most damage.
