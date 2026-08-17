@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 4.4.0
+version: 5.0.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -212,56 +212,16 @@ The binding is a tool call, so make it one:
    The Bash tool has no tty of its own (`tty` returns *not a tty*), but the `claude` process
    above it does — walk up the parents until one has a real tty.
 
-   **Write it to a file and run the file. Do not paste it as a compound command.** A
-   worktree-isolated session refuses the inline form — see the shape rule above; `$$` and the
-   loop are enough on their own, and nothing in this script touches git. Running a *file* is one
-   plain command, so the guard is satisfied with no change to the logic.
-
-   **Simplest alternative, if you would rather not write a file:** run the plain command
-   `ps -o pid,ppid,tty,command -ax | grep claude`, read your own tty out of the output yourself,
-   then issue a plain `osascript` with that tty as a **literal**. Two plain commands, no `$$`, no
-   loop, nothing for the guard to object to. If you have received a message from another station,
-   the `from=` socket number **is that station's pid** — so you can also identify yourself by
-   elimination, which needs no process walk at all.
+   **The script ships with this skill — do not paste it inline.** A worktree-isolated session
+   refuses a pasted multi-line block (`$$`, loops and heredocs all trip the static-verification
+   guard; see the shape rule above). Running a file is one plain command:
 
    ```bash
-   cat > "$SCRATCHPAD/label-tab.sh" <<'EOF'
-   #!/bin/bash
-   # label-tab.sh <CALLSIGN> — pin a call-sign to this session's own Terminal tab
-   CALLSIGN="$1"
-   [ -z "$CALLSIGN" ] && { echo "usage: label-tab.sh <CALLSIGN>" >&2; exit 2; }
-   p=$$; MYTTY=""
-   while [ "$p" -gt 1 ]; do
-     t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
-     if [ -n "$t" ] && [ "$t" != "??" ]; then MYTTY="/dev/$t"; break; fi
-     p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
-   done
-   [ -z "$MYTTY" ] && { echo "FAILED: no tty found in the parent chain" >&2; exit 1; }
-   osascript <<AS
-   tell application "Terminal"
-     repeat with w in windows
-       repeat with t in tabs of w
-         if tty of t is "$MYTTY" then
-           set custom title of t to "$CALLSIGN"
-           return "$MYTTY" & " -> " & (custom title of t)
-         end if
-       end repeat
-     end repeat
-     return "NO-MATCH for $MYTTY"
-   end tell
-   AS
-   EOF
-   bash "$SCRATCHPAD/label-tab.sh" CHANNELS
+   bash <skill-dir>/label-tab.sh CHANNELS
    ```
 
-   **Two guards in there earn their place, and both came from a station that ran it for real:**
-
-   - **Abort if the tty walk yields nothing.** An empty `MYTTY` makes `if tty of t is ""` match
-     no tab, and the script then *reports success by silence*. A station that believes it is
-     labelled and is not is worse than one that knows it failed.
-   - **Read the title back from the matched tty and return it**, and return `NO-MATCH` when
-     nothing matched. Otherwise your only evidence is that the script did not error, which is not
-     evidence that the right tab changed.
+   It finds its own tab by tty, aborts loudly if the tty walk yields nothing, and reads the title
+   back so a silent no-op cannot pass as success. Prints `<tty> -> CHANNELS`, or `NO-MATCH`.
 
    **Verified 2026-08-17**, both halves. The tty walk resolved `/dev/ttys000` through
    `zsh → claude → login`, and the tab matched on it regardless of which window was frontmost.
@@ -365,354 +325,49 @@ the point is that the knowledge survives the window, not that someone said "roge
 
 ## Countermeasures — when it has already gone wrong
 
-Everything above is about *preventing* collisions. This is what to do once one has happened.
-
-**Say it out loud first.** The instinct is to quietly fix it before anyone notices. That is how
-a small mess becomes an unrecoverable one, because two people then "fix" it in opposite
-directions at the same time.
-
-```
-ALL HANDS — Countermeasures. My commit 475fbc3 swallowed ~190 lines of two other
-            stations' uncommitted work and I have already pushed it. Nothing is
-            lost; the content is intact on main. Do not pull-rebase or revert
-            until I say all clear. Investigating now. Out.
-```
-
-| What went wrong | Countermeasure |
-|---|---|
-| **You committed someone else's work** | **Do not rewrite pushed history.** Say so, name whose work it was, correct the record in the next commit. A wrong commit message costs far less than a rebase everyone must recover from |
-| **A sweep broke something halfway** | Call **all clear anyway**, stating it failed. A hold nobody releases freezes every station. Then fix forward |
-| **Two stations edited the same file** | Neither reverts. Keep **both** changes, in order, and say in the message that it holds two stations' work |
-| **You pushed something wrong** | Nobody pulled it yet — fix it. They did — **fix forward with a new commit.** Rewriting shared history breaks everyone's copy |
-| **A station went quiet holding work** | Recovery, not deletion. Find it, park it, record branch **and newest commit** |
-| **Main is broken** | **Mayday.** Everyone stops pushing until it is green again |
-
-**The rule underneath all of these: prefer a visible mess to an invisible fix.** Every row says
-"tell people" before it says "repair", because the repair is usually easy and the confusion is
-not.
+**Say it out loud first.** The instinct is to quietly fix it before anyone notices. That is how a
+small mess becomes an unrecoverable one, because two people then "fix" it in opposite directions
+at the same time. **Prefer a visible mess to an invisible fix.**
 
 **Never fix by deleting.** No `git checkout --` on work you did not write, no bare `git stash`,
 no dropping a stash you have not read. Those turn a recoverable mess into a real loss.
+**Never rewrite pushed history** — fix forward.
 
----
+→ **Full procedures per failure mode: `references/countermeasures.md`.** Read it when something
+has actually gone wrong, not before.
 
-## Deploying a station
 
-**"Deploy" here always takes a station name** — *deploy Frontend*, *deploy a second Backend*.
-It means put a session on post with its own workspace and call-sign.
+## Deploying a station — Control only
 
-⚠️ **This is not the software meaning of deploy.** Shipping code to production is a different
-thing entirely. Where both could be meant, say **"ship to production"** for one and **"deploy a
-station"** for the other. Never say a bare "deploy" in a repo where both are possible.
+**"Deploy" here means putting a session on post with its own workspace and call-sign.** It is not
+the software meaning; say **"ship to production"** for that, and never a bare "deploy" in a repo
+where both are possible.
 
-```
-CONTROL TO ALL STATIONS — Deploying a second station on checkout. Call-sign
-                          FRONTEND-BRAVO, branch lane/frontend-bravo. It takes
-                          the payment step; FRONTEND-ALPHA keeps the cart.
-                          Board updated. Out.
-```
+`deploy` cuts the post, spawns the session **named `--name <CALLSIGN>`**, lets it identify itself,
+and **verifies the row carries its address** — a deploy that ends with a 🚧 row and no session
+name has produced a lie, not a station.
 
-### Deploy does the whole thing — cut, spawn, identify, verify
+**Before deploying, ask whether the work splits — and whether the station can work RIGHT NOW.**
+A station blocked behind a shared blocker still costs a board row, a radio check and every
+broadcast it reads. Station count tracks *gateable work*, not ambition.
 
-`station <name>` cuts a post and stops. **`deploy <station>` carries it all the way to a manned
-station with nobody touching a keyboard.** Four steps, and it is not finished until the fourth
-one passes:
+→ **Terminal recipes, spawn config, verification and the known stalls:
+`references/deploying-stations.md`.** Control reads it when deploying; stations never need it.
 
-**1 · Cut the post.** Exactly `station <name>`: worktree, branch, copy the ignored instruction
-files, write the row, push it.
-
-**2 · Spawn the session** — in whatever terminal *this* user actually runs, the way *they* want
-it. Everyone's machine differs: macOS Terminal, iTerm2, VS Code, Windows Terminal, a Linux
-terminal. **Ask once, remember it, never ask again.**
-
-#### Read the config first, and write it if it isn't there
-
-**`~/.claude/mission-control.json`** — per-machine, user-level:
-
-```json
-{ "spawn": {
-    "platform": "darwin", "terminal": "Apple_Terminal",
-    "placement": "tab", "launchCommand": "claude", "permissionMode": null } }
-```
-
-`launchCommand` is the **bare binary only**. `deploy` appends `--name "$CALLSIGN"` and the
-identify prompt itself — do not bake either into the config, or every station on this machine
-spawns wearing one call-sign.
-
-**This file must never live in the repo.** Preferences are per-person: a clone carrying the
-author's terminal choice is the same class of bug as a workspace missing its gitignored
-`CLAUDE.md` — it looks configured and is wrong. **The repo ships the recipes; the machine
-holds the choice.** That is also the whole answer to "make it work for whoever clones this":
-there is nothing to push, because the first `deploy` on their machine configures itself.
-
-On `deploy`:
-
-1. **Config exists** → use it, no questions.
-2. **No config** → detect, then **ask, then write it**:
-
-   | Signal | Means |
-   |---|---|
-   | `$TERM_PROGRAM=Apple_Terminal` | macOS Terminal.app |
-   | `$TERM_PROGRAM=iTerm.app` | iTerm2 |
-   | `$TERM_PROGRAM=vscode` | VS Code integrated terminal |
-   | `$TERM_PROGRAM=WarpTerminal` / `ghostty` | Warp / Ghostty |
-   | `$WT_SESSION` set | Windows Terminal |
-   | `uname -s` = `Darwin` / `Linux`; `$OS=Windows_NT` | the platform underneath |
-
-   Then **one** `AskUserQuestion`: tab or window, and confirm the detected terminal. Write the
-   answer to the config and carry on. **Detection alone is not consent** — a detected terminal
-   still gets confirmed once, because `$TERM_PROGRAM` says where *Control* is running, not where
-   the user wants stations to appear.
-
-#### Always spawn with `--name <CALLSIGN>`
-
-**Every recipe below passes `claude --name "$CALLSIGN"`, and none of them is optional.** That
-flag sets the session's display name, which is simultaneously:
-
-- what **`ListAgents` shows other stations**, so the call-sign *is* the `SendMessage` address;
-- what the **user sees on that window's prompt box** and terminal title, so they can tell four
-  identical windows apart at a glance;
-- what the station **knows about itself** — closing the bootstrap trap described under *Who is
-  who*, where an unnamed session cannot read its own address and therefore cannot honestly fill
-  in its own row.
-
-**Verified 2026-08-17:** a session spawned `--name TESTRIG-CALLSIGN` appeared to its peers as
-`TESTRIG-CALLSIGN [eefa7c]`. Without the flag the same session would have listed as
-`ecom-nexus-oss-4d [9a7a96]` — an address nobody can remember, say aloud, or match to a row.
-
-Pass the call-sign in **exactly the form the board uses** — same case, same spelling. `CHANNELS`
-on the board and `channels` in `ListAgents` is a directory that fails at its one job.
-
-#### The recipes
-
-**macOS Terminal.app — verified 2026-08-17.** A tab needs `System Events` to press ⌘T, which is
-*Accessibility*, a **different** grant from the *Automation* one `do script` uses. Capture the
-tab ⌘T just made and write into **that reference** — never `in front window`, which opens
-another window instead:
-
-```bash
-CMD="cd '$WT' && claude --name '$CALLSIGN' '/mc identify $CALLSIGN'"
-osascript <<AS 2>/dev/null || osascript -e "tell application \"Terminal\" to do script \"$CMD\""
-tell application "Terminal" to activate
-delay 0.4
-tell application "System Events" to keystroke "t" using command down
-delay 0.8
-tell application "Terminal"
-  set theTab to selected tab of front window
-  do script "$CMD" in theTab
-end tell
-AS
-```
-
-Missing Accessibility fails with `osascript is not allowed to send keystrokes. (1002)`; match on
-that and fall back to a window. **Say which one you got** — a window when they asked for a tab
-is not a silent detail — and give the path: *System Settings → Privacy & Security →
-Accessibility → enable Terminal*, then restart Terminal.
-
-**iTerm2 — recipe shipped, NOT verified.** `tell current window to create tab with default
-profile`, then `write text` into `current session` — the same `cd … && claude --name '$CALLSIGN'
-'/mc identify $CALLSIGN'` string as above. Say it is untested when you use it.
-
-**Windows Terminal — recipe shipped, NOT verified.**
-`wt -w 0 nt -d "<worktree>" cmd /k claude --name "<CALLSIGN>" "/mc identify <CALLSIGN>"`.
-
-**VS Code — there is no recipe, and do not invent one.** Nothing outside the editor can open its
-integrated terminal reliably. Use the fallback.
-
-**The fallback is not a failure.** For any terminal you cannot drive — VS Code, Warp, Ghostty,
-an unknown `$TERM_PROGRAM`, a missing grant — **print the exact command and let the human paste
-it**:
-
-```
-Can't drive VS Code's terminal from outside. Open a terminal and paste:
-  cd '<worktree>' && claude --name 'CHANNELS' '/mc identify CHANNELS'
-```
-
-That still beats the old flow, because the call-sign and path are filled in and cannot be
-mistyped. **Never guess AppleScript or PowerShell for a terminal you cannot see.**
-
-**Keep `--name` in the pasted command too.** It is the easiest thing to drop when a human is
-copying by hand, and dropping it is silent — the station comes up, works fine, and is simply
-unaddressable by its call-sign until someone reads its handle back to it over the radio.
-
-#### Two traps that already cost a session
-
-**A slash command DOES execute when passed as the CLI prompt** — measured 2026-08-17, `claude -p
-"/some-command"` runs it rather than treating it as text. So `claude '/mc identify X'` is sound;
-if a station fails to identify, the launch is not the reason. Look at the permission prompt.
-
-**Do not verify a tab by counting tabs.** `count of tabs of window` cannot see macOS window
-tabs — each is a *separate window* reporting exactly `1` tab, so a spawn that lands as a tab
-reads as "a new window" through that API. On 2026-08-17 that cost four probes and a wrong
-conclusion: Accessibility was already granted, tabs *were* appearing, and the measurement said
-otherwise. **The user's screen is the instrument.** Report which call succeeded, and ask what
-they see rather than counting. Check your checks: confirm the identifier identifies what you
-think it does.
-
-**Yes, deploy runs `cd` — that does not contradict the rule above.** The rule is that a *human*
-must never be the one to remember it, because when they skip it the post stays empty and the
-board lies. A script cannot forget. And `identify` still checks its own directory in step 3, so
-it is correct either way.
-
-**3 · Let the session identify itself.** It comes up already inside the lane, runs `identify`,
-takes the row, and writes its own address onto it — which, because you spawned it
-`--name <CALLSIGN>`, it already knows without having to ask anyone.
-
-**4 · Verify — and this is the step that matters.** Poll `ListAgents` until **the call-sign
-appears as a session name** — that is the confirmation the `--name` took — then **read the board
-back from `origin` and confirm the row carries it.** Liveness is not the proof; the address on
-the pushed row is, because that is the thing every other station needs in order to call it.
-
-**Read the board back from the remote, not from a local copy.** A station that verifies its own
-push against its own working tree has checked nothing.
-
-#### Live session, reserved row: four causes, and you must not guess which
-
-A station that is alive while its row still reads 🔒 is the **two-sided lie** — a session nobody
-can address, and a post that reads free while somebody sits in it. Four things cause it:
-
-| Cause | Tell |
-|---|---|
-| **Waiting on a permission prompt** | Station alive, silent, no traffic. The prompt is in a tab nobody is looking at |
-| **Cannot read its own address** | It is *asking* for its name. `ListAgents` never shows a session itself — see the bootstrap trap |
-| **The human interrupted `identify` mid-flow** | It stopped at a step *by instruction* and is waiting on the human to resume. Observed 2026-08-17 |
-| **The session died** | Calls bounce. Now it is a recovery job, not a deploy job |
-
-**Ask which one it is. Do not diagnose it from the outside.** On 2026-08-17 Control announced a
-stuck permission prompt; the station replied that there was none — the user had typed
-`/mc identify`, interrupted it, and asked for a radio check instead, so it had stopped at step 3
-exactly as told. Sending the user to a tab to approve a dialog that does not exist costs them a
-context switch and costs you credibility on the next call, when it *is* the prompt.
-
-The three that are not death look identical from Control's chair: live session, stale row, no
-traffic explaining why. One question resolves it; a guess resolves nothing and may mislead.
-
-**When it IS the prompt, end the deploy report by sending the user to the tab:**
-
-```
-CHANNELS is up in a new tab. Switch to it and approve the push — until you do,
-it can't claim its row and no other station can call it.
-```
-
-Deploy **surfaces** this; it does not solve it. **Never spawn with a bypassed permission mode to
-make the prompt go away.** Control does not widen another session's permissions for its own
-convenience — that is the user's setting, in their own config, chosen deliberately.
-
-**If verification fails, say the deploy failed.** A spawned session that never identified is
-worse than no deploy at all — there is now a live window nobody can address, holding a post the
-board still shows as reserved. Report it, say which tab it is in, and let the user decide.
-
-**Retrying a failed deploy must be safe.** A station that got half-way may have already written
-part of its row. `identify` therefore has to be idempotent on the **board row** as well as on
-the worktree: re-running it updates the row in place rather than adding a second one, and a
-station finding its own call-sign already on the board with its own session name should treat
-that as success, not a collision.
-
-### What deploy cannot do for you
-
-Say all three out loud rather than discovering them mid-deploy:
-
-- **The spawned session has its own permissions**, and will prompt for its own pushes and edits.
-  **Never paper over this by deploying with a bypassed permission mode.** Control does not get to
-  widen another session's permissions because it is convenient — that is the user's setting to
-  make, not deploy's to assume.
-- **Every spawned session bills.** Announce how many you are opening *before* opening them.
-- **Two separate macOS grants, and they fail differently.** *Automation* lets you open a window;
-  *Accessibility* lets you open a tab. Having the first tells you nothing about the second —
-  observed 2026-08-17: the window spawned with no dialog at all, and the tab failed outright
-  with `not allowed to send keystrokes (1002)`. If a spawn fails before *any* dialog appears,
-  suspect the sandbox rather than macOS, and surface it instead of trying variations.
-
-**Deploying cuts the post; identifying mans it.** A row is 🚧 only once a session name is on it.
-A deploy that ends with a 🚧 row and no session name has produced a lie, not a station.
-
-**Before deploying another station, ask whether the work actually splits.** Two stations in one
-area with unclear boundaries collide more than one station working through it in order. Split
-by *what each owns*, or do not split.
-
-**And ask the harder question first: can this station work RIGHT NOW?** A station with no
-gateable work still costs a board row, a radio check, check-ins and every broadcast it must read.
-On 2026-08-17 three of four stations sat idle because the Docker stack was down — the fleet paid
-full coordination cost for one station's worth of output. **Deploy against available work, not
-against the shape of the backlog.** If the blocker is shared (services down, a decision pending),
-deploying more stations multiplies the waiting, it does not divide it.
-
----
 
 ## Stations go down. Sweeps go across.
 
-A **station** owns an area and works inside it. Two stations rarely collide, because they
-touch different files.
+A **station** owns an area. A **sweep** owns a *change* that touches files several stations own —
+a library upgrade, a shared rename, a design-system pass.
 
-But plenty of real work does not fit inside one area — upgrading a library, renaming a shared
-model, applying a design system to every screen, a security pass. That work **crosses every
-area at once**. Call it a **sweep**.
+**The test:** does this change touch files owned by more than one station? If yes it is a sweep.
 
-|  | **Station** (down) | **Sweep** (across) |
-|---|---|---|
-| Owns | a set of paths | a *change*, not paths |
-| Touches | its own area | files other stations own |
-| Conflicts with | rarely anyone | **everyone, by definition** |
-| Lives | as long as the work | should be **as short as possible** |
-| Claims | a lane | **time**, plus every station's acknowledgement |
+**Stations have right of way. A sweep has to ask.** Announce it, collect every live station's
+acknowledgement, land it fast, and **always call all clear — even if the sweep failed.** A
+standby nobody lifts freezes the whole fleet. **Only one sweep at a time.**
 
-**The test:** *does this change touch files owned by more than one station?* If yes, it is a
-sweep, and the rules below apply. If no, it is ordinary station work.
+→ **Full procedure, the two sweep modes, and how to put one on the board: `references/sweeps.md`.**
 
-### The rule that keeps this sane
-
-**Stations have right of way. A sweep has to ask.** A sweep may not simply start editing
-another station's files because its change is "small" or "mechanical" — that is exactly how one
-session's work ends up inside another's commit.
-
-### Running a sweep
-
-**1 · Announce it before touching anything.** All stations, with a real time estimate:
-
-```
-SWEEP TO ALL STATIONS — Standby. Renaming `Order.total` to `Order.total_minor`
-               across every module. Touches ~40 files in backend, frontend and
-               integrations. Mechanical, no logic change. Expect 20 minutes.
-               Please don't commit in those paths until I call all-clear.
-               Acknowledge when ready. Out.
-```
-
-**2 · Wait for every live station to acknowledge.** A station that is mid-edit in an affected
-file says **standby** and finishes first. A sweep that starts before acknowledgements is how
-work gets lost.
-
-**3 · Pick the mode that fits:**
-
-| Mode | When | How |
-|---|---|---|
-| **Fast sweep** | mechanical, minutes, no judgement calls | everyone holds, you sweep, land it, call all-clear. **Land it fast — the longer it stays open, the more it collides** |
-| **Rolling sweep** | long, needs judgement per area | go area by area. Call each station as you reach it, take only that slice, hand it back when done. Stations keep working everywhere else |
-
-**Prefer fast.** If a sweep can't be done in one short pass, it is usually better split into
-per-area jobs that each station does inside its own lane — then it stops being a sweep at all.
-
-**4 · Only one sweep at a time.** Two sweeps crossing each other is unrecoverable. If a sweep
-is running, the next one waits.
-
-**5 · Call all-clear when it lands.**
-
-```
-BACKEND TO SWEEP      — Roger, standing by. I have uncommitted work in
-                        orders/models.py — give me two minutes. Standby.
-BACKEND TO SWEEP      — Committed and pushed. Go ahead.
-
-SWEEP TO ALL STATIONS — All clear. Order.total is now total_minor everywhere,
-                        pushed to main. Pull before you continue. Out.
-```
-
-**6 · Put it on the board as a sweep**, not a station row — so it is obvious it crosses
-everything and when it ends:
-
-```
-| SWEEP: rename Order.total → total_minor | crosses all | started 14:05, est 20 min | acknowledged: backend, frontend |
-```
-
----
 
 ## How stations talk
 
@@ -961,6 +616,24 @@ Integrations' code, and Integrations was interrupted once instead of five times.
 
 ---
 
+## Reference files — loaded on demand, not up front
+
+**This skill is split so a station does not pay for Control's playbook.** `SKILL.md` holds
+everything a station needs on post. The rest loads only when the command in hand calls for it:
+
+| File | Read it when | Who |
+|---|---|---|
+| `references/deploying-stations.md` | deploying a station — terminal recipes, spawn config, verification, known stalls | Control |
+| `references/control-playbook.md` | the board report, assigning a post, sitreps, fleet state, alerting a human, recovering lost work, standing a station down | Control |
+| `references/sweeps.md` | a change crosses areas several stations own | whoever runs the sweep |
+| `references/countermeasures.md` | something has already gone wrong | anyone, at the time |
+| `label-tab.sh` | at identify — pins your call-sign to your terminal tab | every station |
+
+**Do not read them speculatively.** The whole point of the split is that four stations no longer
+each carry Control's 25KB of procedure they will never run. **Every KB in `SKILL.md` is paid once
+per station, so it multiplies with fleet size** — that fixed cost is the parallelism tax, and it
+is what makes four sessions cost more than one doing the same work rather than the same.
+
 ## Commands
 
 | Type this | What happens |
@@ -1005,99 +678,6 @@ grep -rilE "mission.control|work.lock|worktree|station" \
 
 ---
 
-## The board — `/mission-control`
-
-`docs/WORK-LOCKS.md` is the board. **It is the one place that answers "who holds what, and
-what's next."** Keep it short enough to read in ten seconds — it is not a history.
-
-Gather:
-
-```bash
-ROOT=$(git rev-parse --show-toplevel); cd "$ROOT"
-git fetch -q origin 2>/dev/null
-echo "── workspaces ──";     git worktree list
-echo "── branches ──";       git branch -vv | head -20
-echo "── shared copy ──";    git log --oneline -1 origin/main
-echo "   ours ahead:  $(git rev-list --count origin/main..HEAD 2>/dev/null)"
-echo "   ours behind: $(git rev-list --count HEAD..origin/main 2>/dev/null)"
-echo "── unsaved ──";        git status --short
-echo "── parked ──";         git stash list
-echo "── services ──";       docker compose ps --format '{{.Service}} {{.Status}}' 2>/dev/null
-```
-
-Then `ListAgents` for who is actually alive, and read the board.
-
-Report it as a watch report, in sentences:
-
-```
-BOARD — 3 stations manned
-
-  BACKEND       orders refund path        lane/backend    working
-  FRONTEND      checkout screen           lane/frontend    working
-  INTEGRATIONS  —                         —                   not manned
-
-  ⚠ The board says Integrations holds the eBay audit, but that session is gone.
-  ⚠ Two files unsaved, and they are not yours.
-  NEXT: C25 is unowned and blocks the eBay work.
-```
-
-Always end by naming **the single most urgent thing** in one sentence.
-
----
-
-## Assign a station — `/mission-control station <name>`
-
-Never work in the shared copy of the files.
-
-**1 · Look first.** Run the board. Stop and explain if the station is already manned, tests
-are running, or someone else's unsaved files are sitting in the tree.
-
-**2 · Radio check.** `ListAgents`; if anyone is live, ask every one of them for its
-call-sign, branch and the paths it holds — then record the answers on the board so this
-station can be reached by call-sign later. **Ask — never assume.** You can usually check a fact in under a minute; several people
-agreeing from memory is not proof.
-
-**3 · Give it its own workspace.**
-
-```bash
-ROOT=$(git rev-parse --show-toplevel)
-STATION=<name>
-git -C "$ROOT" fetch origin
-git -C "$ROOT" worktree add "$ROOT/.claude/worktrees/$STATION" -b lane/$STATION origin/main
-```
-
-**4 · Copy in the instruction files.** A new workspace does **not** include files git was told
-to ignore — and project guides often are (they hold private links). Without this the station
-starts with no orders at all:
-
-```bash
-for f in CLAUDE.md AGENTS.md frontend/CLAUDE.md; do
-  [ -f "$ROOT/$f" ] && git -C "$ROOT" check-ignore -q "$f" \
-    && mkdir -p "$(dirname "$ROOT/.claude/worktrees/$STATION/$f")" \
-    && cp "$ROOT/$f" "$ROOT/.claude/worktrees/$STATION/$f" && echo "copied $f"
-done
-```
-
-Copy them. Do **not** un-ignore the file — it is ignored on purpose.
-
-**5 · Post it on the board, and push immediately** — before any code. The row must carry:
-
-- **station** and **who** — the call-sign
-- **what it holds** — the job, and *the modules and paths it will touch*
-- **what's next** — the trajectory: what it will touch after this
-- **branch** and **workspace**
-- **date**
-
-The *modules and paths* and *what's next* columns are what make dependency checks possible.
-A row that only says "working on orders" tells another station nothing.
-
-**Push it before writing code.** This is the one part with teeth: if two stations claim the
-same row and both push, **GitHub rejects the second push** and forces them to see each other.
-
-**6 · Report back**: station, workspace, branch, and its test database name.
-
----
-
 ## Call a station — `/mission-control call <station>`
 
 For reaching **your own sessions**, instantly.
@@ -1120,37 +700,6 @@ Carry the three things: who you are, what you need specifically, why it matters 
 collects the replies into one report.
 
 ---
-
-## Sitrep — `/mission-control sitrep`
-
-**The board says what stations *claimed*. A sitrep says what is *true right now*.** Those drift
-apart constantly, because a row is written once and the work moves every minute.
-
-Ask every live station for five things, and collect the replies into **one** report:
-
-1. **call-sign**, and its `ListAgents` name
-2. **where it actually is** — its `pwd` and branch, not what the board says
-3. **what it holds** — the paths it has open right now
-4. **what is uncommitted or unpushed** — the part that dies with the window
-5. **what is blocking it**, if anything
-
-**Ask for the working directory explicitly, every time.** It is the one fact that catches a
-session which came up in the wrong place, and it is the only one a station cannot get wrong.
-A station that reports the repo root instead of its lane is not on post, whatever the board says.
-
-Then **reconcile the replies against the board and fix the board** — a sitrep that ends without
-correcting a stale row was just a conversation. Name the drift out loud:
-
-```
-SITREP — 3 stations, 2 corrections
-
-  CHANNELS   ecom-nexus-oss-4d   lane/channels    apps/integrations/adapters   clean
-  FRONTEND   ecom-nexus-oss-1e   worktree-design-foundation-shell             3 unpushed
-  BACKLOG    —                   —                                            NOT MANNED
-
-  ⚠ BACKLOG's row said working. Nobody is behind it. Flipped to reserved.
-  ⚠ FRONTEND has 3 commits on one disk. Told it to push before anything else.
-```
 
 ## Radio silence — `/mission-control silence` and `/mission-control speak`
 
@@ -1197,27 +746,6 @@ Three habits, and the first two are non-negotiable:
   stale items above, and it costs less than the correction would have.
 - **Control: when you release a hold, tell the station that was waiting.** A release nobody hears
   is still a hold.
-
-## Fleet state — `/mission-control state <normal | sweep running | mayday>`
-
-One line at the top of the board saying what the **whole fleet** is doing, so no station has to
-infer it from who is talking:
-
-| State | Means | What stations do |
-|---|---|---|
-| **normal** | ordinary work | carry on |
-| **sweep running** | a cross-area change is open | do not commit in the swept paths until all clear |
-| **mayday** | main is broken, or work is being lost | **stop pushing.** Nothing lands until it is green |
-
-**Named, not numbered.** A number has to be looked up, and half the people who look it up get
-the direction backwards — which is worse than having no state at all, because they act
-confidently on it. Three words nobody has to learn beat five levels everybody misreads.
-
-**The state is on the board, not in someone's memory.** Set it when it changes and clear it the
-moment it is over — a `mayday` nobody lifted freezes the whole fleet just as surely as a sweep
-that never called all clear.
-
----
 
 ## Dependency check — `/mission-control depends <module or path>`
 
@@ -1281,90 +809,6 @@ no-go into a go.**
 
 ---
 
-## Alert a person — `/mission-control alert`
-
-For reaching **a human collaborator**, not a session.
-
-**Messaging between sessions cannot reach another person.** It only reaches your own Claude
-Code windows. Never say you "told the team" when you messaged your own stations.
-
-Check what exists before promising it:
-
-```bash
-gh auth status
-gh repo view --json hasIssuesEnabled,nameWithOwner
-gh api repos/{owner}/{repo}/collaborators --jq '.[].login'
-```
-
-**The only channel that actively reaches someone** is an assigned issue — it sends a real
-email, so they don't need to pull or even have the repo open:
-
-```bash
-gh issue create \
-  --title "WIP: <the job> — held by <you>" \
-  --body  "Working this now on branch <branch>. Please don't start it.
-Touching: <modules/paths>. Next: <what you'll touch after>.
-I'll close this when it lands." \
-  --assignee <their-github-username>
-```
-
-Then also: **push the board row** (the durable record and the push race), and **push your
-branch early** so the work survives even if your station dies.
-
-**Before posting: show the user the exact title and body and get a yes.** It emails a real
-person. Use their real username from the collaborator list — don't guess. If `gh` isn't
-authenticated or issues are off, **say so** and fall back to the board, telling the user
-honestly that the person won't see it until they pull.
-
-**Be straight about the limit: there is no lock in git.** None of this stops someone editing
-the same file. What it buys is that they *know*, early, through a channel they watch.
-
----
-
-## Find lost work — `/mission-control recover`
-
-When a station has gone quiet, look in this order and **report before touching anything**:
-
-```bash
-git status --short                          # unsaved files, possibly not yours
-git log --oneline origin/main..HEAD         # commits never pushed
-git stash list --date=iso                   # parked changes
-git worktree list                           # abandoned workspaces
-git branch -vv --no-merged origin/main      # branches still holding work
-```
-
-**Find out what something is before you touch it.** Run `git stash show -p` and read it. Don't
-ask around and don't trust memory — a confident, unanimous answer about who owned some parked
-changes has already turned out to be wrong, and thirty seconds of looking settled it.
-
-Then:
-
-- **Unsaved work you didn't write** → leave it, say it's there. Never `checkout --`, never a
-  bare `git stash`.
-- **Commits never pushed** → safe where they are. Don't push them; that's the user's call,
-  especially if the author is gone.
-- **An abandoned workspace with work in it** → record the branch **and its newest commit** on
-  the board. Pointing at the *first* commit hands over only part of the work.
-- **A row on the board with nobody behind it** → mark it **paused**, never leave it
-  "working" — that makes a free job look taken.
-- **Anything measured but not written down** → write it into the repo now.
-
----
-
-## Stand down — `/mission-control secure <station>`
-
-```bash
-git -C "$WT" add <name the files>            # never -A
-git -C "$WT" commit -m "..."
-git -C "$WT" push origin HEAD:lane/$STATION  # once pushed, anyone can pick it up
-# then mark the board row done or paused, with branch + newest commit
-git worktree remove "$WT"
-```
-
-Push **before** removing the workspace. Always.
-
----
-
 ## Standing orders
 
 1. **Never `git add -A`.** Name the files. This has already swept one station's unfinished
@@ -1396,30 +840,3 @@ At the end of a watch, progress goes into **`PROGRESS-LOG.md`** — use the proj
 progress-logging skill if it has one, rather than inventing a format.
 
 ---
-
-## If the project has no standing orders yet
-
-Offer to write `docs/MISSION-CONTROL.md`: which stations exist and what each owns; the
-workspace commands; the per-station test-database settings **checked against this project
-first**; what stays shared; how stations call each other; and the standing orders above.
-
-**Split stations by part of the product** — payments, storefront, admin — **not by activity**
-(one station writing, another testing). Testing is part of every job, so splitting that way
-makes every small task need two stations and a conversation. Confirm the split with the user
-before writing it down.
-
-**Check, don't assume, how this project names its test database.** For Django:
-
-```bash
-<test_service> bash -lc "python -c \"
-import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE','<settings>')
-django.setup(); from django.conf import settings
-print('database is called:', settings.DATABASES['default']['NAME'])\""
-```
-
-If you cannot prove each station gets its own database, **say so** and have one station run
-the tests for everyone. Never write down a guarantee you have not tested.
-
----
-
-*Mission Control by Chinmai Reddy (@chinmaireddy09), under the Fleet Command License 1.1.*
