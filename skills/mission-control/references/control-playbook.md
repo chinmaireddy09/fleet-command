@@ -163,7 +163,13 @@ gh api repos/{owner}/{repo}/collaborators --jq '.[].login'
 ```
 
 **The only channel that actively reaches someone** is an assigned issue — it sends a real
-email, so they don't need to pull or even have the repo open:
+email, so they don't need to pull or even have the repo open. **Assignment is being used as a
+delivery mechanism**, which is the whole trick and also the thing to be honest about in the
+body.
+
+**There are two reasons to alert a person, and they are not the same message.**
+
+**1 · "I am holding this — don't start it."** A claim, aimed at preventing duplicate work:
 
 ```bash
 gh issue create \
@@ -176,6 +182,36 @@ I'll close this when it lands." \
 
 Then also: **push the board row** (the durable record and the push race), and **push your
 branch early** so the work survives even if your station dies.
+
+**2 · "Nobody owns this — can you take it, or help?"** A *request*, and the one that actually
+gets used. It is a harder message to write well, because you are spending someone else's
+attention and asking them to act. **Open by defusing the assignment**, then give them enough to
+decide without reading your transcript:
+
+```bash
+gh issue create \
+  --title "<ID> — <the problem in one line> (unowned, needs an owner)" \
+  --body  "..." \
+  --assignee <their-github-username>
+```
+
+What the body has to carry, in this order — modelled on one that worked:
+
+| Section | Why it earns its place |
+|---|---|
+| **"Not blame, and not a claim"** | Say plainly that nobody is working it, that you assigned it **only so it reaches their inbox**, and that they may unassign themselves freely. Without this, an assignment reads as being volunteered |
+| **What it is** | The symptom, with the literal error text or the exact failing behaviour |
+| **What you checked, not assumed** | Cite `file:line`. *"The backend is innocent — this was checked"* is worth more than any amount of confident prose, and it stops them redoing your work |
+| **⚠️ How NOT to fix it** | If there is an obvious wrong fix, name it and say why it is worse than the bug. This is often the single most valuable paragraph |
+| **The findings that survive** | Numbered, so they can be split or handed on |
+| **Checked negative** | What you ruled out, so nobody re-tests it |
+| **Why it matters** | The consequence in product terms — what is unreachable, unsafe or lost while this stands |
+| **Caveat** | What you did *not* test, and on what stack. An honest scope beats an overclaim that collapses on their first attempt |
+| **Where the record lives** | The backlog ID and related IDs. The issue is the notification; **the repo is the record** |
+| **Provenance footer** | *"Filed from a Claude Code session on `<date>`. Findings from live QA; backend diagnosis read from the adapter."* So they know how much to trust each claim |
+
+**Verified 2026-08-16:** exactly this shape went out as an assigned issue, reached a real inbox,
+and was the mechanism that moved an unowned frontend dead end to someone who could take it.
 
 **Before posting: show the user the exact title and body and get a yes.** It emails a real
 person. Use their real username from the collaborator list — don't guess. If `gh` isn't

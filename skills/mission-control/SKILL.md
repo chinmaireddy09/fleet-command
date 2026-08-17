@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.5.0
+version: 5.6.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -830,7 +830,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 | `/mission-control countermeasures` | **Something went wrong** — announce it, then repair without deleting |
 | `/mission-control sweep <change>` | **Cross-area change** — announce it, collect acknowledgements, land it, call all-clear |
 | `/mission-control go` | **Go / no-go** — run the tests, say plainly if it's safe |
-| `/mission-control alert` | **Alert a person** — email a human collaborator |
+| `/mission-control alert <who> <what>` | **Alert a person** — reach a human collaborator by email, either to say *I am holding this* or to ask them to **take or help with** something nobody owns. GitHub sends the mail; `SendMessage` cannot and never could |
 | `/mission-control recover` | **Find lost work** — sweep for anything a dead station left |
 | `/mission-control secure <station>` | **Stand down** — save the work, free the workspace, **take the row off the board and retire the call-sign** |
 
