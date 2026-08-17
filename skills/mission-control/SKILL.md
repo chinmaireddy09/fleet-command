@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.0.0
+version: 5.1.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -31,9 +31,10 @@ time. Each one is a **station**. Your job is not to write their code — it is t
 what, spot when one station's work depends on another's, and **call between them so nobody
 guesses, waits, or duplicates.**
 
-**Speak plainly.** Use the call-signs below — you already know every one of them.
-Beyond those, use ordinary words. Say *"we lost contact with Frontend"*, never
-*"the frontend session went LOS"*. If a term needs explaining, it is the wrong term.
+**Speak plainly.** Use the call-signs on the board — that is where you learn them, and it is
+the only place they are true. Beyond them, use ordinary words. Say *"we lost contact with
+Frontend"*, never *"the frontend session went LOS"*. If a term needs explaining, it is the
+wrong term.
 
 **Only run when asked** — `/mission-control` or `/mc`. Never on the bare words "control",
 "status", "go", or "abort" in ordinary conversation.
@@ -48,9 +49,17 @@ force-push. Never push a commit you did not write.
 
 Each session is assigned one station.
 
-**A call-sign works when hearing it tells you instantly whether it concerns you.** So name
-stations after **the part of the product they own** — never after ship departments. "Supply"
-and "CIC" mean nothing to anyone; `PAYMENTS` and `CHECKOUT` mean everything.
+**There is no fixed roster and no ceiling on how many stations run.** A call-sign is cut when
+there is work for it and retired when that work lands, so the fleet is however many sessions the
+jobs in front of you need — three today, nine tomorrow, two the day after. **The board is the
+roster.** The table below is seed names, not a closed set, and nothing in this skill breaks
+because a call-sign it has never seen appears on the board.
+
+**A call-sign works when hearing it tells you instantly whether it concerns you.** That is the
+whole naming rule, and it covers both shapes a station takes: one that holds **a part of the
+product** (`PAYMENTS`, `CHECKOUT`) and one cut to drive **a single job** (`CHECKOUT-REFUNDS`,
+`ORDER-IMPORT`). Never name a station after a ship department — "Supply" and "CIC" mean nothing
+to anyone. A call-sign lives exactly as long as the work behind it.
 
 Sensible defaults, if a project hasn't named its own:
 
@@ -71,8 +80,10 @@ The board records who is actually running it.
 `CHANNELS`, `FINANCE`, `FRONTEND`, `PLATFORM`. Then *"Control to Finance"* is understood by
 anyone who has seen the codebase, with nothing to learn.
 
-Read the project's own `MISSION-CONTROL.md` first (Step 0) — its station names win. Small
-projects often run only **CONTROL**, **BACKEND** and **FRONTEND**.
+Read the project's own `MISSION-CONTROL.md` first (Step 0) — its station names win. It lists the
+**standing** stations, the ones an area always has; the job-shaped ones are cut and retired as
+the work arrives and do not need writing down in advance. Small projects often run only
+**CONTROL**, **BACKEND** and **FRONTEND**.
 
 ---
 
@@ -93,7 +104,9 @@ invisible to everyone else.
 ### 3 · It identifies itself — `/mission-control identify <call-sign>`
 
 The first thing a new session does. It shows what is already taken, suggests what is free,
-and **lets you type your own**:
+and **lets you type your own — a name nobody has used before is a normal answer, not an
+error.** Typing one creates the station: the call-sign exists from the moment its row is on
+the board, and no list has to be edited first.
 
 ```
 MISSION CONTROL — identify
@@ -258,9 +271,15 @@ can reach it. Record what `ListAgents` prints, exactly.
   what you own, which is the entire point.
 - **Use a team name when the area isn't decided yet** — `ALPHA`, `BRAVO`, `CHARLIE`, `DELTA`,
   `TIGER`, `FALCON`. Fine as a placeholder; rename once the work is clear.
-- **Two sessions in one area?** Add a letter: `FRONTEND-ALPHA`, `FRONTEND-BRAVO`. This is what
-  letters are actually for.
+- **Two sessions in one area?** The second one names itself after **its job**, not the area with
+  a live holder in it: `CHECKOUT` keeps the area, `CHECKOUT-REFUNDS` takes the piece. Falling
+  back to a letter — `FRONTEND-ALPHA`, `FRONTEND-BRAVO` — works when the split has no name yet,
+  but a letter tells a listener nothing and the job name tells them everything.
 - **Never take a call-sign already on the board.** Check first.
+- **A retired call-sign is free, but not instantly safe to reuse.** While the old work is still
+  landing or in review, a human's `@checkout` and any relay already in flight will reach the new
+  holder carrying the old intent. Take a fresh name until the previous row is gone *and* the
+  previous session is confirmed closed.
 - **Anything the user types wins** — suggestions are suggestions.
 
 **If you came up unnamed, say so once and offer the fix.** A running session cannot rename
@@ -320,6 +339,35 @@ CONTROL TO FRONTEND — Roger, board shows paused with the commit. All clear to
 
 **If Control is not manned**, do the same thing into the board and the progress log instead —
 the point is that the knowledge survives the window, not that someone said "roger".
+
+#### Then the call-sign is retired — the row comes off the board
+
+**The board shows the live fleet, nothing else.** Once a station has handed over, its row is
+**deleted**, not left sitting there done. The archive is git history and the progress log, which
+is where the skill already says durable knowledge belongs; a board that also carries every
+finished station stops being readable exactly when the fleet is busiest, and `identify` starts
+offering a list of ghosts.
+
+**Delete in this order, and never out of it:**
+
+1. Handover complete — work pushed, findings written down, Control acknowledged.
+2. The station marks its own row **paused** — it is still running, so it is still on the board.
+3. The session **closes, or re-identifies as something else.**
+4. *Then* **Control deletes the row** and pushes. With no Control manned, the next station to
+   come on watch clears the rows it can *prove* are dead — a call-sign that **had** a session,
+   completed its handover, and is now absent from `ListAgents`. Never on a hunch, and **never a
+   reserved row**: a post with no address was cut for someone who has not arrived yet, and it is
+   waiting, not dead.
+
+**Never delete the row of a station that is still running.** That reproduces the exact failure
+this whole procedure exists to prevent — a session doing real work that nobody can see, holding
+paths nobody knows are held. A live station whose work is merely finished is **paused**, not
+deleted.
+
+**Unfinished work is not a reason to keep the row** — it is a reason to write down where it is
+parked. The row is deleted with the branch and newest commit recorded in the log, so the next
+station picks it up from the repo rather than from a stale row claiming a holder who left hours
+ago.
 
 ---
 
@@ -435,7 +483,10 @@ is worse than the traffic you saved. See *Coming back* under radio silence.
 **And the biggest saving is structural: do not deploy a station that cannot work right now.**
 Three of today's four had nothing to gate because Docker was down — they still cost check-ins,
 radio checks, board rows and coordination. **Station count should track gateable work, not
-ambition.** One station working through a queue in order beats four stations negotiating over it.
+ambition.** Nothing caps how many stations may exist, and that is exactly why the discipline
+has to come from the work: every station added is another row read, another broadcast delivered
+and another check-in answered, by everyone. One station working through a queue in order beats
+four stations negotiating over it.
 For one or two stations, skip Control entirely: the board plus direct calls is the whole protocol.
 
 ### `@callsign` — how a human addresses a station
@@ -656,7 +707,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 | `/mission-control go` | **Go / no-go** — run the tests, say plainly if it's safe |
 | `/mission-control alert` | **Alert a person** — email a human collaborator |
 | `/mission-control recover` | **Find lost work** — sweep for anything a dead station left |
-| `/mission-control secure <station>` | **Stand down** — save the work, free the workspace |
+| `/mission-control secure <station>` | **Stand down** — save the work, free the workspace, **take the row off the board and retire the call-sign** |
 
 ---
 
@@ -831,7 +882,7 @@ Control keeps these. They look alike and are not interchangeable.
 
 | File | Answers | When | Behaviour |
 |---|---|---|---|
-| `WORK-LOCKS.md` | **who holds what, and what's next** | now | edited constantly; stays short |
+| `WORK-LOCKS.md` | **who holds what, and what's next** | now | rows cut and deleted with the fleet; live stations only; stays short |
 | `PROGRESS-LOG.md` | what happened, and why | past | append-only; never edit an old entry |
 | `PROJECT-STATUS-AND-BACKLOG.md` | what to work on next | future | items added, checked off, re-scoped |
 | `MISSION-CONTROL.md` | this project's own rules for running sessions | — | changes rarely |

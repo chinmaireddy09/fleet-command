@@ -212,7 +212,8 @@ Then:
 - **An abandoned workspace with work in it** → record the branch **and its newest commit** on
   the board. Pointing at the *first* commit hands over only part of the work.
 - **A row on the board with nobody behind it** → mark it **paused**, never leave it
-  "working" — that makes a free job look taken.
+  "working" — that makes a free job look taken. **Paused, not deleted:** deletion is only for
+  rows whose handover provably completed, and a station that vanished did not hand over.
 - **Anything measured but not written down** → write it into the repo now.
 
 ---
@@ -223,17 +224,24 @@ Then:
 git -C "$WT" add <name the files>            # never -A
 git -C "$WT" commit -m "..."
 git -C "$WT" push origin HEAD:lane/$STATION  # once pushed, anyone can pick it up
-# then mark the board row done or paused, with branch + newest commit
+# record branch + newest commit in the log, then take the row off the board
 git worktree remove "$WT"
 ```
 
 Push **before** removing the workspace. Always.
 
+**The row is deleted, not archived in place** — the board carries the live fleet only, and the
+branch plus newest commit in the log is what the next station actually picks the work up from.
+Delete only after the session behind it has closed or re-identified: a row removed from under a
+running station makes it invisible to the whole fleet. Still running, work finished → **paused**.
+
 ---
 
 ## If the project has no standing orders yet
 
-Offer to write `docs/MISSION-CONTROL.md`: which stations exist and what each owns; the
+Offer to write `docs/MISSION-CONTROL.md`: the **standing** stations and what each owns — the
+areas that always have a holder, not every call-sign that will ever run, since job-shaped
+stations are cut and retired as work arrives and belong on the board rather than in a doc; the
 workspace commands; the per-station test-database settings **checked against this project
 first**; what stays shared; how stations call each other; and the standing orders above.
 
