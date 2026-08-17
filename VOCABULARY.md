@@ -47,6 +47,7 @@ If you extend this skill, hold new words to the same test:
 | **cut a post** | the first half of a deploy, on its own — workspace, branch and board row, with **nobody in it**. The row reads *reserved*, never *on post*, until a session identifies as it |
 | **countermeasures** | what you do once a collision has already happened — announce it first, then repair *forward*, never by deleting |
 | **the board** | the claim file. Who holds what, and what's next. Not a history |
+| **alert** | reaching **a person**, not a session — `/mission-control alert`. It opens a GitHub issue **assigned to them**, and GitHub emails them, so they need neither the repo open nor a pull. Two uses: *"I'm holding this, don't start it"* and *"nobody owns this, can you take it or help"*. **The only thing in this skill that reaches a human being**; everything else talks to Claude Code windows. Always show the user the exact title and body and get a yes first — it mails a real person |
 | **radio check** | asking every live station for its call-sign, branch and paths, then writing the answers on the board. **Triggered by an event** — coming on watch, a bounced call, before a sweep or a deploy — never by a clock |
 | **hand over** | before a session closes: push everything, write down what only you know, report. **The acknowledgement is confirmation, not a gate** — once the work is pushed and the knowledge is in the repo you are done, whether or not anyone answered |
 
@@ -142,10 +143,37 @@ transcript disappear when that session ends.
 | Reaching | How | Speed |
 |---|---|---|
 | **stations on this repo** | `ListAgents` + `SendMessage`, **cross-checked against the board** | instant |
-| **another person**, their own machine | GitHub issue, assigned to them | minutes |
+| **another person**, their own machine | `/mission-control alert` → a GitHub issue **assigned to them**, which GitHub emails | minutes |
 
-**Messaging between sessions cannot reach another person.** It only reaches your own Claude
-Code windows. Never report that you "notified the team" when you messaged your own sessions.
+**Messaging between sessions cannot reach another person.** `SendMessage` only reaches Claude
+Code windows — and not even reliably *this repo's* windows, since `ListAgents` lists every
+session on the machine, other projects included. Never report that you "notified the team" when
+you messaged your own sessions.
+
+**The mail does not come from git.** Git has no notification mechanism of any kind. It comes
+from **GitHub**, which emails a person when an issue is assigned to them — so `alert` checks
+`gh auth status` and whether issues are enabled *before* promising anything, and falls back to
+the board with an honest *"they won't see this until they pull"* when they aren't.
+
+### The two things `alert` is for
+
+**Both are real, they read completely differently, and picking the wrong one wastes the one
+channel you have to a human.**
+
+| | **"I'm holding this"** | **"Can you take this?"** |
+|---|---|---|
+| It is | a **claim** — stop anyone duplicating your work | a **request** — hand a problem to someone who can own it |
+| Title | `WIP: <job> — held by <you>` | `<ID> — <problem> (unowned, needs an owner)` |
+| Body carries | branch, paths you hold, what's next | what it is, what you *checked* rather than assumed, how **not** to fix it, what you ruled out, why it matters, what you never tested |
+| Assignment means | "this is mine for now" | **"nothing — you are assigned only so it reaches your inbox"** |
+
+**The request shape has one line it cannot go out without**: that the assignment is not blame
+and not an assignment of work, and they may unassign themselves freely. **An assigned issue
+reads as being volunteered unless you say otherwise**, and someone who feels press-ganged by a
+robot will not read the next one.
+
+**The issue is the notification. The repo is the record.** Point at the backlog ID; do not let
+the only copy of a finding live in a GitHub issue.
 
 ---
 

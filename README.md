@@ -136,7 +136,7 @@ coordination skill that triggers on the word "status" is worse than none.
 /mission-control checkin <task>      tell Control what you're starting, before you start
 /mission-control silence / speak     go heads-down; mayday still reaches you
 /mission-control state <s>           fleet state — normal | sweep running | mayday
-/mission-control standdown           push, report, get acknowledged, then close
+/mission-control standdown           push, report, then close (the ack is not a gate)
 ```
 
 **Talking**
@@ -144,8 +144,14 @@ coordination skill that triggers on the word "status" is worse than none.
 ```
 /mission-control call <station>   ask one station one specific thing
 /mission-control all-stations     ask everyone to report
-/mission-control alert            email a human collaborator
+/mission-control alert <who> <what>  reach a PERSON — GitHub issue, assigned, emailed
 ```
+
+**`alert` is the only one that reaches a human being.** Everything else talks to Claude Code
+windows on your machine. Use it to say *"I'm holding this, don't start it"* — or to hand over
+something nobody owns: *"can you take this, or help?"* The second kind must say plainly that
+the assignment is only so it lands in their inbox and they may unassign themselves, because an
+assigned issue otherwise reads as being volunteered.
 
 **Not colliding**
 
