@@ -772,6 +772,11 @@ are answered in, so a long Control makes a long fleet — the drift is automatic
 **Silence is the default, not the exception.** A station with nothing to coordinate says nothing.
 Traffic should be *unusual*.
 
+**But silence has one cost, and it is not optional to pay it: re-read the board from `origin`
+before you write anything after a gap.** A quiet station's picture of the fleet goes stale
+silently, and the failure it produces — filing a risk that was resolved while you were away —
+is worse than the traffic you saved. See *Coming back* under radio silence.
+
 **And the biggest saving is structural: do not deploy a station that cannot work right now.**
 Three of today's four had nothing to gate because Docker was down — they still cost check-ins,
 radio checks, board rows and coordination. **Station count should track gateable work, not
@@ -1163,6 +1168,35 @@ never about safety.
 **Silence and speak are a pair, exactly like standby and all clear.** A station that goes quiet
 and never lifts it looks dead, and someone will start recovering work that was never lost. If a
 silence outlasts its estimate, call the station once; if that bounces, it really is gone.
+
+### Coming back: re-read the board before you write, not before you went quiet
+
+**This is the cost of silence, and it is the exact counterweight to the brevity rules.** Quiet is
+cheap; what it buys you is a station that wakes up describing a world that has ended.
+
+**Every station, on breaking silence or resuming after any gap, re-reads the board and the
+relevant docs from `origin` BEFORE it writes anything** — not its local copy, and not its memory
+of the state it left. Then it states what changed while it was away.
+
+Observed 2026-08-17: a station went quiet holding two things it intended to file — an unpushed
+data-loss risk, and "the Docker daemon is down, so no station can gate." By the time it came back
+the history had been pushed and the stack was up with a gate mid-run. **Both items would have
+described a problem that no longer existed.** It was caught only because it announced its
+intentions before acting.
+
+**A filed-but-resolved item is worse than no filing at all.** A blank space costs nothing; a
+stale row sends the next reader chasing something already closed, and they trust it *because it
+is written down*. The same applies to a hold: on the same day a station waited on a file that had
+been released twenty minutes earlier, because the release was never relayed.
+
+Three habits, and the first two are non-negotiable:
+
+- **`git fetch` and re-read before writing.** Always. A returning station's local copy is stale by
+  definition.
+- **Say what you are about to write before you write it**, in one line. That is what caught the
+  stale items above, and it costs less than the correction would have.
+- **Control: when you release a hold, tell the station that was waiting.** A release nobody hears
+  is still a hold.
 
 ## Fleet state — `/mission-control state <normal | sweep running | mayday>`
 
