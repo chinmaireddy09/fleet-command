@@ -40,6 +40,26 @@ SWEEP TO ALL STATIONS — Standby. Renaming `Order.total` to `Order.total_minor`
 file says **standby** and finishes first. A sweep that starts before acknowledgements is how
 work gets lost.
 
+**But the wait is bounded, because otherwise one busy station can stop a sweep forever** — and
+the larger the fleet, the likelier that is. Say when you need the answers by, in the same breath
+as the estimate: *"acknowledge in the next few minutes."* Then, for anyone still silent:
+
+1. **Re-check who is actually live.** A station absent from `ListAgents` was never owed an ack —
+   it is gone, and that is a recovery job, not a sweep blocker.
+2. **Call the silent station once, directly.** Broadcasts are easy to miss; a call is not.
+3. **Still silent → you may not sweep its paths.** Silence is not an acknowledgement, and it
+   never becomes one by waiting. That rule has teeth and keeps them.
+4. **Then pick, out loud** — and which one is available depends on the change, not your patience:
+   - **Narrow the sweep** to the paths whose owners acknowledged, *only if what you leave behind
+     still stands up on its own.* Say exactly which paths you excluded and why, so the gap is
+     deliberate and visible rather than discovered later.
+   - **A change that cannot be split — a rename, a signature change, anything where half is
+     broken — cannot be narrowed.** Then the only moves are keep waiting or **put it to the
+     user**, and the user is usually the faster answer.
+
+**Never proceed over a silent station because it is "probably fine."** That is the one failure
+this step exists to prevent, and it stays forbidden no matter how long you have waited.
+
 **3 · Pick the mode that fits:**
 
 | Mode | When | How |

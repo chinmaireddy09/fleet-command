@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 5.3.1
+version: 5.4.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -335,10 +335,16 @@ CONTROL TO FRONTEND — Roger, board shows paused with the commit. All clear to
                       close. Out.
 ```
 
-4. **Wait for Control to acknowledge.** Only then close the window.
+4. **Control's acknowledgement is confirmation, not a gate.** Give it a moment, and if it comes,
+   good — you now know the board matches. **But never hold the window open waiting for a
+   "roger".** Steps 1–3 are what make the handover real: the work is pushed, the knowledge is in
+   the repo, the row says where everything is. Once those are true you are done, whether or not
+   anyone answered.
 
-**If Control is not manned**, do the same thing into the board and the progress log instead —
-the point is that the knowledge survives the window, not that someone said "roger".
+**If Control is not manned — or is manned and simply busy**, do the same thing into the board and
+the progress log instead. **The point is that the knowledge survives the window, not that someone
+said "roger".** A station that will not finish until a peer replies has turned an ordinary silence
+into a stuck user, which is a worse outcome than any missing acknowledgement.
 
 #### Then the call-sign is retired — the row comes off the board
 
@@ -477,7 +483,7 @@ already know.
 | **"Mayday"** | something is breaking right now, drop everything |
 | **"Out"** | this exchange is finished |
 
-Eleven phrases, and you already knew all eleven. **If you catch yourself wanting a twelfth,
+Twelve phrases, and you already knew all twelve. **If you catch yourself wanting a thirteenth,
 use ordinary words instead** — "will do" beats "wilco", and nobody has to be taught it.
 
 ### Radio discipline — every message costs the user money
@@ -993,6 +999,14 @@ no-go into a go.**
 6. **Only push commits you wrote.**
 7. **Pull, then merge, then push** — backwards silently deletes the merge.
 8. **Save and push early.** A station can go quiet at any moment.
+9. **Nothing here may block forever on another station answering.** Every wait needs an end:
+   an estimate its holder declared, one call when that estimate passes, and a defined move for
+   when the answer never comes. **This applies to anything added to this skill later** — if you
+   write "wait for", write what happens when the wait fails, in the same breath. A station stuck
+   on a reply that is never coming is indistinguishable from a station that has crashed.
+10. **Silence is never evidence.** It does not acknowledge a sweep, release a hold, prove a
+    station dead, or free a reserved post. Only a positive signal does — an answer, a bounce,
+    absence from `ListAgents`, or the user saying so.
 
 ---
 
