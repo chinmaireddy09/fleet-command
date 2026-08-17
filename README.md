@@ -78,8 +78,9 @@ directory they simply will not exist. (Earlier versions declared a `triggers:` l
 frontmatter and assumed it registered aliases. It never did — nothing reads that field. The
 list is gone; `commands/` replaces it.)
 
-Skills are picked up immediately. **New slash commands are read at session start, so `/mc` and
-`/backlog` appear in your next session, not the current one.** Check:
+Skills are picked up immediately, and a newly written command file registered live in the
+session that wrote it when this was last checked (2026-08-17). If a short form doesn't appear,
+start a new session before assuming the install failed. Check:
 
 ```bash
 ls ~/.claude/skills/mission-control/SKILL.md ~/.claude/commands/mc.md
@@ -98,11 +99,14 @@ coordination skill that triggers on the word "status" is worse than none.
 **Getting on station**
 
 ```
-/mission-control                  the board — who holds what, what's next
-/mission-control join             pick or type a call-sign, get on the board
-/mission-control station <name>   own workspace, own test database
-/mission-control checkin <task>   tell Control what you're starting, before you start
-/mission-control standdown        push, report, get acknowledged, then close
+/mission-control                     the board — who holds what, what's next
+/mission-control identify <name>     take a call-sign and move yourself into its workspace
+/mission-control sitrep              what every station is ACTUALLY doing, vs what it claimed
+/mission-control station <name>      own workspace, own test database
+/mission-control checkin <task>      tell Control what you're starting, before you start
+/mission-control silence / speak     go heads-down; mayday still reaches you
+/mission-control state <s>           fleet state — normal | sweep running | mayday
+/mission-control standdown           push, report, get acknowledged, then close
 ```
 
 **Talking**
@@ -148,7 +152,10 @@ Six steps, and most collisions come from skipping one:
 
 1. **Control comes on watch** — the first session holds the board
 2. **A new session opens** — no call-sign yet, invisible to everyone
-3. **It picks up a call-sign** (`join`) — suggested or typed by you
+3. **It identifies itself** (`identify <call-sign>`) — and **binds itself to the post**: it
+   reads the row, takes the workspace path from it, and moves into that worktree on its own.
+   You never `cd` anywhere. That step used to be the human's job, and when it was skipped the
+   board claimed a station that wasn't there
 4. **The call-sign goes on the board**, pushed before any code
 5. **Check in before starting a task** — this is where a conflict is caught while it's cheap
 6. **Hand over before closing** — push, report what's unfinished and where it's parked, wait

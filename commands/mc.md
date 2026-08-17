@@ -1,6 +1,6 @@
 ---
 description: Mission Control — the board, stations, dependency checks and sweeps (alias for /mission-control)
-argument-hint: [join | station <name> | checkin <task> | call <station> | all-stations | depends <what> | deploy <station> | sweep <change> | countermeasures | go | alert | recover | secure <station> | standdown]
+argument-hint: [identify <call-sign> | sitrep | checkin <task> | call <station> | depends <what> | deploy <station> | sweep <change> | silence | speak | state <normal|sweep running|mayday> | go | recover | standdown]
 ---
 
 Invoke the `mission-control` skill using the Skill tool, passing these arguments through
