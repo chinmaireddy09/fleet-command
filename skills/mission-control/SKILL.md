@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 4.3.1
+version: 4.3.2
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -302,6 +302,14 @@ the window worked and the tab did not.
 The exact error when it is missing is `System Events got an error: osascript is not allowed to
 send keystrokes. (1002)`. Match on the failure, not on a permissions probe — there is no
 reliable way to ask in advance.
+
+**Do not verify a tab by counting tabs.** `count of tabs of window` cannot see macOS window
+tabs: each one is a *separate window* that reports exactly `1` tab, so a spawn that lands as a
+tab on screen reads as "a new window" through that API. On 2026-08-17 that cost four probes and
+a wrong conclusion — Accessibility had already been granted, tabs *were* appearing, and the
+measurement said otherwise. **The user's screen is the instrument here.** Report which call
+succeeded — tab attempt or fallback — and if it matters, ask what they see rather than counting.
+This is the check-your-checks rule: confirm the identifier identifies what you think it does.
 
 **Never use `do script … in front window` on its own as the "tab" method.** Without the ⌘T it
 does not create a tab; it types the command into the session the user is *already sitting in*.
