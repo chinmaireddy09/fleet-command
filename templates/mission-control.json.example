@@ -4,7 +4,7 @@
   "spawn": {
     "platform": "darwin",
     "terminal": "Apple_Terminal",
-    "placement": "tab",
+    "placement": "print",
     "launchCommand": "claude",
     "permissionMode": null
   },
@@ -12,7 +12,7 @@
   "_fields": {
     "platform": "darwin | linux | win32 — from `uname -s` or $OS",
     "terminal": "Apple_Terminal | iTerm.app | vscode | WindowsTerminal | ghostty | WarpTerminal | other — detected from $TERM_PROGRAM or $WT_SESSION, then CONFIRMED with the user. Detection is not consent: $TERM_PROGRAM says where Control is running, not where stations should appear.",
-    "placement": "tab | window. On macOS Terminal.app a tab additionally needs Accessibility (System Settings -> Privacy & Security -> Accessibility -> Terminal); without it the spawn falls back to a window and says so.",
+    "placement": "print | tab | window. DEFAULT IS print: deploy hands you one command to paste into a tab you open yourself. Chosen 2026-08-18 after measuring the alternative -- synthesising Cmd-T is the same keypress a finger makes and the only version that can misfire, and it did: the modifier lost its race, the bare t reached the shell, and a station ran `tcd /path && claude`. The same synthetic keypress also lands in whichever window has focus. tab still works and needs Accessibility (System Settings -> Privacy & Security -> Accessibility -> Terminal); it targets its own window by tty and verifies a claude process really started.",
     "launchCommand": "usually `claude`; override if the CLI is installed under another name",
     "permissionMode": "null by default, and deploy NEVER sets this on your behalf. null means a spawned station prompts for its own pushes, exactly like any session, and deploy tells you to approve in the new tab. Setting it to anything else widens what a spawned session may do unattended — your choice, in your own file."
   },

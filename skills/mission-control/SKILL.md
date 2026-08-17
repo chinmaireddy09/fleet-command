@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.0.0
+version: 6.1.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -491,9 +491,15 @@ has actually gone wrong, not before.
 the software meaning; say **"ship to production"** for that, and never a bare "deploy" in a repo
 where both are possible.
 
-`deploy` initiates the post, spawns the session **named `--name <CALLSIGN>`**, lets it identify itself,
-and **verifies the row carries its address** — a deploy that ends with a 🚧 row and no session
-name has produced a lie, not a station.
+`deploy` initiates the post, **hands you one command to paste into a new tab** — call-sign and
+path already filled in, so nothing can be mistyped — lets the session identify itself, and
+**verifies the row carries its address.** A deploy that ends with a 🚧 row and no session name has
+produced a lie, not a station.
+
+**Opening the tab for you is opt-in, not the default.** Synthesising ⌘T is the same keypress a
+finger makes and the only version that can misfire — measured doing exactly that on 2026-08-17.
+It buys one keystroke and one paste; it cost a corrupted command and a station in the wrong
+window. **Print, paste, verify by the row.**
 
 **Before deploying, ask whether the work splits — and whether the station can work RIGHT NOW.**
 A station blocked behind a shared blocker still costs a board row, a radio check and every

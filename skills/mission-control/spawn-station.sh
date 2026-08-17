@@ -1,24 +1,52 @@
 #!/bin/bash
-# spawn-station.sh <CALLSIGN> <WORKTREE> — open a station in a new Terminal tab.
+# spawn-station.sh <CALLSIGN> <WORKTREE> [--auto] — put a station on post.
 #
-# Three things the old inline recipe got wrong, all seen live on 2026-08-17:
-#   1. It typed ⌘T with `keystroke "t" using command down`. When the modifier lost
-#      the race the bare "t" reached the shell, `do script` appended the command to
-#      that same line, and the station tried to run `tcd '/path' && claude …`.
-#   2. It resolved the new tab through `front window` — whichever window had FOCUS,
-#      which is somebody else's. Stations landed in the wrong window and the title
-#      bar then advertised the wrong repo.
-#   3. It never read the tab back, so both failures were silent. label-tab.sh has
-#      read its result back since the day it shipped; this did not.
+# DEFAULT: print the exact command for the human to paste into a new tab.
+# --auto:  try to open the tab and type it, then verify a session really started.
 #
-# So: target OUR OWN window by tty, and verify a claude process is actually running
-# in the new tab before calling it a spawn.
+# Why printing is the default, decided 2026-08-18 after measuring the alternative:
+#   `keystroke "t" using command down` does not do something cleverer than pressing
+#   ⌘T — it synthesises the identical keypress, and only the synthetic version can
+#   go wrong. On 2026-08-17 the modifier lost its race, the bare "t" reached the
+#   shell, and the station tried to run `tcd '/path' && claude …`. The same keypress
+#   also lands in whichever window has focus, so a station opened in an unrelated
+#   window. A finger has neither failure mode.
+#
+#   What the automation actually saves is one ⌘T and one paste. What it cost was a
+#   corrupted command, a station in the wrong window, an Accessibility grant, and a
+#   silent failure. So: the reliable path is the front door, and the tab is opt-in.
+#
+# Note the new tab inherits the SPAWNER's directory, not the worktree — Control sits
+# in the repo root and the station belongs in .claude/worktrees/<station> — so the
+# `cd` is required whoever opens the tab.
 set -u
-CALLSIGN="${1:-}"; WT="${2:-}"
-[ -z "$CALLSIGN" ] || [ -z "$WT" ] && { echo "usage: spawn-station.sh <CALLSIGN> <WORKTREE>" >&2; exit 2; }
+CALLSIGN="${1:-}"; WT="${2:-}"; MODE="${3:-}"
+[ -z "$CALLSIGN" ] || [ -z "$WT" ] && { echo "usage: spawn-station.sh <CALLSIGN> <WORKTREE> [--auto]" >&2; exit 2; }
 [ -d "$WT" ] || { echo "FAILED: no such worktree: $WT" >&2; exit 1; }
 
-# Our own tty — the Bash tool has none, the claude process above it does.
+# Hand the station its own address. It cannot read it from ListAgents (a session
+# never sees itself), and the spawner knows it before the station exists — so
+# asserting it here removes a radio round-trip that happened three times in one hour.
+PROMPT="/mc identify $CALLSIGN — your ListAgents address is $CALLSIGN; confirm with ps -o args= on your own claude process"
+CMD="cd '$WT' && claude --name '$CALLSIGN' '$PROMPT'"
+
+if [ "$MODE" != "--auto" ]; then
+  cat <<TXT
+STATION $CALLSIGN — open a tab (⌘T) and paste this:
+
+  $CMD
+
+The tab inherits this window's directory, so the leading cd is what puts it in its
+own worktree. Nothing is typed for you and nothing can be mistyped — the call-sign
+and path are already filled in.
+
+Then verify by the BOARD, not by the tab looking right: the deploy is done when
+$CALLSIGN's row on origin/main carries its ListAgents address.
+TXT
+  exit 0
+fi
+
+# --auto from here. Find our own tty so the tab opens in OUR window, never "front window".
 p=$$; MYTTY=""
 while [ "$p" -gt 1 ]; do
   t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
@@ -26,11 +54,6 @@ while [ "$p" -gt 1 ]; do
   p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
 done
 [ -z "$MYTTY" ] && { echo "FAILED: no tty in the parent chain" >&2; exit 1; }
-
-# Hand the station its own address in the prompt. It cannot read it from ListAgents
-# (a session never sees itself), and the spawner knows it before the station exists --
-# so asserting it here removes a radio round-trip that happened three times in one hour.
-CMD="cd '$WT' && claude --name '$CALLSIGN' '/mc identify $CALLSIGN — your ListAgents address is $CALLSIGN; confirm with: ps -o args= on your own claude process'"
 
 osascript <<AS
 on findWindowId(theTty)
@@ -48,12 +71,10 @@ set myWin to findWindowId("$MYTTY")
 tell application "Terminal" to activate
 
 if myWin is 0 then
-  -- Cannot find our own window: a new window is honest, a stranger's tab is not.
   tell application "Terminal" to do script "$CMD"
   return "WINDOW (own window not found by tty)"
 end if
 
--- Focus OUR window, never whatever happens to be frontmost.
 tell application "Terminal" to set frontmost of window id myWin to true
 delay 0.5
 
@@ -70,7 +91,7 @@ tell application "Terminal"
   do script "$CMD" in theTab
 end tell
 
--- Verify: a tab exists is not the claim. A claude process running in it is.
+-- A tab existing is not the claim. A claude process running in it is.
 delay 4
 tell application "Terminal"
   set procs to (processes of (selected tab of window id myWin)) as string

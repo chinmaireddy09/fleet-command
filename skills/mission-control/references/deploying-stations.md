@@ -92,15 +92,34 @@ on the board and `channels` in `ListAgents` is a directory that fails at its one
 tab ⌘T just made and write into **that reference** — never `in front window`, which opens
 another window instead:
 
-**The recipe ships as a file. Do not paste it inline** — the same reason `label-tab.sh` does:
-a worktree-isolated session refuses multi-line blocks, and the old inline form failed silently.
+**The default is to PRINT the command, not to type it.** Decided 2026-08-18 after measuring the
+alternative, and it reverses what this file said for a day.
 
 ```bash
-bash <skill-dir>/spawn-station.sh CHANNELS "$WT"
+bash <skill-dir>/spawn-station.sh CHANNELS "$WT"          # prints the command — the default
+bash <skill-dir>/spawn-station.sh CHANNELS "$WT" --auto   # opens the tab and types it — opt-in
 ```
 
-It prints `TAB ok · window <id> · <tty>`, or `WINDOW (...)` when it had to fall back, or
-`FAILED:` with the new tab's scrollback tail.
+**Why printing wins, plainly:** `keystroke "t" using command down` does not do something cleverer
+than pressing ⌘T — **it synthesises the identical keypress**, and only the synthetic version can
+go wrong. It did, twice, in one deploy: the modifier lost its race so the bare `t` reached the
+shell and the station ran `tcd '/path' && claude …`, and the keypress went to whichever window
+had focus so the station opened in an unrelated one. **A finger has neither failure mode.**
+
+**What the automation actually buys is one ⌘T and one paste.** What it cost was a corrupted
+command, a station in the wrong window, an Accessibility grant, and a failure nobody could see.
+That is a bad trade, so the reliable path is the front door and the tab is opt-in.
+
+**The printed command cannot be mistyped** — call-sign and path are already in it — and it needs
+no permission grant, no timing, and no `System Events`. **`--auto` still exists** for anyone who
+wants the tab and has granted Accessibility; it targets its own window by tty and verifies a
+`claude` process actually started, returning `TAB ok`, `WINDOW (...)` on fallback, or `FAILED:`
+with the new tab's scrollback tail.
+
+**A note on the inherited directory:** a new tab does inherit the current one's working
+directory (Terminal's default), but it inherits **the spawner's** — Control sits in the repo root
+while the station belongs in `.claude/worktrees/<station>`. **So the leading `cd` is required
+whoever opens the tab.**
 
 **Three things it fixes, all of which happened on 2026-08-17 in one deploy:**
 
