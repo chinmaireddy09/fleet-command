@@ -92,29 +92,32 @@ on the board and `channels` in `ListAgents` is a directory that fails at its one
 tab ⌘T just made and write into **that reference** — never `in front window`, which opens
 another window instead:
 
-**The default is to PRINT the command, not to type it.** Decided 2026-08-18 after measuring the
-alternative, and it reverses what this file said for a day.
+**Both paths exist, and which one you get is decided by what was asked for.**
 
 ```bash
-bash <skill-dir>/spawn-station.sh CHANNELS "$WT"          # prints the command — the default
-bash <skill-dir>/spawn-station.sh CHANNELS "$WT" --auto   # opens the tab and types it — opt-in
+bash <skill-dir>/spawn-station.sh CHANNELS "$WT"            # deploy: opens the tab and types it
+bash <skill-dir>/spawn-station.sh CHANNELS "$WT" --print    # prints the command to paste
 ```
 
-**Why printing wins, plainly:** `keystroke "t" using command down` does not do something cleverer
-than pressing ⌘T — **it synthesises the identical keypress**, and only the synthetic version can
-go wrong. It did, twice, in one deploy: the modifier lost its race so the bare `t` reached the
-shell and the station ran `tcd '/path' && claude …`, and the keypress went to whichever window
-had focus so the station opened in an unrelated one. **A finger has neither failure mode.**
+| The ask | What happens |
+|---|---|
+| **`/mc deploy <station>`** | **Automated.** Asking to deploy *is* the authorisation — it means "put it on post without me typing anything." Tab opens, command runs, row is verified |
+| **`/mc station <name>`** | **Printed.** A post is initiated with nobody walking to it yet, so there is nothing to automate |
+| **A session coming up by hand** | **Printed.** Nobody asked for a spawn |
+| **The automated path cannot finish** | **Printed automatically**, on top of the failure report — you are never left with nothing to act on |
 
-**What the automation actually buys is one ⌘T and one paste.** What it cost was a corrupted
-command, a station in the wrong window, an Accessibility grant, and a failure nobody could see.
-That is a bad trade, so the reliable path is the front door and the tab is opt-in.
+**The automation stayed; what changed is that it no longer trusts itself.** Its two 2026-08-17
+failures were not caused by automating — they were caused by automating *blind*:
 
-**The printed command cannot be mistyped** — call-sign and path are already in it — and it needs
-no permission grant, no timing, and no `System Events`. **`--auto` still exists** for anyone who
-wants the tab and has granted Accessibility; it targets its own window by tty and verifies a
-`claude` process actually started, returning `TAB ok`, `WINDOW (...)` on fallback, or `FAILED:`
-with the new tab's scrollback tail.
+1. **`keystroke "t" using command down` synthesises the same keypress a finger makes**, and only
+   the synthetic one can lose its modifier race. It did: the bare `t` reached the shell and the
+   station ran `tcd '/path' && claude …`.
+2. **A synthetic keypress goes wherever focus is**, so the station's tab opened in an unrelated
+   window — the same `front window` bug already fixed for tab-labelling.
+
+So it now **targets its own window by tty**, **checks a `claude` process is really running in the
+new tab**, and **prints the paste-able command whenever it cannot prove that** — including when
+`osascript` exits 0 while its script returned `FAILED:`, which it does.
 
 **A note on the inherited directory:** a new tab does inherit the current one's working
 directory (Terminal's default), but it inherits **the spawner's** — Control sits in the repo root

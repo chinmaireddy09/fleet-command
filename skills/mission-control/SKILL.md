@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.1.0
+version: 6.2.0
 description: Fleet Command for several Claude Code sessions working the same repo. Gives each session a call-sign and its own workspace, keeps a live board of who holds what and what's next, detects when one station's work depends on another's, calls between them to pass the information needed, and coordinates changes that cross every area at once. Alerts human collaborators by email when a job affects them. Runs only when explicitly invoked.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -496,10 +496,15 @@ path already filled in, so nothing can be mistyped — lets the session identify
 **verifies the row carries its address.** A deploy that ends with a 🚧 row and no session name has
 produced a lie, not a station.
 
-**Opening the tab for you is opt-in, not the default.** Synthesising ⌘T is the same keypress a
-finger makes and the only version that can misfire — measured doing exactly that on 2026-08-17.
-It buys one keystroke and one paste; it cost a corrupted command and a station in the wrong
-window. **Print, paste, verify by the row.**
+**Asking to deploy is the authorisation to automate.** `/mc deploy X` means *put X on post
+without me typing anything*, so it opens the tab and runs the command. **Anything short of that
+prints instead** — initiating a post nobody is walking to yet, or a session coming up by hand.
+
+**And the automated path prints too, the moment it cannot prove it worked.** Synthesising ⌘T is
+the same keypress a finger makes and the only version that can misfire — measured doing exactly
+that on 2026-08-17, twice in one deploy. So it targets its own window by tty, verifies a `claude`
+process is really running in the new tab, and hands you the paste-able command whenever that
+check fails. **You are never left with a tab that looks fine and a station that does not exist.**
 
 **Before deploying, ask whether the work splits — and whether the station can work RIGHT NOW.**
 A station blocked behind a shared blocker still costs a board row, a radio check and every
