@@ -12,6 +12,7 @@
   "naming": {
     "_comment": "Asked ONCE, at the first identification of a fleet, then never again. A call-sign is what people say; a handle is what peers address. They are the same unless the user says otherwise -- and a call-sign with a space cannot be a session name, so that case must be asked. NEVER derive a handle from a call-sign.",
     "coordinator": "CONTROL",
+    "stationStyle": "same",
     "handles": {
       "FLEET COMMAND": "FLEETCOM"
     }
@@ -23,6 +24,7 @@
     "placement": "print | tab | window. DEFAULT IS auto: /mc deploy opens the tab and runs the command, because asking to deploy IS the authorisation to automate. /mc station and hand-started sessions print instead, and the automated path prints too the moment it cannot verify a claude process started. Chosen 2026-08-18 after measuring the alternative -- synthesising Cmd-T is the same keypress a finger makes and the only version that can misfire, and it did: the modifier lost its race, the bare t reached the shell, and a station ran `tcd /path && claude`. The same synthetic keypress also lands in whichever window has focus. tab still works and needs Accessibility (System Settings -> Privacy & Security -> Accessibility -> Terminal); it targets its own window by tty and verifies a claude process really started.",
     "launchCommand": "usually `claude`; override if the CLI is installed under another name",
     "coordinator": "what THIS user calls the coordinating station -- CONTROL, FLEET COMMAND, or their own word. The skill has no opinion and must not act as though it does.",
+    "stationStyle": "same | long-callsign-short-handle | per-station -- how this user wants the OTHER stations named. \"same\" is one word for both. \"long-callsign-short-handle\" allows phrases on the radio with short addresses (CHANNELS & INTEGRATIONS -> CHANNELS). \"per-station\" means ask each time a call-sign is initiated.",
     "handles": "call-sign -> address, only for the ones that differ. A call-sign with a space cannot be a session name; a user may also just prefer a short address for a long call-sign. Both are legitimate and neither is derivable, so both are asked.",
     "permissionMode": "null by default, and deploy NEVER sets this on your behalf. null means a spawned station prompts for its own pushes, exactly like any session, and deploy tells you to approve in the new tab. Setting it to anything else widens what a spawned session may do unattended — your choice, in your own file."
   },
