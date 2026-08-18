@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.21.0
+version: 6.22.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1547,6 +1547,51 @@ lost.** Meanwhile the one thing that *was* at risk failed a different test entir
 "does a second copy of this exist anywhere". **Counts describe a graph; `cherry` and
 `--contains` describe the work.** Raising a false alarm costs a fleet the same panic as a real
 one and spends the credibility needed for the next.
+
+#### A comparison against an extracted baseline fails ASYMMETRICALLY
+
+**This is the one that keeps surviving, and the asymmetry is why.** When a gate diffs today's
+failures against a baseline pulled out of a file, a bad *extraction* produces two opposite
+symptoms:
+
+| Baseline came out short | Baseline came out long or empty |
+|---|---|
+| phantom **NEW** failures — **loud**, investigated immediately | phantom **FIXED** — **silent**, because it reads as good news |
+
+**Nobody checks the fixed direction.** So an extraction bug that inflates "fixed" survives
+indefinitely, and the one that inflates "new" gets blamed on the code.
+
+Two consecutive gates on 2026-08-18, two *different* extraction bugs, neither caught by reading
+the output. The first used a hardcoded line range (`sed -n '296,316p'`) that returned 17 of 21
+names after an edit shifted the file. The second used a plain string match for a heading and hit
+**backticked prose mentions of that heading inside the file's own example commands**, collected
+the wrong fence, returned a zero-name baseline, and reported **21 phantom NEW failures**.
+
+**The extraction is the fragile half of the procedure, not the diff.** So:
+
+- **Assert the extraction before trusting the comparison** — its size, its shape, that it found
+  the thing at all. The second bug was caught *only* because a fence-size assert printed
+  `baseline fence size: 0` and refused to continue. Without it, a confident wrong verdict ships.
+- **Anchor patterns to structure, not to text that can appear in prose** — `^## Heading` at line
+  start, not a bare substring a document can mention while describing itself.
+- **A file that documents its own procedure will contain examples of its own markers.** Any
+  extractor run over it must survive that.
+
+#### Two asserts that look redundant and are not
+
+**A match count proves you replaced the right text. A structural assert proves you did not
+destroy what surrounds it.** Neither substitutes for the other. A board edit on 2026-08-18
+asserted its match counts, passed, and would still have silently broken a table — the break was
+caught by a *line* count in the hunk header reading `+233,10` where it should have read `+232`.
+**Count what you changed; assert what you did not.**
+
+#### Fix a noisy check; never relax it
+
+**A check that cries wolf gets deleted, and then it is not there on the day it matters.** A
+structural assert flagged shell-pipeline continuations inside fenced code blocks — lines that
+legitimately begin with `|`. The tempting move is to loosen the rule until it stops complaining.
+The station made it **fence-aware** instead: track fence state, skip fenced lines, then assert.
+**A false positive is a bug in the check, and the fix is a better check — not a weaker one.**
 
 **And prefer the check whose result is verifiable from the artifact over the one that reports an
 intention.** *"The diff is +14/−0, purely additive"* can be confirmed by anyone later; *"I meant
