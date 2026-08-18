@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.26.0
+version: 6.27.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -209,6 +209,48 @@ Read the project's own `MISSION-CONTROL.md` first (Step 0) — its station names
 **standing** stations, the ones an area always has; the job-shaped ones are initiated and retired as
 the work arrives and do not need writing down in advance. Small projects often run only
 **CONTROL**, **BACKEND** and **FRONTEND**.
+
+---
+
+## Preamble — one command, before anything else
+
+**Run this first, once, on every `/mc` invocation. Then branch on what it printed.**
+
+```bash
+bash <skill-dir>/mc-init.sh
+```
+
+It prints `KEY: VALUE` for everything any command here starts from: repo root, the
+board **measured at `origin/main`**, whether the project has its own rules, the
+coordinator's name by precedence, HEAD/ahead/behind, the worktrees, **your own
+session name**, and every live session split into on-fleet and off-fleet.
+
+**Do not re-derive a line it printed.** If a value is in that block it is measured,
+and measured at the ref you are about to write.
+
+### Why this is a rule and not a convenience
+
+**Measured 2026-08-19: a single `/mc identify` spent 2–5 minutes and 8–16k tokens
+before it wrote anything** — nearly all of it on eight to twelve sequential one-line
+shell calls (repo root, board size, own launch args, roster, worktree, ahead/behind),
+each its own turn with its own model round-trip. **None of them depended on the answer
+to the one before.** The skill was not slow because the work was hard. It was slow
+because work that could have been one call was serialised into a dozen.
+
+**The same block costs 1.3 seconds.** Everything else in this file assumes you have
+it — the board report, identify, depends, sitrep and deploy all start from the same
+facts, so gathering them per-command is the same measurement paid for repeatedly.
+
+**Two habits this replaces, both of which cost real time on this repo:**
+
+| Instead of | Do |
+|---|---|
+| a command per fact, each its own turn | **one call, then read** |
+| measuring the board in the shared checkout | it is measured **at `origin/main`** — the working copy has been stale by 240 KB |
+| asking a peer *"what is my address?"* | **`ME_NAME` is in the block.** Only the `[ref]` needs a peer |
+
+**When you genuinely need something it did not print, run one command for it — not
+five.** Batch the follow-ups the same way: independent facts belong in one call.
 
 ---
 
@@ -1058,9 +1100,21 @@ call-sign in the first place.
 
 #### The bootstrap trap: a session cannot see itself
 
-**`ListAgents` never lists the session calling it.** So a station that came up unnamed **cannot
-read its own address**, and identify's step 4 — *write your `ListAgents` name onto the row* — is
-**unsatisfiable alone**. It needs a peer or Control to read the name back over the radio.
+**`ListAgents` never lists the session calling it.** So a station that came up unnamed cannot
+read its own address **from that tool**, and identify's step 4 — *write your `ListAgents` name onto
+the row* — looks unsatisfiable alone.
+
+**It is not, and this was the expensive half of the trap.** The tool cannot show you yourself, but
+**the session registry can** — it is on disk, keyed by pid, and your shell is a descendant of your
+own `claude` process. `mc-init.sh` walks up to it and prints `ME_NAME` and `ME_NAMESOURCE`, which
+answers the name **locally, for hand-started sessions too**, and answers it *after*
+`set-callsign.sh` rather than from a launch flag. Verified 2026-08-19 on an unnamed session: it
+read back its own generated handle with no peer and no radio traffic.
+
+**What the registry does NOT hold is the `[ref]`.** Verified the same day: the bracketed ref
+appears in no registry field, and it is not `sessionId` nor its md5, sha1 or sha256 prefix. **That
+half still needs a peer** — and you only need it when a bare call-sign matches two rows. So the
+round-trip that used to be mandatory is now the exception.
 
 This is not theoretical. On 2026-08-17 three stations in a row hit it within fifteen minutes,
 and each one correctly refused to guess — one explicitly retracted a plan to write the row
@@ -1365,6 +1419,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 |---|---|
 | `/mission-control` | **Board** — who holds what, what's next, what needs attention — **and this session comes on watch as Control** while it reports, unless it already holds a post or a live one holds the coordinator's. **→ read `references/control-playbook.md` FIRST; the report's shape lives there** |
 | `/mission-control identify <call-sign>` | **Identify** — take a call-sign, **move yourself into its workspace**, and go on the board |
+| `/mission-control board clear` | **Fresh board view** — re-render from `origin/main` showing only live stations, open items and the most urgent thing. **Archives done rows; never deletes a live one.** "Clear the board" defaults to this, never to wiping claims |
 | `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
 | `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |
 | `/mission-control state <normal\|sweep running\|mayday>` | **Fleet state** — set what the whole fleet is doing, so nobody has to infer it |
@@ -1896,6 +1951,57 @@ tidy-up. **A row is who · what · where · status · a pointer** — the reason
 
 **Edit your own row, never reformat anyone else's, push immediately, and start again from the
 new `origin/main` on rejection.**
+
+### "Clear the board" almost never means delete the rows
+
+**A human saying *"clear the board"* is usually talking about the screen in front of them** —
+the scrollback, the recap, the clutter of a long session. **This skill has trained you to hear
+"board" as `docs/WORK-LOCKS.md`, and acting on that reading deletes the fleet's only record of
+who holds what.** Said 2026-08-19, in exactly those words: *"clear board — which does not mean
+by work locks and all."*
+
+**So: `clear`, `clean up`, `wipe`, `reset` + *board* is ambiguous, and ambiguity here is
+destructive in one direction only.**
+
+- **Default to the screen.** It is free, reversible, and what was meant nearly every time.
+- **Never delete a claims row on an ambiguous instruction.** Ask which they mean, in one line.
+- **When rows genuinely are being cleared, name them and say why each one goes** — *"deleting
+  BACKLOG [06dddf] and CONTROL [fd89d9], both absent from the live listing"*. A row you cannot
+  justify by name is a row you are not clearing.
+- **Retiring a row is `secure`/`standdown`, which archives it.** Deletion is not the tidy version
+  of that; it is the lossy one.
+
+#### What they actually want: a clear board view — `/mc board clear`
+
+**Asked for on 2026-08-19 and worth having: *"I want the board as a fresh start whenever I feel
+there is too much on the place."*** That is a real need and it is not a deletion. **The board gets
+noisy long before it gets wrong**, and a coordinator's report that grows with the file stops being
+readable exactly when the fleet is busiest.
+
+**A clear view is a re-render, from `origin/main`, of only what is true right now:**
+
+```
+BOARD — 3 manned, 1 open
+
+  CONTROL    [760f3b]  the watch    shared checkout
+  FRONTEND   [d31e6a]  no task      .claude/worktrees/design-foundation-shell
+  CHANNELS   [75a44e]  no task      .claude/worktrees/channels
+
+  OPEN: C25 — unowned
+  NEXT: C28 over-releases reservations, unowned, now gateable.
+```
+
+**Nothing dated, nothing historical, no dead rows, no narrative.** Anything that is not a live
+station, an open item, or the single most urgent thing does not belong in that view.
+
+**If the FILE is what has grown, archive — never delete.** Done rows move to
+`docs/WORK-LOCKS-ARCHIVE.md`, which is the mechanism this skill already has for keeping the board
+small, and **say how many moved and where**: *"34 completed rows archived to WORK-LOCKS-ARCHIVE.md;
+board is 289 → 96 lines."* That is reversible, keeps provenance, and is a different act from
+removing a row that names a holder.
+
+**The one thing a fresh start must never do is make a held post look free.** Every row for a
+station that is live stays, however cluttered the file was.
 
 → **Recovering an oversized board, and the full concurrency procedure: `references/control-playbook.md`.**
 
