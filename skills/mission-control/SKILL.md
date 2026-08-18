@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.14.0
+version: 6.15.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -98,6 +98,15 @@ is the failure.
 **This is announcement, not permission-widening.** Nobody gains authority they did not have;
 the person keeps every yes they were always going to give, and stops giving the second one
 blind.
+
+**And an approval ages.** The other half of the same problem is *when*, not *who*: Control's
+inbox never stops, so between asking for a go and hearing one, items get done by somebody else
+and new ones join the list. **The queue at go-time is never the queue at ask-time.** Number the
+items when you ask, re-read them when the go lands, say what changed before you run, and **never
+let a new item ride an old yes.** Measured 2026-08-18: a go given on a three-item queue arrived
+against a four-item one, two of which had never been mentioned.
+
+→ **Procedure: `references/control-playbook.md`, *An approval ages*.**
 
 ---
 

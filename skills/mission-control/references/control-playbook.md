@@ -307,6 +307,51 @@ the tests for everyone. Never write down a guarantee you have not tested.
 
 ---
 
+## An approval ages, and the queue behind it keeps moving
+
+**Control's inbox never stops.** Between asking for a go and hearing one, stations report,
+things land, and the board changes — so **the queue at go-time is never the queue at ask-time.**
+That is the default case, not the unlucky one, and a blanket *"go"* executed against a
+remembered list is how a human authorises work they never saw.
+
+Measured 2026-08-18. Control asked for a go on three items at 3:49. By 4:13 the queue held four:
+one of the original three had become redundant (a station had already written the change), two
+of them still stood, and **two items that had never been mentioned had joined the list.** A go
+given against the 3:49 message would have run two items it named and two it did not.
+
+**1 · Number the items when you ask.** A go can only be given to a list. *"Say go and I'll fix
+the board"* is not something anyone can approve, because nobody can tell afterwards what it
+covered.
+
+**2 · Re-read the queue when the go arrives, before anything runs.** Not your memory of it —
+the board, the branch tips, the traffic since. Each item gets one question: **does this still
+need doing?**
+
+**3 · State the delta out loud, then run.** One short block, before the first command:
+
+```
+CONTROL — Go received on the 3:49 queue. Since then:
+          · item 1 redundant — FRONTEND landed it at 40ae9b6, dropping it
+          · items 2 and 3 stand, running them now
+          · two new items appeared (directory table, my own row) — NOT in your go,
+            asking separately below
+```
+
+**4 · New items never ride an old yes.** This is the part with teeth. Anything discovered after
+the ask needs its own approval, however obviously it belongs with the rest and however much
+cheaper one commit would be. **The cost of asking twice is a sentence; the cost of a widened
+yes is that approval stops meaning anything.**
+
+**5 · A redundant item is dropped, never repurposed.** Do not slide a new task into an approved
+slot because the slot is free. The slot was for the thing that is no longer needed.
+
+**6 · An approval expires like every other wait here.** Say how long the queue is good for when
+you ask — *"this is the queue as of now; if it sits more than a few minutes I'll re-state it"* —
+and when it lapses, re-state rather than assume. **A yes does not get more accurate with age.**
+
+**The same rule binds a station** that sends something up and keeps working: what you get back
+answers the message you sent, not the state you are in when it arrives.
+
 ## Rigour is not the deliverable — check the output against the ask
 
 **A fleet optimises for what it can verify, and what it can verify is not always what was
