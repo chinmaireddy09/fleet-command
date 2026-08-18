@@ -345,7 +345,15 @@ yes is that approval stops meaning anything.**
 **5 · A redundant item is dropped, never repurposed.** Do not slide a new task into an approved
 slot because the slot is free. The slot was for the thing that is no longer needed.
 
-**6 · An approval expires like every other wait here.** Say how long the queue is good for when
+**6 · An approval does not transfer to whoever holds the post next.** *"Approved conditional on
+green"* was given to a named station; when that session died and a new one re-manned the same
+post, the new station found the approval on the board and **declined to inherit it** — correctly.
+The person said yes to a station that had shown them its evidence, and the evidence itself could
+not be refreshed because the gate infrastructure was down. **A post is inherited; an approval is
+not.** Re-ask, and say what changed: who asked originally, why they are gone, and whether the
+evidence still stands.
+
+**7 · An approval expires like every other wait here.** Say how long the queue is good for when
 you ask — *"this is the queue as of now; if it sits more than a few minutes I'll re-state it"* —
 and when it lapses, re-state rather than assume. **A yes does not get more accurate with age.**
 
@@ -473,6 +481,20 @@ awk '/^## Active/,/^## Done/' <scratchpad>/board.md
 
 **Say that you did this**, and file trimming the board as real work — it is the one file every
 station pays for on every read.
+
+### A rebase conflict on the board: abort and re-apply, never hand-resolve
+
+**Re-applying your edit onto fresh `origin/main` is both cleaner and more informative than
+resolving the conflict.** A station hit this with three sessions writing a 38 KB board at once:
+its commit conflicted because a peer had landed two commits underneath it. It aborted, re-read,
+and re-applied — and **the exact-string assert passing on the second attempt was positive
+evidence the peer had not touched its rows.** A hand-resolved conflict produces a file that
+looks right and tells you nothing about who changed what.
+
+**And keep a claims-table row on ONE line.** A row here can run 1700 characters; an edit that
+re-wraps it splits one row across ten lines and breaks the table for every reader. Prose above
+the table wraps freely — **rows do not.** Assert every row still closes with a pipe before
+pushing.
 
 ### Three stations write this file at once, and it works by convention
 

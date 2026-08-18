@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.20.0
+version: 6.21.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -369,6 +369,12 @@ The binding is a tool call, so make it one:
    gone the moment the turn ends. **Treat the tab label as a convenience that lapses, and put
    nothing load-bearing on it.**
 
+   **A "you are already there" result can be a false success.** `EnterWorktree` refusing with
+   *already the current working directory* may mean an earlier `cd` moved the shell rather than
+   that the session is bound to the worktree — **it reads as a harmless no-op and is not one.**
+   Compare before moving, and check what actually changed rather than trusting the refusal. This
+   step has silently failed three times on one board.
+
    **This works on a session that is ALREADY RUNNING** — no restart, no lost state. **But the
    tab title is Claude Code's field and it takes it back.** Measured 2026-08-18: the label holds
    while you work, and Claude Code overwrites it with its own status glyph and summary at every
@@ -444,6 +450,22 @@ station were restarted right now, what would actually be lost?
 knowledge somewhere that dies with a window.** Observed 2026-08-18: a station offered a restart
 and could price it exactly — a detached gate that survives it, work already pushed, everything
 else in the repo — and that precision is what made the offer easy to accept.
+
+#### How work gets stranded: a local fast-forward with the ref never pushed
+
+**The dangerous shape is not a divergence — it is pure, tidy history that only exists locally.**
+Measured 2026-08-18: a station fast-forwarded its *local* lane and never pushed the ref, leaving
+the remote 56 commits behind with a new, gated, merge-approved fix sitting above it. Nothing
+looked wrong from inside: `git status` clean, the board saying *"gated green, merging next"*,
+and the commit had already survived its own session dying. `origin/lane/<x>` was a **strict
+ancestor** of `origin/main` — measured with `merge-base --is-ancestor`, not eyeballed — so there
+was no conflict to notice.
+
+**It survived the session and would not have survived the worktree being cleaned**, which is the
+distinction that matters: a commit is safe from a closed window and not from a tidy-up. **The
+check is `git branch -r --contains <sha>`, and the fix is a push to any ref at all.** Pushing to
+a fresh `backup/<id>` ref moves nothing, inherits no policy, and is undone by deleting it — so
+it needs no permission argument, unlike a merge.
 
 **A restart is still the only fix for some things** — a wrong workspace, a corrupted worktree, a
 permission mode set at launch — **so it is worth being the kind of station that can take one.**
@@ -1488,6 +1510,7 @@ check that looked authoritative and could not physically see what it reported on
 | A failure-name diff, both directions | names produced by a run that never started: none, which reads as clean |
 | A regression guard's line numbers | positions in a comment-stripped copy, not in the file anyone would open |
 | A component recommendation from import paths, barrels and file location | **metadata about files nobody had opened** — and "dead" and "nobody needed it" look identical from outside |
+| A gate result read as covering the current code | **the tree as it stood when the gate ran.** Compare the gate artefact's timestamp with the commit's — a run that started first proves nothing about what landed after |
 | `git rev-list --count origin/main..HEAD` used to find work at risk | **reachability, not content.** Commits already upstream by another route still count, so it reports danger that does not exist |
 | A `grep` for a sentence in a prose file | **one line at a time.** The sentence wrapped across two, so the pattern could never match and the absence of a hit was read as the sentence being gone |
 
