@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.24.0
+version: 6.25.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1603,6 +1603,31 @@ lost.** Meanwhile the one thing that *was* at risk failed a different test entir
 "does a second copy of this exist anywhere". **Counts describe a graph; `cherry` and
 `--contains` describe the work.** Raising a false alarm costs a fleet the same panic as a real
 one and spends the credibility needed for the next.
+
+#### Run the shipped check. Do not write your own.
+
+**Every measurement failure on 2026-08-18 was a hand-rolled command somebody trusted** — six of
+them, by six different sessions, each individually reasonable. The rules telling people to check
+carefully already existed. What did not exist was a *correct check they could run instead of
+inventing one*. **`preflight.sh` is that, and it is a step, not a suggestion:**
+
+| Before you… | Run |
+|---|---|
+| launch any gate | `preflight.sh stack` — `ps -a` plus real socket probes, and disk |
+| say work is at risk, or stand down | `preflight.sh at-risk` — content via `git cherry`, not reachability |
+| diff a gate against a baseline | `preflight.sh baseline <file> <n>` — anchored, exact-count, **aborts** |
+| address or reply to a peer | `preflight.sh peers` — the registry, never a message's `from-name` |
+
+**The count argument to `baseline` is required and has no default.** *"Non-empty"* would have
+passed the 17-of-21 extraction that already shipped a wrong verdict here.
+
+**And the script itself proved the point on its first run: two of its four checks were wrong.**
+The stack probe collapsed three targets into one string and reported every service unreachable
+while all three were healthy — a false alarm inside the tool built to prevent false alarms. The
+at-risk check reported six commits endangered whose content was already upstream. **Both were
+found by running it against known state, which is the only reason you are reading a fixed
+version.** Test a check against an answer you already know before you trust it against one you
+do not.
 
 #### A comparison against an extracted baseline fails ASYMMETRICALLY
 
