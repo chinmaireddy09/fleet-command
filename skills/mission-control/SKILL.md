@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.18.1
+version: 6.19.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -314,6 +314,14 @@ The binding is a tool call, so make it one:
    bash <skill-dir>/set-callsign.sh <CALLSIGN> [HANDLE]
    ```
 
+   **There is also a supported, human-typed path: `/rename <HANDLE>`, and `/color` to tint the
+   session.** Claude Code suggests both itself when it notices several sessions running. They are
+   official where the script is unsupported internals — but **a session cannot type into its own
+   TUI**, so only the human can run them. That is the whole division of labour: the script is
+   what a station can do for itself, `/rename` is what you can do for it, and they reach the same
+   field. **`/color` is worth more than the tab title** — the title is overwritten every turn,
+   and a colour is not.
+
    **`HANDLE` is optional and defaults to the call-sign.** Pass it when the user wants a
    different address — or when the call-sign has a space, in which case the script refuses and
    tells you to ask rather than inventing one.
@@ -471,6 +479,13 @@ It finds its own pid and its own tty by walking up from the shell, never by "fro
 scanning for any `claude` — both of which land on somebody else's session. It **refuses a
 call-sign a live session already answers to**, writes the registry atomically, and touches no
 field but the name (the old one is kept in `formerNames`).
+
+**A rename reaches `ListAgents` at once; the `@` on an OPEN channel can lag.** Measured
+2026-08-18 across two stations: both renamed themselves and both had their next message arrive
+carrying `from-name` set to the OLD handle, while `ListAgents` already showed the new one. The
+envelope name looks to be captured when the channel opens. **The registry is the truth.** Say so
+to the human before they ask, because a stale `@` after a successful rename reads exactly like a
+failed one — it cost two rounds of exactly that confusion the day this shipped.
 
 **Verify by asking a peer, because a session never sees itself in `ListAgents`.** That is not a
 quirk to work around; it is why the rename matters. You cannot read your own address, so the
@@ -1461,6 +1476,7 @@ check that looked authoritative and could not physically see what it reported on
 | A failure-name diff, both directions | names produced by a run that never started: none, which reads as clean |
 | A regression guard's line numbers | positions in a comment-stripped copy, not in the file anyone would open |
 | A component recommendation from import paths, barrels and file location | **metadata about files nobody had opened** — and "dead" and "nobody needed it" look identical from outside |
+| `git rev-list --count origin/main..HEAD` used to find work at risk | **reachability, not content.** Commits already upstream by another route still count, so it reports danger that does not exist |
 | A `grep` for a sentence in a prose file | **one line at a time.** The sentence wrapped across two, so the pattern could never match and the absence of a hit was read as the sentence being gone |
 
 **The fourth is the purest form:** a station reasoned confidently about components from their
@@ -1486,6 +1502,16 @@ conclusion and named its own grep as the wrong one, which is the whole of the sk
 **`grep` over prose is structurally the same defect as the four above.** Markdown and prose wrap;
 `grep` is line-oriented. **A pattern spanning a wrap can never match, so "no hits" over prose is
 not evidence of absence** — re-run it newline-tolerant, or read the section.
+
+**Before calling anything "unpushed work at risk", check the content, not the counts.** A
+station did this properly on 2026-08-18 and overturned an outside reading of its own repo: six
+local commits and 192 uncommitted lines looked like a day's exposure by ahead/behind arithmetic,
+and `git cherry` plus a grep of `origin/main` showed **every line already upstream — stale, not
+lost.** Meanwhile the one thing that *was* at risk failed a different test entirely:
+`git branch -r --contains <sha>` came back **empty**, which is the check that actually answers
+"does a second copy of this exist anywhere". **Counts describe a graph; `cherry` and
+`--contains` describe the work.** Raising a false alarm costs a fleet the same panic as a real
+one and spends the credibility needed for the next.
 
 **And prefer the check whose result is verifiable from the artifact over the one that reports an
 intention.** *"The diff is +14/−0, purely additive"* can be confirmed by anyone later; *"I meant
