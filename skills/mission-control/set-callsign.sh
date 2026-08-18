@@ -21,6 +21,17 @@ set -u
 CALLSIGN="${1:-}"; HANDLE="${2:-}"
 [ -z "$CALLSIGN" ] && { echo "usage: set-callsign.sh <CALLSIGN> [HANDLE]" >&2; exit 2; }
 
+# A call-sign reaches an AppleScript string literal below. A double quote closes that
+# string and AppleScript has `do shell script`, so an unfiltered call-sign is remote
+# code execution with extra steps -- demonstrated 2026-08-18, it ran.
+# ALLOWLIST: letters, digits, spaces and the separators real call-signs use.
+case "$CALLSIGN" in
+  "" | *[!A-Za-z0-9\ ._/\&-]* )
+    echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
+    exit 2 ;;
+esac
+if [ ${#CALLSIGN} -gt 64 ]; then echo "FAILED: call-sign too long (max 64)" >&2; exit 2; fi
+
 # A call-sign is what people SAY -- it may contain spaces ("FLEET COMMAND").
 # A handle is what peers ADDRESS -- a session name, and those cannot. When the two
 # cannot be the same, ASK; never invent somebody's short form for them. Whether a

@@ -51,11 +51,31 @@ if [ -z "$HANDLE" ]; then
 fi
 case "$HANDLE" in *[!A-Za-z0-9_-]*) echo "FAILED: a handle is [A-Za-z0-9_-] only -- got \"$HANDLE\"" >&2; exit 2;; esac
 
+# A call-sign is free-form ON PURPOSE -- "FLEET COMMAND", "CHANNELS & INTEGRATIONS" --
+# and it is interpolated into a command line below. Free-form plus interpolation is a
+# shell injection, and this one is worse than most: in --print mode the HUMAN pastes
+# the result, so anything smuggled in runs by their own hand and with their consent.
+#
+# ALLOWLIST, not a blocklist. A call-sign is a name a person says: letters, digits,
+# spaces, and the few separators real ones use. Quotes, backticks, $, backslashes,
+# newlines and every metacharacter are then gone by construction rather than by
+# remembering to enumerate them.
+case "$CALLSIGN" in
+  "" | *[!A-Za-z0-9\ ._/\&-]* )
+    echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
+    echo "        got: $CALLSIGN" >&2
+    exit 2 ;;
+esac
+if [ ${#CALLSIGN} -gt 64 ]; then echo "FAILED: call-sign too long (max 64)" >&2; exit 2; fi
+
+# The worktree path is not ours either. Escape it for the single-quoted context.
+Q_WT=${WT//\'/\'\\\'\'}
+
 # Hand the station its own address. It cannot read it from ListAgents (a session
 # never sees itself), and the spawner knows it before the station exists — so
 # asserting it here removes a radio round-trip that happened three times in one hour.
 PROMPT="/mc identify $CALLSIGN — your ListAgents address is $HANDLE; confirm with ps -o args= on your own claude process"
-CMD="cd '$WT' && claude --name '$HANDLE' '$PROMPT'"
+CMD="cd '$Q_WT' && claude --name '$HANDLE' '$PROMPT'"
 
 if [ "$MODE" = "--print" ]; then
   cat <<TXT
