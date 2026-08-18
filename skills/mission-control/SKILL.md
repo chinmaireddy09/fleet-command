@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.23.1
+version: 6.24.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -165,6 +165,29 @@ and addresses have always worked.
 run rather than derive `FLEETCOM` from `FLEET COMMAND` on their own, and print the command to
 re-run once you have asked. **That refusal is the feature.** A handle the user did not choose is
 one they have to live with in every message thereafter.
+
+**PRECEDENCE, because the preference is not the top of the stack and saying otherwise wastes
+it.** A project's own `MISSION-CONTROL.md` names its stations, and **those win** — that is Step 0
+and it does not bend for a stored preference. So the recorded coordinator name applies **only
+where the project has not named one**. Observed 2026-08-18: a user recorded `FLEET COMMAND` and
+every station on a project whose board says `CONTROL` correctly kept calling it `CONTROL`, which
+made the stored preference look broken when it was being obeyed exactly as written. **When the
+two disagree, say so out loud rather than silently picking** — *"your default is FLEET COMMAND;
+this project's board says CONTROL, so I am using CONTROL here"* — and let them decide whether to
+change the board.
+
+**AND NEVER TAKE A COORDINATOR'S CALL-SIGN FOR SOMETHING THAT IS NOT THE COORDINATOR.** This was
+got wrong on the day the preference was recorded: a session in a *different repo*, on no post
+and with no board row, renamed itself to the user's chosen coordinator handle — so a fleet's
+board listed its real `CONTROL` and an unrelated `FLEETCOM` side by side as if they were peers.
+**A call-sign names a post, and an off-fleet session holds no post.** Two rules follow:
+
+- **A repo's name is not a call-sign.** The confusion above happened because the repository was
+  itself called `fleet-command`, and a repo name slid into the role name. Nothing is named after
+  its directory.
+- **An off-fleet session names itself after what it is doing** — `SKILLDEV`, `RELEASE-CHECK` —
+  never after a station, and never after the coordinator. It gets no board row precisely because
+  it holds no post; its name should say so at a glance.
 
 **Ask at the first identification of a fleet, record it, and stop asking:**
 `~/.claude/mission-control.json`, under `naming` — **user-level and never in a repo**, exactly
