@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.15.1
+version: 6.16.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1412,6 +1412,7 @@ check that looked authoritative and could not physically see what it reported on
 | A failure-name diff, both directions | names produced by a run that never started: none, which reads as clean |
 | A regression guard's line numbers | positions in a comment-stripped copy, not in the file anyone would open |
 | A component recommendation from import paths, barrels and file location | **metadata about files nobody had opened** — and "dead" and "nobody needed it" look identical from outside |
+| A `grep` for a sentence in a prose file | **one line at a time.** The sentence wrapped across two, so the pattern could never match and the absence of a hit was read as the sentence being gone |
 
 **The fourth is the purest form:** a station reasoned confidently about components from their
 *location and import graph*, and the peer who simply **read both files** found the recommendation
@@ -1423,7 +1424,23 @@ reporting on?** If it could only see a proxy — an exit status, a count, a path
 can only tell you about the proxy. **Open the file. Read the output. Count what actually ran.**
 
 **And when a check of yours turns out to have been blind, say which one it was and who it
-misled** — all four of these were caught by a peer, not by the station that made them.
+misled** — the first four were caught by a peer, not by the station that made them.
+
+**The fifth was caught differently, and the method generalises: two instruments disagreed.** A
+`grep` reported a sentence gone; the diff of the same file reported **14 insertions and 0
+deletions**, and nothing can be removed by a purely additive change. Both could not be right.
+**When two checks disagree, suspect the one that can be wrong in a known way** — a diff's
+insertion count is mechanical, while a hand-written `grep` pattern silently encodes an
+assumption about where the line breaks fall. Control ran that comparison against its own
+conclusion and named its own grep as the wrong one, which is the whole of the skill in one move.
+
+**`grep` over prose is structurally the same defect as the four above.** Markdown and prose wrap;
+`grep` is line-oriented. **A pattern spanning a wrap can never match, so "no hits" over prose is
+not evidence of absence** — re-run it newline-tolerant, or read the section.
+
+**And prefer the check whose result is verifiable from the artifact over the one that reports an
+intention.** *"The diff is +14/−0, purely additive"* can be confirmed by anyone later; *"I meant
+to leave that line alone"* cannot be confirmed by anyone, including you.
 
 **First, prove the run happened. Absence of failures is not evidence that anything passed** —
 that is standing order 10 wearing a different hat, and gates are where it does the most damage.
