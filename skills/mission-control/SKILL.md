@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.16.0
+version: 6.17.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -276,10 +276,23 @@ The binding is a tool call, so make it one:
    `git merge-base --is-ancestor <lane> origin/main` is TRUE, **and** the lane has zero commits
    of its own. The throwaway worktree needs neither check, which is the whole reason it exists.
 
-6. **Pin your call-sign to the terminal tab, so the human can always see which window is which.**
-   This is not cosmetic. **The most expensive mistake a human makes with a fleet is typing the
-   right prompt into the wrong window** — and every tab in a repo looks identical, because they
-   all show the same directory and the same rotating status text.
+6. **Take your call-sign on both surfaces. This is a step, not a suggestion — run it now:**
+
+   ```bash
+   bash <skill-dir>/set-callsign.sh <CALLSIGN>
+   ```
+
+   **Do not skip it because you were started with `--name`** — the script sees the name already
+   matches and exits saying so, which costs nothing. Skipping it is how a hand-started station
+   spends its whole life as `acme-shop-4d`.
+
+   It sets two things: the **address peers see** (durable) and the **terminal tab title** (best
+   effort — see below). On a machine with no Terminal.app it does the first and says the second
+   was skipped; that is a pass, not a failure.
+
+   **Why the tab half matters even though it lapses:** the most expensive mistake a human makes
+   with a fleet is typing the right prompt into the wrong window — and every tab in a repo looks
+   identical, because they all show the same directory and the same rotating status text.
 
    **Find your own tab by its tty. Never by `front window`** — that is whichever window has
    focus, which for any station but the one the human is looking at is *somebody else's tab*, and

@@ -24,6 +24,8 @@ case "$CALLSIGN" in *[!A-Za-z0-9_-]*) echo "FAILED: call-signs are [A-Za-z0-9_-]
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SESSIONS="$HOME/.claude/sessions"
+command -v python3 >/dev/null || { echo "FAILED: python3 not found — needed to edit the session registry" >&2; exit 1; }
+[ -d "$SESSIONS" ] || { echo "FAILED: no session registry at $SESSIONS (Claude Code too old, or a different layout)" >&2; exit 1; }
 
 # --- find our own claude process by walking the parent chain -------------------
 p=$$; CLAUDE_PID=""
@@ -68,9 +70,16 @@ json.dump(d,open(tmp,"w")); os.replace(tmp,p)          # atomic, never a torn re
 print(f"@ header {old} -> {json.load(open(p))['name']}")
 PY
 
-# --- 2. the tab title ----------------------------------------------------------
-if [ -x "$HERE/label-tab.sh" ]; then "$HERE/label-tab.sh" "$CALLSIGN"
-else echo "tab title: label-tab.sh not found beside me — skipped" >&2; fi
+# --- 2. the tab title (best effort; never fails the rename) ---------------------
+# macOS Terminal.app only. Anywhere else this is a clean skip, not an error: the
+# address above is the half the fleet reads, and it has already landed.
+if [ ! -x "$HERE/label-tab.sh" ]; then
+  echo "tab title: skipped — label-tab.sh not found beside me"
+elif [ "$(uname -s)" != "Darwin" ] || ! command -v osascript >/dev/null; then
+  echo "tab title: skipped — needs macOS Terminal.app; the @ address is set regardless"
+elif ! "$HERE/label-tab.sh" "$CALLSIGN"; then
+  echo "tab title: skipped — label-tab.sh could not match this tty"
+fi
 
 echo "pid $CLAUDE_PID · registry $REG"
 echo "VERIFY: ask a peer to run ListAgents. A session never sees itself."
