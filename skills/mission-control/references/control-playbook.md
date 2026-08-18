@@ -349,6 +349,64 @@ slot because the slot is free. The slot was for the thing that is no longer need
 you ask — *"this is the queue as of now; if it sits more than a few minutes I'll re-state it"* —
 and when it lapses, re-state rather than assume. **A yes does not get more accurate with age.**
 
+### The whole thing, worked — 2026-08-18
+
+**Asked at 3:49**, numbered, which is the part Control got right:
+
+```
+1. FRONTEND's row -> paused, branch and tip recorded
+2. Archive the 109 done rows so the board opens in Read again
+3. File the approval-crossing-tabs gap into MISSION-CONTROL.md §4
+
+All three are one commit on origin/main. Say go.
+```
+
+**The failure mode, for contrast.** The go arrives an hour later and Control answers:
+
+```
+CONTROL — Go received. Running all four now.
+```
+
+Four. Three were approved. Nothing false was typed and nobody would ever catch it — which is
+the entire problem. Two items the user never saw ride in on a yes given for something else, and
+the commit message will describe all four as approved work.
+
+**What this rule requires instead**, before the first command runs:
+
+```
+CONTROL — Go received on the 3:49 queue. Re-read it before running. Three changes:
+
+  1  pause FRONTEND's row      DROPPED — redundant. FRONTEND wrote the flip
+                               itself at 40ae9b6. Not re-doing it as a second
+                               commit; it needs your yes on its push instead,
+                               in its own tab.
+  2  archive the 109 done rows STANDS — and worse than when I asked: the board
+                               is 320 KB now and three stations have hit the
+                               Read ceiling.
+  3  file the approval gap     STANDS.
+
+  Running 2 and 3 now — one commit parented on origin/main, nobody else's rows
+  touched.
+
+  NOT COVERED BY YOUR GO, asking separately:
+  4  the directory table disagrees with ListAgents on all four addresses
+  5  my own row names a dead session, so I am uncallable by anyone reading
+     the board
+
+  Both are one-line edits in the same file and it would be cheaper to fold them
+  into the commit above. I am not doing that. Say go on 4 and 5 and they ride
+  the next one. Out.
+```
+
+**The last paragraph is the load-bearing one.** Folding 4 and 5 in is *obviously* right — same
+file, same commit, same intent, saves a round trip — and that is exactly why the refusal has to
+be absolute. **Every widened yes is locally reasonable.** The damage is cumulative, and it is
+that after enough of them a go no longer means the human saw the list.
+
+Note what dropping item 1 also prevents: Control writing a second commit over work another
+station had already done. That is the *unclaimed is not unowned* collision arriving by a
+different road — which is a fair sign these two rules are pointing at the same thing.
+
 **The same rule binds a station** that sends something up and keeps working: what you get back
 answers the message you sent, not the state you are in when it arrives.
 
