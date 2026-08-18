@@ -18,9 +18,30 @@
 # launch is the supported path and is what `/mc deploy` passes. This exists for the
 # sessions already up.
 set -u
-CALLSIGN="${1:-}"
-[ -z "$CALLSIGN" ] && { echo "usage: set-callsign.sh <CALLSIGN>" >&2; exit 2; }
-case "$CALLSIGN" in *[!A-Za-z0-9_-]*) echo "FAILED: call-signs are [A-Za-z0-9_-] only" >&2; exit 2;; esac
+CALLSIGN="${1:-}"; HANDLE="${2:-}"
+[ -z "$CALLSIGN" ] && { echo "usage: set-callsign.sh <CALLSIGN> [HANDLE]" >&2; exit 2; }
+
+# A call-sign is what people SAY -- it may contain spaces ("FLEET COMMAND").
+# A handle is what peers ADDRESS -- a session name, and those cannot. When the two
+# cannot be the same, ASK; never invent somebody's short form for them. Whether a
+# handle differs from the call-sign at all is a preference, not a rule: plenty of
+# people want CONTROL to be addressed CONTROL, and plenty want FLEETCOM.
+if [ -z "$HANDLE" ]; then
+  case "$CALLSIGN" in
+    *[!A-Za-z0-9_-]*)
+      cat >&2 <<MSG
+FAILED: "$CALLSIGN" cannot be a session name, so it needs a handle you choose.
+        A handle is [A-Za-z0-9_-] only -- no spaces.
+        Ask the user which they want, then:  set-callsign.sh "$CALLSIGN" <HANDLE>
+        e.g.  set-callsign.sh "$CALLSIGN" FLEETCOM
+        Do not pick one for them. Record it in ~/.claude/mission-control.json
+        under "naming" so it is asked once and never again.
+MSG
+      exit 2;;
+    *) HANDLE="$CALLSIGN";;
+  esac
+fi
+case "$HANDLE" in *[!A-Za-z0-9_-]*) echo "FAILED: a handle is [A-Za-z0-9_-] only -- got \"$HANDLE\"" >&2; exit 2;; esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SESSIONS="$HOME/.claude/sessions"
@@ -39,7 +60,7 @@ done
 REG="$SESSIONS/$CLAUDE_PID.json"
 
 # --- refuse a call-sign another LIVE session already answers to ----------------
-CLASH=$(CALLSIGN="$CALLSIGN" MINE="$REG" python3 - "$SESSIONS" <<'PY'
+CLASH=$(CALLSIGN="$HANDLE" MINE="$REG" python3 - "$SESSIONS" <<'PY'
 import glob,json,os,sys
 want=os.environ["CALLSIGN"].lower(); mine=os.environ["MINE"]
 for f in glob.glob(os.path.join(sys.argv[1],"*.json")):
@@ -52,10 +73,10 @@ for f in glob.glob(os.path.join(sys.argv[1],"*.json")):
     print(f"{d.get('name')} (pid {d.get('pid')}, {d.get('cwd','?')})")
 PY
 )
-[ -n "$CLASH" ] && { echo "REFUSED: $CALLSIGN is answered by a live session — $CLASH" >&2; exit 3; }
+[ -n "$CLASH" ] && { echo "REFUSED: $HANDLE is answered by a live session — $CLASH" >&2; exit 3; }
 
 # --- 1. the @ header: read-modify-write, name only -----------------------------
-CALLSIGN="$CALLSIGN" python3 - "$REG" <<'PY' || exit 1
+CALLSIGN="$HANDLE" python3 - "$REG" <<'PY' || exit 1
 import json,os,sys,time,tempfile
 p=sys.argv[1]; new=os.environ["CALLSIGN"]
 d=json.load(open(p))

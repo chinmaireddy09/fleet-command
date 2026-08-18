@@ -27,15 +27,35 @@
 # in the repo root and the station belongs in .claude/worktrees/<station> — so the
 # `cd` is required whoever opens the tab.
 set -u
-CALLSIGN="${1:-}"; WT="${2:-}"; MODE="${3:-}"
-[ -z "$CALLSIGN" ] || [ -z "$WT" ] && { echo "usage: spawn-station.sh <CALLSIGN> <WORKTREE> [--print]" >&2; exit 2; }
+# --print may appear anywhere; the rest are positional.
+MODE=""; ARGS=""
+for a in "$@"; do
+  if [ "$a" = "--print" ]; then MODE="--print"; else ARGS="$ARGS
+$a"; fi
+done
+CALLSIGN=$(printf '%s' "$ARGS" | sed -n '2p'); WT=$(printf '%s' "$ARGS" | sed -n '3p'); HANDLE=$(printf '%s' "$ARGS" | sed -n '4p')
+[ -z "$CALLSIGN" ] || [ -z "$WT" ] && { echo "usage: spawn-station.sh <CALLSIGN> <WORKTREE> [HANDLE] [--print]" >&2; exit 2; }
 [ -d "$WT" ] || { echo "FAILED: no such worktree: $WT" >&2; exit 1; }
+
+# The call-sign is what people say; the handle is what peers address. They are the
+# same unless the user chose otherwise -- a call-sign with a space cannot be a
+# session name, and which short form they want is theirs to pick, never ours.
+if [ -z "$HANDLE" ]; then
+  case "$CALLSIGN" in
+    *[!A-Za-z0-9_-]*)
+      echo "FAILED: \"$CALLSIGN\" cannot be a session name. Ask the user for a handle and pass it:" >&2
+      echo "        spawn-station.sh \"$CALLSIGN\" $WT <HANDLE>" >&2
+      exit 2;;
+    *) HANDLE="$CALLSIGN";;
+  esac
+fi
+case "$HANDLE" in *[!A-Za-z0-9_-]*) echo "FAILED: a handle is [A-Za-z0-9_-] only -- got \"$HANDLE\"" >&2; exit 2;; esac
 
 # Hand the station its own address. It cannot read it from ListAgents (a session
 # never sees itself), and the spawner knows it before the station exists — so
 # asserting it here removes a radio round-trip that happened three times in one hour.
-PROMPT="/mc identify $CALLSIGN — your ListAgents address is $CALLSIGN; confirm with ps -o args= on your own claude process"
-CMD="cd '$WT' && claude --name '$CALLSIGN' '$PROMPT'"
+PROMPT="/mc identify $CALLSIGN — your ListAgents address is $HANDLE; confirm with ps -o args= on your own claude process"
+CMD="cd '$WT' && claude --name '$HANDLE' '$PROMPT'"
 
 if [ "$MODE" = "--print" ]; then
   cat <<TXT

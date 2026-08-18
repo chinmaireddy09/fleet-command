@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.17.0
+version: 6.18.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -141,6 +141,38 @@ that call-sign for the duration, whatever station they normally hold — what ev
 needs to know is *"this crosses everything and it is temporary"*, not who is at the keyboard.
 The board records who is actually running it.
 
+#### The call-sign is the user's word — including the coordinator's
+
+**Ask, once, and then never guess.** `CONTROL` and `FLEET COMMAND` are both right and the table
+above deliberately lists them as one row; some people want the coordinating station called
+`CONTROL`, some want `FLEET COMMAND`, some want something this skill has never heard of. **The
+skill has no opinion and must not act as though it does.** Same for every other station.
+
+**A station carries two names, and they are allowed to differ:**
+
+| | What it is | Rules |
+|---|---|---|
+| **Call-sign** | what people *say* — the board, the radio, every report | anything the user wants, spaces included: `FLEET COMMAND` |
+| **Handle** | what peers *address* — `ListAgents`, `SendMessage`, the `@` header | a session name: `[A-Za-z0-9_-]`, no spaces — `FLEETCOM` |
+
+**The default is that they are the same**, and for most call-signs they can be. They diverge for
+two reasons, both legitimate: a call-sign with a space **cannot** be a session name, and plenty
+of people simply prefer a short address for a long call-sign. *"Fleet Command, this is Backend"*
+over the radio while the address is `FLEETCOM` is not an inconsistency — it is how call-signs
+and addresses have always worked.
+
+**Never invent somebody's short form.** `set-callsign.sh` and `spawn-station.sh` both refuse to
+run rather than derive `FLEETCOM` from `FLEET COMMAND` on their own, and print the command to
+re-run once you have asked. **That refusal is the feature.** A handle the user did not choose is
+one they have to live with in every message thereafter.
+
+**Ask at the first identification of a fleet, record it, and stop asking:**
+`~/.claude/mission-control.json`, under `naming` — **user-level and never in a repo**, exactly
+like the spawn preferences and for the same reason: a clone must not carry someone else's
+vocabulary. The *mapping* is still public to the fleet, because the board's address column
+records what `ListAgents` actually prints.
+
+
 **Better: use this project's real area names.** In an e-commerce platform that might be
 `INTEGRATIONS`, `FINANCE`, `FRONTEND`, `PLATFORM`. Then *"Control to Finance"* is understood by
 anyone who has seen the codebase, with nothing to learn.
@@ -279,8 +311,12 @@ The binding is a tool call, so make it one:
 6. **Take your call-sign on both surfaces. This is a step, not a suggestion — run it now:**
 
    ```bash
-   bash <skill-dir>/set-callsign.sh <CALLSIGN>
+   bash <skill-dir>/set-callsign.sh <CALLSIGN> [HANDLE]
    ```
+
+   **`HANDLE` is optional and defaults to the call-sign.** Pass it when the user wants a
+   different address — or when the call-sign has a space, in which case the script refuses and
+   tells you to ask rather than inventing one.
 
    **Do not skip it because you were started with `--name`** — the script sees the name already
    matches and exits saying so, which costs nothing. Skipping it is how a hand-started station
@@ -758,7 +794,7 @@ should never have to find the right window first.
 **Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
 `BACKEND`; the board and the radio always render it `BACKEND`.
 
-**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **Once a station has run `set-callsign.sh`, the two `@`s converge** — the harness prints the call-sign because the call-sign *is* the address — and this whole distinction stops costing anybody anything.
+**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **Once a station has run `set-callsign.sh`, the two `@`s converge** — the harness prints the handle, and where the user kept the handle the same as the call-sign, that *is* the call-sign — and this whole distinction stops costing anybody anything.
 
 **This is the antidote to the fleet's most expensive human error.** With four identical-looking
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
