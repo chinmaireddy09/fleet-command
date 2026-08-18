@@ -125,4 +125,32 @@ written down**. Control put the cross-reference on both rows rather than the one
 
 ---
 
+## 10 · Two confirmations, one instrument
+
+Measured 2026-08-19. Two stations independently reported the board as **289 KB and unreadable by
+`Read`**, each having checked for itself, neither having seen the other's answer. Control took
+that as cross-confirmed and then measured it per ref before writing:
+
+| Where | Size |
+|---|---|
+| `origin/main:docs/WORK-LOCKS.md` | **50,137 bytes / 289 lines** |
+| `lane/channels` | 41,042 |
+| `worktree-design-foundation-shell` | 39,274 |
+| the shared checkout's **working tree** | **289,330** ← the "289 KB" |
+
+Both stations had come up in the shared checkout before moving to their worktrees, so **both
+sampled the same stale copy.** The warning had been true when written — before `00686ca` archived
+134 rows on 2026-08-18 the file was 324,068 bytes and `Read` genuinely refused it — and it
+outlived its trigger by a day while reading as freshly verified.
+
+**Two stations agreeing is two measurements only if they measured different things.** Same file,
+same stale copy, same answer is **one** measurement reported twice, and it is more convincing
+than one report precisely because nobody can see the shared source from inside either reading.
+Ask what each one measured and **where**, not just what it got.
+
+Note the near-miss that made it easy to swallow: the stale file was **289 KB** and the live one
+is **289 lines**. Two different quantities, one number.
+
+---
+
 *Mission Control by Chinmai Reddy (@chinmaireddy09), under the Fleet Command License 1.1.*

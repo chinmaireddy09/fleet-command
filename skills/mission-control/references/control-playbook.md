@@ -7,7 +7,29 @@ Loaded by **Control only**, and only for the command in hand. Stations do not ne
 `docs/WORK-LOCKS.md` is the board. **It is the one place that answers "who holds what, and
 what's next."** Keep it short enough to read in ten seconds — it is not a history.
 
-Gather:
+### Before you gather anything: you are Control now
+
+**Running this command is what put a coordinator on watch, so bind before you report** —
+`SKILL.md` §1 has the rule and its three exceptions (you already hold a post; a station that is
+live in `ListAgents` already holds the coordinator's call-sign; the invocation named someone
+else). Otherwise, in this order:
+
+1. `bash <skill-dir>/set-callsign.sh <COORDINATOR>` — the coordinator's name comes from the
+   project's `MISSION-CONTROL.md`, then `~/.claude/mission-control.json`, then `CONTROL`.
+2. **Write your row** — shared checkout as the workspace, no lane, no branch of your own. If the
+   board already carries a Control row naming a session that is not in `ListAgents`, **rewrite
+   that row**; do not push a second one next to it.
+3. **Then** run the gather below and report, with the watch declared on the first line.
+
+**Do not put "take Control" to the user as a choice, and do not report a coordinator-less fleet
+as a finding.** A board report that ends *"nobody is on Control"* from the one session that was
+just asked to coordinate has described its own inaction. Announce instead:
+
+```
+CONTROL — on watch, this session, shared checkout. Board follows.
+```
+
+### Gather
 
 ```bash
 ROOT=$(git rev-parse --show-toplevel); cd "$ROOT"
@@ -27,8 +49,11 @@ Then `ListAgents` for who is actually alive, and read the board.
 Report it as a watch report, in sentences:
 
 ```
+CONTROL — on watch, this session, shared checkout.
+
 BOARD — 3 stations manned
 
+  CONTROL       the watch                 shared checkout  ← this session, just came on
   BACKEND       orders refund path        lane/backend    working
   FRONTEND      checkout screen           lane/frontend    working
   INTEGRATIONS  —                         —                   not manned

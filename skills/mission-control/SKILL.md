@@ -1,7 +1,7 @@
 ---
 name: mission-control
-version: 6.25.0
-description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
+version: 6.26.0
+description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1
@@ -189,6 +189,11 @@ board listed its real `CONTROL` and an unrelated `FLEETCOM` side by side as if t
   never after a station, and never after the coordinator. It gets no board row precisely because
   it holds no post; its name should say so at a glance.
 
+**The inverse is equally binding: when you ARE the coordinator, take the name.** A session that
+ran `/mc` on this fleet holds the coordinator's post from that moment — see §1. This warning is
+against a session in another repo, or on another post, wearing the name; it is not a reason to
+leave the post empty.
+
 **Ask at the first identification of a fleet, record it, and stop asking:**
 `~/.claude/mission-control.json`, under `naming` — **user-level and never in a repo**, exactly
 like the spawn preferences and for the same reason: a clone must not carry someone else's
@@ -211,10 +216,65 @@ the work arrives and do not need writing down in advance. Small projects often r
 
 Six steps. Follow them in order — most collisions happen because a step was skipped.
 
-### 1 · Control comes on watch
+### 1 · Control comes on watch — and Control is whoever ran the command
 
-The first session runs `/mission-control`. It holds the board and answers calls. **Control
-and Fleet Command are the same station** — use whichever you prefer on the radio.
+**The session that initiates mission control IS Control.** That is what initiating it means.
+`/mission-control` is not a request for a report from a coordinator standing somewhere else —
+running it is what puts one on watch. **Control and Fleet Command are the same station** — use
+whichever you prefer on the radio.
+
+So the order is **bind, then report**, and the binding is two steps, not a project:
+
+1. **Take the call-sign** — `bash <skill-dir>/set-callsign.sh <COORDINATOR>`.
+2. **Write the row** — the same board push every station makes at identify step 5. **If the
+   project has no board yet there is no row to write**; Step 0 covers offering to create one, and
+   the row follows the board rather than blocking the call-sign.
+
+Then give the board report.
+
+**Control's workspace is the shared checkout**, because Control writes no feature code — so
+identify's *move into the worktree* step is a no-op for this one station, and coming on watch
+costs one script and one row.
+
+**And Control is the one station that never hits the bootstrap trap.** `set-callsign.sh` finds
+its own pid and writes its own name, so afterwards Control's address is its call-sign *by
+construction* — there is nothing to ask a peer for. The `[ref]` is still unreadable from inside,
+so say *"CONTROL, in the shared checkout"* and not a ref you cannot see.
+
+#### Three exceptions, and they are the only three
+
+- **You already hold another post.** A station running `/mc` to read the board is that station
+  reading the board. Report; do not take Control on top of your own lane.
+- **A live station already holds it.** Live means **in `ListAgents`**, not **on the board** — a
+  row is a claim, and rows outliving their sessions is the whole failure this rule exists for.
+  Two coordinators is a worse fleet than none.
+- **The invocation names something else** — `/mc identify FRONTEND` is explicit and wins.
+
+**Everything else, take it — including, and especially, when the board's Control row names a
+session that is gone.** Rewrite that row. Never add a second one beside it.
+
+#### Do not ask whether to take it
+
+**Observed 2026-08-19.** A board carried four rows and every one named a dead session. Two live
+sessions ran `/mc` minutes apart. Both produced an accurate report — roster dead, nobody on
+Control — and both stopped there: one wrote *"if the user wants a coordinator stood up that is
+their call, not ours — I am not deploying one unasked"*, the other put **"Take CONTROL"** to the
+user as option 1 of a five-option menu. Neither broke a rule; both were reasoning correctly from
+*posts are Control's to initiate*, which leaves nobody able to initiate the coordinator's own.
+**The reports were right and the fleet still had no coordinator** — which is the exact state the
+command had been run to end.
+
+**A question whose answer is fixed by the command that prompted it is not a question.** The user
+answered it by typing `/mc`. Announce it in the first line of the report, above the board:
+
+```
+CONTROL — on watch, this session, shared checkout. Board follows.
+```
+
+**The name is a question; the post is not.** Which call-sign the coordinator carries follows the
+precedence above — the project's `MISSION-CONTROL.md` wins, then the recorded preference in
+`~/.claude/mission-control.json`, then `CONTROL`. Where a fleet has never named one, ask once and
+record it **while on watch**, not as a gate in front of taking the post.
 
 ### 2 · A new session opens on the same repo
 
@@ -342,10 +402,19 @@ The binding is a tool call, so make it one:
 
    | | `set-callsign.sh` | `/rename` |
    |---|---|---|
-   | `@` header and `ListAgents` | ✅ | ✅ |
+   | **`ListAgents`** — the address peers resolve | ✅ | ✅ |
+   | **`@` header on a channel already open** | ✗ — captured at open, never re-resolved | ✗ — same |
    | **Terminal tab title** | ✗ — Claude Code overwrites it next turn | **✅ sticks** |
    | `formerNames` provenance | ✅ kept | **✗ wiped**, `nameSource` cleared too |
    | Who can run it | **the station itself** | only a human, in that tab |
+
+   **Read that table before leaning on either surface, because two of its rows are the ones
+   people expect to work and they do not.** A renamed station keeps arriving under its old handle
+   on every channel that was already open, and its tab is back to Claude Code's own status text by
+   the end of the turn. **Only `claude --name <CALLSIGN>` at launch gets a station named before
+   any channel exists or any title is written** — which is the whole reason `deploy` passes it,
+   and the whole reason a hand-started session stays hard to identify no matter what it runs
+   afterwards.
 
    **Neither wins outright, so say which you are choosing.** The tab title is what a human reads
    all day and the script can never hold it. Against that, `/rename` erases the record that this
@@ -867,7 +936,8 @@ should never have to find the right window first.
 ```
 @backend sitrep
 @channels do you hold adapters/vendor.py?
-@all-stations standby, sweep incoming
+@allstations standby, sweep incoming
+@all-stations commit your work        ← same token, either spelling
 ```
 
 **Any session that sees a prompt opening with `@<callsign>`:**
@@ -882,9 +952,38 @@ should never have to find the right window first.
    station. Say which it is: *"delivered to BACKEND, no answer yet — it went quiet for a gate
    run"*, or *"that call bounced; BACKEND is gone"*. **Never answer in the target's place** —
    relay what you know and say it is your read, not theirs.
-5. **`@all-stations` / `@all-hands`** broadcast to every live station.
+5. **The broadcast token reaches everybody, and it is spelled every way a human spells it.**
+   `@allstations`, `@all-stations`, `@all_stations`, `@all stations` — and the same four for
+   `allhands` — **in any casing, every one of them is the broadcast.** Observed 2026-08-19: a user
+   typed `@allstations commit you work`. **A token that only works when it is punctuated correctly
+   fails at the moment it matters most**, which is a sweep. → **The broadcast**, below.
 6. **Unknown call-sign → say so and list the manned ones. Never guess** — a near-miss delivers
    someone else's instruction to the wrong station.
+
+#### The broadcast — `@allstations <anything>`
+
+**The same relay, fanned out — and the fan-out is the part that goes wrong.**
+
+1. **Resolve the roster from `ListAgents`, never from the board.** A row is a claim and you are
+   about to spend a message on every name in it; dead rows cost one bounce each.
+2. **Send to every live station on THIS fleet, and to nobody else.** A session in another repo is
+   off-fleet — it owes this board nothing, and an "all stations" that reaches it is a stranger's
+   window interrupted for nothing. **Check the working directory, not the name.**
+3. **Say who it is from and that everyone got it**: *"CONTROL relaying from the user, all
+   stations: commit your work."* A station that cannot tell a broadcast from an order aimed at it
+   answers as though it were personally asked, and four stations do that four times.
+4. **Do not exempt yourself.** If the instruction applies to a station it applies to you — you are
+   relaying it, not supervising it. Do your own half in the same turn.
+5. **Report one row per station: delivered · replied · bounced.** Anything less and the human
+   cannot tell *nobody objected* from *nobody heard*.
+6. **Close the loop even when it fails.** Three replies out of five is a three-station broadcast:
+   name the two that are missing and say what you did about them. **Silence is never evidence** —
+   standing order 10 applies here more than anywhere, because a broadcast is the one message
+   everybody is assumed to have received.
+
+**`all stations` and `all hands` still mean different things** — routine versus stop what you are
+doing — and **the token's spelling does not decide which; the text does.** Say which one you are
+sending when it is not obvious from the words.
 
 **Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
 `BACKEND`; the board and the radio always render it `BACKEND`. **One direction verified against the harness 2026-08-18**: a station's registry entry read
@@ -899,7 +998,9 @@ case-insensitive"* is the right working conclusion; *"case can never bounce"* is
 data. A stale `from-name` after a rename **is** a real bounce — different failure, and the only
 one of the two anybody has actually seen.
 
-**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **Once a station has run `set-callsign.sh`, the two `@`s converge** — the harness prints the handle, and where the user kept the handle the same as the call-sign, that *is* the call-sign — and this whole distinction stops costing anybody anything.
+**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **They do NOT converge when a station renames, and the 2026-08-18 note here claimed they did.** Measured 2026-08-19: two stations took `FRONTEND` and `CHANNELS` with `set-callsign.sh`, both confirmed on each other's `ListAgents` — and every message they sent afterwards still arrived headed `@ ecom-nexus-oss-46)` and `@ ecom-nexus-oss-a0)`. **The header is resolved when the channel opens and never re-resolved.** That is the same capture that bounces a reply sent to a from-name, seen from the reading side instead of the sending side, and nothing invalidates it — a long-lived channel prints a name that is arbitrarily old.
+
+**So treat the `@` header as provenance, not identity.** It tells you which session opened this channel and what it was called then. It does not tell you what that station is called now, and on a fleet where stations rename at identify it is wrong more often than right. **Resolve through `ListAgents` every time, and match on the `[ref]`** — the one field that survives a rename.
 
 **This is the antidote to the fleet's most expensive human error.** With four identical-looking
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
@@ -1157,6 +1258,9 @@ mechanism, and habit is not something a warning beats.
   as instructed, asked for a call-sign — and stayed nameless, because the board's Control was
   dead and the rule named only Control. **A rule that routes to one party has a hole the size of
   that party.**
+  **The absent-Control half of that hole now closes at its source:** whoever runs `/mc` comes on
+  watch as Control (§1), so a fleet stops being coordinator-less the moment anybody asks for the
+  board. The escalation to the user is for the case where nobody has.
 - **Answer with the sender's address, including the `[ref]`.** A session cannot see itself in
   `ListAgents`, so an unnamed station genuinely does not know what address its own messages
   arrive from and cannot write its own board row. Whoever takes first contact reads it off their
@@ -1259,14 +1363,14 @@ is what makes four sessions cost more than one doing the same work rather than t
 
 | Type this | What happens |
 |---|---|
-| `/mission-control` | **Board** — who holds what, what's next, what needs attention. **→ read `references/control-playbook.md` FIRST; the report's shape lives there** |
+| `/mission-control` | **Board** — who holds what, what's next, what needs attention — **and this session comes on watch as Control** while it reports, unless it already holds a post or a live one holds the coordinator's. **→ read `references/control-playbook.md` FIRST; the report's shape lives there** |
 | `/mission-control identify <call-sign>` | **Identify** — take a call-sign, **move yourself into its workspace**, and go on the board |
 | `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
 | `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |
 | `/mission-control state <normal\|sweep running\|mayday>` | **Fleet state** — set what the whole fleet is doing, so nobody has to infer it |
 | `/mission-control checkin <task>` | **Check in** — tell Control what you're starting, before you start |
 | `/mission-control standdown` | **Hand over and close** — push, report, get acknowledged, then exit |
-| `@<callsign> <anything>` | **Address a station from any window** — the session you typed in relays it and reports the reply. `@all-stations` broadcasts |
+| `@<callsign> <anything>` | **Address a station from any window** — the session you typed in relays it and reports the reply. **`@allstations`** — however it is spelled or punctuated — broadcasts to every live station on this fleet |
 | `/mission-control call <station>` | **Call a station** — ask one specific thing |
 | `/mission-control all-stations` | **Broadcast** — ask every live station to report |
 | `/mission-control depends <what>` | **Dependency check** — who else touches this, and what must I know first |
@@ -1748,6 +1852,10 @@ green. **Ask which layer actually decides the thing you are testing**, and test 
 11. **Automate exactly one thing: open a tab, enter the workspace, initiate mission control.**
     Everything else is asked for. **Certainty that the next step is obvious is not permission to
     take it** — that feeling is the symptom, not the exemption.
+    **Coming on watch as Control is not an exception to this order; it is the thing the order
+    names.** `/mc` is the request, and taking the coordinator's post is executing it rather than
+    extending it (§1). Read this order as forbidding the *next* step, not the one asked for —
+    on 2026-08-19 two sessions read it as forbidding both and left a dead fleet coordinator-less.
 12. **Check liveness on a schedule; broadcast only on an event.** `ListAgents` and the board cost
     nobody anything, so run them often. Asking every station to reply costs a reply from every
     station, so it needs a reason you can name.
@@ -1773,7 +1881,16 @@ Control keeps these. They look alike and are not interchangeable.
 
 **Measured 2026-08-18: a live board reached 313 KB and `Read` refused to open it** — so the
 skill's own first instruction failed. **Ceiling: ~150 rows or ~100 KB, and never past what `Read`
-accepts.** Done rows move to `docs/WORK-LOCKS-ARCHIVE.md` **at standdown**, not at some later
+accepts.**
+
+**Measure it at the ref you are about to write, not in the shared checkout** —
+`git show origin/main:docs/WORK-LOCKS.md | wc -c`. On 2026-08-19 two stations independently
+reported that board as 289 KB and unreadable while `origin/main` held **50,137 bytes / 289
+lines**: both had come up in the shared checkout before moving to their worktrees, so both
+measured its stale working copy, and one stale file read twice arrived as two confirmations.
+**Two stations agreeing is two measurements only if they measured different things.**
+`references/field-notes.md` §10.
+ Done rows move to `docs/WORK-LOCKS-ARCHIVE.md` **at standdown**, not at some later
 tidy-up. **A row is who · what · where · status · a pointer** — the reasoning belongs in
 `PROGRESS-LOG.md`; one row measured ~6,000 words in a single table cell.
 

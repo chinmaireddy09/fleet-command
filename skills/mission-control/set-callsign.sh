@@ -2,8 +2,12 @@
 # set-callsign.sh <CALLSIGN> — make this session's call-sign the name everyone sees.
 #
 # Two surfaces, one command, run BY the station IN its own tab. They are NOT equal:
-#   1. the `@` header peers see on every message  (~/.claude/sessions/<pid>.json) -- DURABLE.
+#   1. the ADDRESS peers resolve through ListAgents (~/.claude/sessions/<pid>.json) -- DURABLE.
 #      Measured 2026-08-18: survived the session's own registry write 33 minutes later.
+#      This is NOT the `@` header on a channel a peer has already opened. That name is
+#      captured when the channel opens and is never re-resolved, so a renamed station keeps
+#      arriving under its old handle -- measured 2026-08-19, and it is the same capture that
+#      bounces a reply addressed to a from-name. Resolve names here; match on the [ref].
 #   2. the Terminal tab title (delegated to label-tab.sh) -- BEST EFFORT ONLY. Claude Code
 #      rewrites the title with its own status glyph + summary at every status change, i.e.
 #      each turn boundary. The label holds while you work and is gone when the turn ends.

@@ -187,6 +187,7 @@ coordination skill that triggers on the word "status" is worse than none.
 
 ```
 /mission-control                     the board — who holds what, what's next
+                                     (and this session comes on watch as Control)
 /mission-control identify <name>     take a call-sign and move yourself into its workspace
 /mission-control sitrep              what every station is ACTUALLY doing, vs what it claimed
 /mission-control station <name>      own workspace, own test database
@@ -243,7 +244,9 @@ offers to write them.
 
 Six steps, and most collisions come from skipping one:
 
-1. **Control comes on watch** — the first session holds the board
+1. **Control comes on watch** — **whoever runs `/mission-control` is Control.** Initiating it
+   is what puts a coordinator on watch: that session takes the call-sign, writes its own row,
+   and *then* reports the board. It is not a post you deploy and wait for
 2. **A new session opens** — no call-sign yet, invisible to everyone
 3. **It identifies itself** (`identify <call-sign>`) — and **binds itself to the post**: it
    reads the row, takes the workspace path from it, and moves into that worktree on its own.
