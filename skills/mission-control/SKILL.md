@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.19.0
+version: 6.20.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -480,12 +480,24 @@ scanning for any `claude` — both of which land on somebody else's session. It 
 call-sign a live session already answers to**, writes the registry atomically, and touches no
 field but the name (the old one is kept in `formerNames`).
 
-**A rename reaches `ListAgents` at once; the `@` on an OPEN channel can lag.** Measured
-2026-08-18 across two stations: both renamed themselves and both had their next message arrive
-carrying `from-name` set to the OLD handle, while `ListAgents` already showed the new one. The
-envelope name looks to be captured when the channel opens. **The registry is the truth.** Say so
-to the human before they ask, because a stale `@` after a successful rename reads exactly like a
-failed one — it cost two rounds of exactly that confusion the day this shipped.
+**A rename reaches `ListAgents` at once; the `@` on an OPEN channel lags — and REPLYING TO IT
+BOUNCES.** This was filed as cosmetic when first seen and that was wrong within the hour.
+
+The envelope's `from-name` is captured when the channel opens. Once the sender renames, that
+name **no longer resolves**, so the obvious reply — the one the harness itself instructs, *"to
+reply to an incoming message, copy its `from` attribute as your `to`"* — fails with
+`no agent named '<old-handle>' is reachable`. Four sessions hit it independently on 2026-08-18,
+including one in another repo that logged the bounce and failed to draw the rule from it.
+
+**So: never reply to the `from-name`. Resolve the sender through `ListAgents` first.**
+
+**The `[ref]` is the durable identifier; the name is not.** A renamed session keeps its ref and
+changes its name — `ecom-nexus-oss-98 [fd89d9]` became `CONTROL [fd89d9]`, same ref throughout.
+That is why the board's address column carries **name *and* ref**: after a rename the name is
+stale and the ref still finds its station. **Match on the ref, address by the current name.**
+
+A stale `@` after a successful rename also reads exactly like a failed rename to the human
+watching — say which it is before they ask.
 
 **Verify by asking a peer, because a session never sees itself in `ListAgents`.** That is not a
 quirk to work around; it is why the rename matters. You cannot read your own address, so the
