@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.8.0
+version: 6.14.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -69,6 +69,35 @@ worktree with push rights.
 
 **So if you find yourself about to automate something that is not those three steps — stop and
 ask, however well justified it feels.** Being sure is the symptom, not the exemption.
+
+### One human, many tabs — an approval is not a broadcast
+
+**The fleet is one person at one keyboard, switching windows.** The skill already says this
+about git — the branch discriminates, never the author, because every session commits as the
+same identity. **The same fact governs authority, and that consequence was missing until
+2026-08-18.**
+
+`ListAgents` lists *sessions*, not principals. Two stations asking "may I?" are two windows
+asking **the same human**, who sees one of them at a time. So:
+
+- **A yes in one tab is evidence about that tab's question only.** It is not evidence that the
+  person knows another tab asked the same thing, and it never becomes that by being recent.
+- **Any protocol that tie-breaks on "whoever gets approval first proceeds, the other stands
+  off" fails silently.** Nothing errors. Both stations comply correctly, the same person
+  authorises the same act twice, and each yes is given while believing it unblocks the only
+  station that asked. Found on 2026-08-18 by two stations walking into it, not by a check.
+- **Silence is not evidence here either** — the tab that has not answered may simply not be
+  the one on screen.
+
+**So when a question crosses stations, name the tab and name the collision.** Asking the human
+to authorise anything destructive, or to break a tie between stations, carries two facts in the
+same breath: **which tab is asking**, and **whether another tab is holding the same question**.
+Then announce the answer to the fleet — an approval that stays inside the tab that received it
+is the failure.
+
+**This is announcement, not permission-widening.** Nobody gains authority they did not have;
+the person keeps every yes they were always going to give, and stops giving the second one
+blind.
 
 ---
 
@@ -263,15 +292,22 @@ The binding is a tool call, so make it one:
 
    **Verified 2026-08-17**, both halves. The tty walk resolved `/dev/ttys000` through
    `zsh → claude → login`, and the tab matched on it regardless of which window was frontmost.
-   Terminal.app's `custom title` **overrides** the title Claude Code writes and survives its
-   constant status updates: the window went from
-   `acme-shop — ✳ Initiate mission control — caffeinate • claude` to
-   `acme-shop — CONTROL — node ◂ claude` and stayed there. The tab bar shows just the
-   call-sign.
+   Terminal.app's `custom title` **overrides** the title Claude Code writes: the window went
+   from `acme-shop — ✳ Initiate mission control — caffeinate • claude` to
+   `acme-shop — CONTROL — node ◂ claude`. The tab bar shows just the call-sign.
 
-   **This works on a session that is ALREADY RUNNING**, which matters because `--name` is
-   launch-only. A station that came up by hand can pin its tab immediately without restarting
-   and without losing any state.
+   **It does not hold, and the 2026-08-17 note here said it did.** That note read *"survives its
+   constant status updates"*, which was measured inside one turn. Re-measured 2026-08-18 across
+   turn boundaries: the label survives continuous work fine, and Claude Code takes the title
+   back with its own glyph and summary **every time the session's status changes** — so it is
+   gone the moment the turn ends. **Treat the tab label as a convenience that lapses, and put
+   nothing load-bearing on it.**
+
+   **This works on a session that is ALREADY RUNNING** — no restart, no lost state. **But the
+   tab title is Claude Code's field and it takes it back.** Measured 2026-08-18: the label holds
+   while you work, and Claude Code overwrites it with its own status glyph and summary at every
+   status change — which is every turn boundary. Re-running wins it back until the next one.
+   **For the address peers actually see, use `set-callsign.sh` instead — that one is durable.**
 
    | Terminal | How |
    |---|---|
@@ -343,15 +379,50 @@ knowledge somewhere that dies with a window.** Observed 2026-08-18: a station of
 and could price it exactly — a detached gate that survives it, work already pushed, everything
 else in the repo — and that precision is what made the offer easy to accept.
 
-**A restart is the only fix for some things, `--name` among them**, so it is worth being the kind
-of station that can take one.
+**A restart is still the only fix for some things** — a wrong workspace, a corrupted worktree, a
+permission mode set at launch — **so it is worth being the kind of station that can take one.**
+`--name` is no longer on that list: the address peers see can be changed in place with
+`set-callsign.sh`, and only the terminal tab title still needs a relaunch.
 
-**If you came up unnamed, say so once and offer the fix.** A running session cannot rename
-itself — `--name` is set at launch. So a hand-started station keeps its generated handle for
-life, and every peer must address it by that instead of its call-sign. That works; it is just
-worse. Tell the user plainly: *"I'm on post as INTEGRATIONS but my address is
-`acme-shop-4d` — restart me with `claude --name INTEGRATIONS` if you want the tab and the
-radio to agree."* Their call, and never worth losing session state over mid-task.
+**If you came up unnamed, take the name — do not just apologise for not having it.** A
+hand-started session is given a generated handle like `acme-shop-4d`, and until 2026-08-18 this
+skill said that was permanent and a restart was the only cure. **That was wrong, and it cost a
+whole morning of the fleet addressing each other by machine address.** `--name` is launch-only;
+the *name* is not.
+
+**`set-callsign.sh <CALLSIGN>` — run it the moment you take a call-sign.** One command, two
+surfaces — **and they are not equally reliable, so do not report them as one result:**
+
+1. **The `@` header** peers see on every message you send — the session registry at
+   `~/.claude/sessions/<pid>.json`. **This one is durable.** Measured 2026-08-18: the rename
+   survived the session's own registry write 33 minutes later, because Claude Code
+   read-modify-writes that file rather than overwriting it from memory.
+2. **The Terminal tab title** — delegated to `label-tab.sh`. **Best effort only.** Claude Code
+   rewrites the title with its own status glyph and summary at every status change, which means
+   **every turn boundary.** The label holds while you work and is gone the moment the turn ends.
+   Re-running wins the tab back until the next one. **Only `--name` at launch fixes the title
+   for good** — the flag's own help says it feeds the prompt box, the `/resume` picker and the
+   terminal title.
+
+**Report those two separately.** *"Call-sign is live on the radio; the tab will keep reverting to
+Claude Code's own title until this session is restarted with `--name`"* is the true sentence.
+Claiming both landed is the kind of confident-partial report this skill spends most of its rules
+preventing.
+
+It finds its own pid and its own tty by walking up from the shell, never by "front window" or by
+scanning for any `claude` — both of which land on somebody else's session. It **refuses a
+call-sign a live session already answers to**, writes the registry atomically, and touches no
+field but the name (the old one is kept in `formerNames`).
+
+**Verify by asking a peer, because a session never sees itself in `ListAgents`.** That is not a
+quirk to work around; it is why the rename matters. You cannot read your own address, so the
+name you present is the only thing your peers have.
+
+**Say plainly what it is: unsupported.** The registry is Claude Code's own state and a version
+bump can change the schema underneath it. **The supported path is `claude --name <CALLSIGN>` at
+launch, which `/mc deploy` already passes** — this exists for sessions already up, which is
+every hand-started tab. If the script fails, say so and fall back to offering a restart; never
+report a call-sign as taken when only the board knows it.
 
 ### 4 · The call-sign goes on the board
 
@@ -665,7 +736,7 @@ should never have to find the right window first.
 **Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
 `BACKEND`; the board and the radio always render it `BACKEND`.
 
-**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75>` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads.
+**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **Once a station has run `set-callsign.sh`, the two `@`s converge** — the harness prints the call-sign because the call-sign *is* the address — and this whole distinction stops costing anybody anything.
 
 **This is the antidote to the fleet's most expensive human error.** With four identical-looking
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
@@ -691,8 +762,9 @@ loop, even if the sweep failed.**
 
 ### Who is who — the radio check
 
-**Name the session after its call-sign, and this problem mostly disappears.** `claude --name
-<CALLSIGN>` sets the session's display name — and that name is what `ListAgents` shows other
+**Name the session after its call-sign, and this problem mostly disappears** — at launch with
+`--name`, or afterwards with `set-callsign.sh`, which reaches the same field on a session that
+is already up. `claude --name <CALLSIGN>` sets the session's display name — and that name is what `ListAgents` shows other
 stations, what appears in their `SendMessage` address, and what the user sees on the prompt box
 of that window. **Verified 2026-08-17:** a session spawned `--name TESTRIG-CALLSIGN` listed to
 its peers as `TESTRIG-CALLSIGN [eefa7c]`, not as a generated handle. So `deploy` always passes
@@ -836,8 +908,10 @@ Then put the answers on the board. **The board is the phone directory:**
 | FRONTEND | `FRONTEND [6d86b0]` | `lane/frontend` | `frontend/src/checkout` |
 | BACKEND | `acme-shop-28 [e29977]` | `lane/backend` | `apps/orders` |
 
-Both forms are valid — the second is a station that came up by hand without `--name`. **Record
-what `ListAgents` actually prints, never what it ought to print.** To call a station: look up its
+Both forms are valid — the second is a station that came up by hand without `--name`, **and it
+does not have to stay that way: `set-callsign.sh <CALLSIGN>` converts row two into row one on a
+running session.** Until it does, **record what `ListAgents` actually prints, never what it
+ought to print.** To call a station: look up its
 address on the board → confirm it is still listed in `ListAgents` → message that exact name. If
 the bare name matches two rows, append the `[ref]`.
 
@@ -897,6 +971,48 @@ information the naming scheme was for.
 else to call it, so say *"the unidentified session in the shared checkout"* and get it a
 call-sign. Do not let a handle become its name by habit.
 
+**And that exception expires at first contact, like every other wait in this skill.** It was
+open-ended until 2026-08-18, and open-ended is how it lost: two live sessions and Control ran a
+whole multi-message exchange — including a protocol correction worth keeping — addressed
+handle-to-handle, `-5f` and `-ca` throughout. Nobody broke a rule. The rule just never said when
+it stopped applying, so *"do not let it become its name by habit"* was a warning with no
+mechanism, and habit is not something a warning beats.
+
+**So the first message from an unidentified session is itself the trigger:**
+
+- **Control gives it a call-sign in the reply** — first line, before answering the content, and
+  the board row is written in the same breath. Identification is not a separate errand to get
+  to later; later is what produced the exchange above.
+- **A station that takes first contact cannot assign one** — posts are Control's to initiate —
+  so it answers the content and routes the identification to Control or the user in the same
+  message. It does not simply carry on corresponding with an address.
+- **Never hold up urgent traffic for this.** A mayday gets answered first and named second. The
+  rule is that identification rides along, not that it goes first.
+- **There is always a namer, and it is never nobody.** Control names it; if Control is absent,
+  unmanned, or is itself unidentified, **the user does** — asked directly, in one line. Observed
+  2026-08-18, an hour after the rule above shipped: a session came up, announced itself exactly
+  as instructed, asked for a call-sign — and stayed nameless, because the board's Control was
+  dead and the rule named only Control. **A rule that routes to one party has a hole the size of
+  that party.**
+- **Answer with the sender's address, including the `[ref]`.** A session cannot see itself in
+  `ListAgents`, so an unnamed station genuinely does not know what address its own messages
+  arrive from and cannot write its own board row. Whoever takes first contact reads it off their
+  own list and sends it back. Withholding it is not caution; it is the one fact only the
+  receiver has.
+
+**Naming blocks claiming, not talking.** An unidentified session may ask, answer, audit the
+board and raise a mayday — that traffic is why it is talking to you at all. What it may **not**
+do is take a post, cut a branch, or start work while nameless: the board row is the thing that
+stops two sessions taking the same lane, and it cannot be written without a call-sign. *"I'm
+taking `lane/backlog`, will write my row once I have the address"* is that hazard in one
+sentence — the claim moves first and the record catches up, which is the order the board exists
+to reverse. **Get named, write the row, then work.**
+
+**Until it has a call-sign, the handle does not enter prose at all** — not in radio, not in a
+report, not in your own summary. It is *"the unidentified session in the shared checkout"*,
+which is deliberately too clumsy to keep saying. **That friction is the mechanism.** A name you
+can comfortably repeat is a name that never gets fixed.
+
 **When a human asks who is who, produce the mapping — do not explain it in prose.** The `@` list
 shows every session on the machine, so what they are looking at genuinely does not match the
 fleet, and that is the tool's doing rather than theirs. Two columns settle it:
@@ -904,7 +1020,7 @@ fleet, and that is the tool's doing rather than theirs. Two columns settle it:
 ```
   What @ shows you        What it actually is
   FRONTEND                ✅ correct — spawned with --name FRONTEND
-  acme-shop-75            INTEGRATIONS — started by hand, so it never got a name
+  acme-shop-75            INTEGRATIONS — came up by hand; can take its name with set-callsign.sh
   acme-shop-9a            CONTROL — same, started by hand
   other-project-db        a different project entirely. Never address this one
 ```
@@ -1134,10 +1250,39 @@ git branch -a --contains $(git log -1 --format=%H -- <path>) 2>/dev/null | head
 
 | What you find | What to do |
 |---|---|
-| **Nobody holds it** | Claim it on the board and proceed |
+| **Nobody holds it, and no live station owns the area** | Claim it on the board and proceed |
+| **Nobody holds it, but a live station owns the area** | **Call them before claiming.** Unclaimed is not unowned — see below |
 | **A live station holds it** | **Call them.** Ask the specific question, get the answer, proceed with it |
 | **A dead station held it** | Recover what it left behind before touching anything |
 | **A human collaborator holds it** | `/mission-control alert` — email them |
+
+**Unclaimed is not unowned, and that distinction is the whole of row two.** The board is a
+*claim* board: it records what somebody has already started. A standing station owns its area
+whether or not it has filed a row for the specific item in front of you — that is what standing
+means. So "I grepped the board and nothing holds C30" is a true sentence that answers the wrong
+question, and the right one is **"is the station whose area this is live right now?"**
+
+Observed 2026-08-18. A backlog station verified a stale-open item properly — board said open,
+`git log` said merged, it checked the source rather than trusting either — and was one command
+from claiming work the live CHANNELS station was already doing. Nothing was on the board because
+CHANNELS had come up minutes earlier. **The user had to interrupt and say so**, which means the
+human was carrying the dependency the skill exists to carry. Neither station did anything wrong;
+the check simply never asked who owned the area.
+
+**This bites cross-cutting stations hardest, because they cross areas by construction.** A
+BACKLOG or SWEEP-shaped post picks work from a *list of IDs*, and an ID hides its blast radius —
+you cannot grep a path you have not looked up yet. So when you are working from a list:
+
+1. **Resolve the item to its paths first.** The check above is path-shaped and useless on a bare
+   ID.
+2. **Then check the live roster, not just the board** — `ListAgents` is free and the board is
+   stale by definition the moment a station comes up.
+3. **Then call the area owner if there is one**, before you claim. One line — *"taking C30 off
+   the backlog, it's yours, do you hold it?"* — and the answer is usually instant.
+
+**Picking the non-overlapping item is a normal, cheap outcome.** There is almost always other
+work on the list. The expensive outcome is two stations landing the same fix and finding out at
+merge.
 
 **3 · When you cannot explain something, file it as unexplained — never as a diagnosis.**
 

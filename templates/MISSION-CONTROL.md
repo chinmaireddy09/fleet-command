@@ -189,6 +189,13 @@ directions, never counts, and confirm `db`/`redis`/`minio` are healthy first.
 | `docs/PROGRESS-LOG.md`, `WORK-LOCKS.md`, `PROJECT-STATUS-AND-BACKLOG.md` | Insert-only, newest-first. Expect same-file conflicts; resolve by **keeping both entries in date order**. |
 | Published artifacts (dashboards) | **Re-fetch immediately before every publish. Never `force`.** A 409 is a safety net, not a failure. |
 
+**Approval for anything in this table is announced, not assumed.** Every session here belongs
+to the same person, who sees one window at a time, so a yes to *"may I restart `web`?"* in one
+tab says nothing about whether another tab asked the same thing. Name which tab is asking and
+whether another is holding the same question, and announce the answer to the fleet. **Never
+run a standoff on "whoever gets approval first"** — both sessions comply and the same act gets
+authorised twice.
+
 **Explicit-path staging does not solve same-file collisions.** `git add <file>` takes that
 file's whole content, so if two sessions both appended to `PROGRESS-LOG.md`, whoever commits
 takes both. Either commit it and **name both entries in the message**, or leave it and say so.

@@ -57,6 +57,12 @@ as the estimate: *"acknowledge in the next few minutes."* Then, for anyone still
      broken — cannot be narrowed.** Then the only moves are keep waiting or **put it to the
      user**, and the user is usually the faster answer.
 
+**When you put it to the user, say which tab is asking and whether another tab is holding the
+same question.** The user is one person across every window, so a yes collected in one tab is
+not evidence that the other tab's ask was seen. **Never resolve a standoff with "whoever gets
+approval first proceeds"** — both stations comply, the same person authorises twice, and neither
+yes was informed. SKILL.md, *One human, many tabs*.
+
 **Never proceed over a silent station because it is "probably fine."** That is the one failure
 this step exists to prevent, and it stays forbidden no matter how long you have waited.
 

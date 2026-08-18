@@ -108,7 +108,8 @@ it, so four stations do not each carry procedure they will never run:
 | `references/sweeps.md` | a change crosses areas more than one station owns | whoever runs it |
 | `references/countermeasures.md` | something has already gone wrong | anyone, at the time |
 | `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost | anyone, rarely |
-| `label-tab.sh` | at identify — pins your call-sign to your terminal tab | every station |
+| `set-callsign.sh` | at identify — makes your call-sign the address peers see, on a session already running | every station |
+| `label-tab.sh` | called by the above — pins the tab title, which Claude Code takes back each turn | every station |
 | `spawn-station.sh` | at deploy — opens the tab in *your* window and verifies a session really started | Control |
 
 ---
