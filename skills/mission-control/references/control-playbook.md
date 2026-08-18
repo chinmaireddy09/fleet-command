@@ -331,7 +331,7 @@ need doing?**
 
 ```
 CONTROL — Go received on the 3:49 queue. Since then:
-          · item 1 redundant — FRONTEND landed it at 40ae9b6, dropping it
+          · item 1 redundant — FRONTEND landed it at 9f2c1ab, dropping it
           · items 2 and 3 stand, running them now
           · two new items appeared (directory table, my own row) — NOT in your go,
             asking separately below
@@ -377,7 +377,7 @@ the commit message will describe all four as approved work.
 CONTROL — Go received on the 3:49 queue. Re-read it before running. Three changes:
 
   1  pause FRONTEND's row      DROPPED — redundant. FRONTEND wrote the flip
-                               itself at 40ae9b6. Not re-doing it as a second
+                               itself at 9f2c1ab. Not re-doing it as a second
                                commit; it needs your yes on its push instead,
                                in its own tab.
   2  archive the 109 done rows STANDS — and worse than when I asked: the board

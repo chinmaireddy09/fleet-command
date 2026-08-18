@@ -1281,7 +1281,7 @@ git branch -a --contains $(git log -1 --format=%H -- <path>) 2>/dev/null | head
 **Unclaimed is not unowned, and that distinction is the whole of row two.** The board is a
 *claim* board: it records what somebody has already started. A standing station owns its area
 whether or not it has filed a row for the specific item in front of you — that is what standing
-means. So "I grepped the board and nothing holds C30" is a true sentence that answers the wrong
+means. So "I grepped the board and nothing holds B4" is a true sentence that answers the wrong
 question, and the right one is **"is the station whose area this is live right now?"**
 
 Observed 2026-08-18. A backlog station verified a stale-open item properly — board said open,
@@ -1299,7 +1299,7 @@ you cannot grep a path you have not looked up yet. So when you are working from 
    ID.
 2. **Then check the live roster, not just the board** — `ListAgents` is free and the board is
    stale by definition the moment a station comes up.
-3. **Then call the area owner if there is one**, before you claim. One line — *"taking C30 off
+3. **Then call the area owner if there is one**, before you claim. One line — *"taking B4 off
    the backlog, it's yours, do you hold it?"* — and the answer is usually instant.
 
 **Picking the non-overlapping item is a normal, cheap outcome.** There is almost always other
