@@ -77,14 +77,14 @@ rules that survived contact look different from the ones that did not:
 - **Verify the pushed row, not the live session.** A deploy reported success against a tab whose
   session had never registered. The unclaimed row is what proved it.
 - **Silence is never evidence.** It does not acknowledge a sweep, release a hold, prove a station
-  dead, or free a reserved post. Only an answer, a bounce, or absence from `ListAgents` does.
+  dead, or free a reserved post. Only an answer, a bounce, or absence from the fleet manifest does.
 - **Nothing may block forever on another station answering.** Every wait carries an estimate, one
   follow-up call, and a defined move for when the answer never comes.
 - **A check must be able to see what it claims to measure.** Four times in one day a check looked
   authoritative and was structurally blind — an exit code that belonged to `tail`, a name-diff
   against a run that never started, a guard reporting the wrong line, a recommendation reasoned
   from import paths about files nobody had opened.
-- **`ListAgents` is not your fleet.** It lists every Claude Code session on the machine, other
+- **The fleet manifest is not your fleet.** It lists every Claude Code session on the machine, other
   projects included. The board is the roster.
 - **Rigour is not the deliverable.** Three stations produced correct audit documents when what
   was asked for was a surface to work on. A census is an input to a design tool, not one.

@@ -37,6 +37,7 @@ If you extend this skill, hold new words to the same test:
 |---|---|
 | **station** | a post: one area of the product, with a call-sign, a workspace and a row on the board. **A station is not a session.** A session *mans* a station — the session dies when its window closes, the station outlives it. But not forever: a call-sign is initiated when there is work for it and **retired when that work lands**, so the roster is whatever the jobs need. There is no fixed list and no ceiling |
 | **identify** | a session taking a call-sign — and **binding itself to the post**: it reads the row, takes the workspace path from it, and moves in on its own. Replaced *join*, which described what the session did rather than what the fleet learned, and which left the human to do the moving |
+| **the fleet manifest** | what `ListAgents` returns — **every live Claude Code session on this machine**, not just this repo's. A list of contacts, not of stations: presence in it proves a window is open somewhere, never that a post is manned. The board is the roster; the manifest is the radar |
 | **a call-sign** | `INTEGRATIONS`, `FRONTEND`, `CONTROL` — what a station is **called**. Say it in every report and every call |
 | **a session name** | `acme-shop-4d` — a machine-generated **address**, not a name. It belongs in a message's `to:` field and the board's lookup column, **nowhere else.** A report full of these has thrown away the one thing call-signs are for |
 | **sitrep** | asking every live station where it actually is, what it holds and what is blocking it — then **fixing the board where the answers disagree with it.** A sitrep that ends without correcting a stale row was just a conversation |
@@ -49,7 +50,7 @@ If you extend this skill, hold new words to the same test:
 | **countermeasures** | what you do once a collision has already happened — announce it first, then repair *forward*, never by deleting |
 | **the board** | the claim file. Who holds what, and what's next. Not a history |
 | **alert** | reaching **a person**, not a session — `/mission-control alert`. It opens a GitHub issue **assigned to them**, and GitHub emails them, so they need neither the repo open nor a pull. Two uses: *"I'm holding this, don't start it"* and *"nobody owns this, can you take it or help"*. **The only thing in this skill that reaches a human being**; everything else talks to Claude Code windows. Always show the user the exact title and body and get a yes first — it mails a real person |
-| **radio check** | **two different things, and only one costs anything.** A **liveness check** is `ListAgents` plus the board — it tells you who is active, idle or gone, asks nobody anything, and so is run **on a schedule**. A **broadcast radio check** asks every station to reply with its call-sign, branch and paths — it costs one reply per station and so is run **on an event**: coming on watch, a bounced call, before a sweep or a deploy. Never broadcast on a timer |
+| **radio check** | **two different things, and only one costs anything.** A **liveness check** is the fleet manifest plus the board — it tells you who is active, idle or gone, asks nobody anything, and so is run **on a schedule**. A **broadcast radio check** asks every station to reply with its call-sign, branch and paths — it costs one reply per station and so is run **on an event**: coming on watch, a bounced call, before a sweep or a deploy. Never broadcast on a timer |
 | **the automation boundary** | the one process that runs without being asked each time: **open a tab, enter the workspace path, initiate mission control**. Nothing else — not claiming, committing, pushing, merging, gating, standing down or deleting a row. **Being certain the next step is wanted is not the same as being asked for it** |
 | **hand over** | before a session closes: push everything, write down what only you know, report. **The acknowledgement is confirmation, not a gate** — once the work is pushed and the knowledge is in the repo you are done, whether or not anyone answered |
 
@@ -148,7 +149,7 @@ transcript disappear when that session ends.
 | **another person**, their own machine | `/mission-control alert` → a GitHub issue **assigned to them**, which GitHub emails | minutes |
 
 **Messaging between sessions cannot reach another person.** `SendMessage` only reaches Claude
-Code windows — and not even reliably *this repo's* windows, since `ListAgents` lists every
+Code windows — and not even reliably *this repo's* windows, since the fleet manifest lists every
 session on the machine, other projects included. Never report that you "notified the team" when
 you messaged your own sessions.
 

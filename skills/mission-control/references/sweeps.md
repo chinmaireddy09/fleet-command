@@ -44,7 +44,7 @@ work gets lost.
 the larger the fleet, the likelier that is. Say when you need the answers by, in the same breath
 as the estimate: *"acknowledge in the next few minutes."* Then, for anyone still silent:
 
-1. **Re-check who is actually live.** A station absent from `ListAgents` was never owed an ack —
+1. **Re-check who is actually live.** A station absent from the fleet manifest was never owed an ack —
    it is gone, and that is a recovery job, not a sweep blocker.
 2. **Call the silent station once, directly.** Broadcasts are easy to miss; a call is not.
 3. **Still silent → you may not sweep its paths.** Silence is not an acknowledgement, and it

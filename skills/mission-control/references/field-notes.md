@@ -54,9 +54,9 @@ to notice — it was caught only because someone re-measured after verifying an 
 ## 4 · Named, and unable to tell
 
 Observed 2026-08-17: a station spawned `--name FRONTEND` reported
-*"I came up unnamed and cannot see myself in ListAgents"* and spent a radio round-trip asking
+*"I came up unnamed and cannot see myself in the fleet manifest"* and spent a radio round-trip asking
 Control for an address it already had. It was not unnamed; it just could not tell — because
-**named and unnamed sessions look identical from inside `ListAgents`, which shows neither.**
+**named and unnamed sessions look identical from inside the fleet manifest, which shows neither.**
 
 **Read your own launch arguments instead.** Walk the parents to the `claude` process — the same
 walk `label-tab.sh` does for the tty — and the `--name` is sitting right there:
@@ -81,7 +81,7 @@ intentions before acting.
 
 ---
 
-## 6 · ListAgents is the whole machine, not your fleet
+## 6 · The fleet manifest is the whole machine, not your fleet
 
 **Measured 2026-08-17, in this repo:** a session working `fleet-command` ran `ListAgents` and the
 only peer it saw was `acme-shop-f3 [6db8a8]` — **a session in a different repository
@@ -135,11 +135,11 @@ that as cross-confirmed and then measured it per ref before writing:
 |---|---|
 | `origin/main:docs/WORK-LOCKS.md` | **50,137 bytes / 289 lines** |
 | `lane/channels` | 41,042 |
-| `worktree-design-foundation-shell` | 39,274 |
+| `worktree-frontend` | 39,274 |
 | the shared checkout's **working tree** | **289,330** ← the "289 KB" |
 
 Both stations had come up in the shared checkout before moving to their worktrees, so **both
-sampled the same stale copy.** The warning had been true when written — before `00686ca` archived
+sampled the same stale copy.** The warning had been true when written — before an archive commit archived
 134 rows on 2026-08-18 the file was 324,068 bytes and `Read` genuinely refused it — and it
 outlived its trigger by a day while reading as freshly verified.
 

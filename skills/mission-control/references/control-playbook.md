@@ -11,13 +11,13 @@ what's next."** Keep it short enough to read in ten seconds — it is not a hist
 
 **Running this command is what put a coordinator on watch, so bind before you report** —
 `SKILL.md` §1 has the rule and its three exceptions (you already hold a post; a station that is
-live in `ListAgents` already holds the coordinator's call-sign; the invocation named someone
+live in the fleet manifest already holds the coordinator's call-sign; the invocation named someone
 else). Otherwise, in this order:
 
 1. `bash <skill-dir>/set-callsign.sh <COORDINATOR>` — the coordinator's name comes from the
    project's `MISSION-CONTROL.md`, then `~/.claude/mission-control.json`, then `CONTROL`.
 2. **Write your row** — shared checkout as the workspace, no lane, no branch of your own. If the
-   board already carries a Control row naming a session that is not in `ListAgents`, **rewrite
+   board already carries a Control row naming a session that is not in the fleet manifest, **rewrite
    that row**; do not push a second one next to it.
 3. **Then** run the gather below and report, with the watch declared on the first line.
 
@@ -127,7 +127,7 @@ apart constantly, because a row is written once and the work moves every minute.
 
 Ask every live station for five things, and collect the replies into **one** report:
 
-1. **call-sign**, and its `ListAgents` name
+1. **call-sign**, and its fleet-manifest name
 2. **where it actually is** — its `pwd` and branch, not what the board says
 3. **what it holds** — the paths it has open right now
 4. **what is uncommitted or unpushed** — the part that dies with the window
@@ -422,7 +422,7 @@ CONTROL — Go received on the 3:49 queue. Re-read it before running. Three chan
   touched.
 
   NOT COVERED BY YOUR GO, asking separately:
-  4  the directory table disagrees with ListAgents on all four addresses
+  4  the directory table disagrees with the fleet manifest on all four addresses
   5  my own row names a dead session, so I am uncallable by anyone reading
      the board
 
@@ -568,6 +568,19 @@ stations pushed rows to one file inside twenty minutes with zero collisions. Wha
 - **On rejection, start again from the new `origin/main`** and reapply your row — do not merge the
   board by hand. One station kept a peer's line and rebased its own underneath it rather than
   overwriting; that is the behaviour to copy.
+- **Anchor your edit by CONTENT, never by line number.** Measured 2026-08-19: a station read its
+  claims row at line 278, a peer pushed while it was thinking, and by the time it wrote, its row
+  was at line 315 — **a hardcoded line number would have rewritten somebody else's row.** Match on
+  the row's own text (its call-sign prefix plus the address it carries), **assert the match count
+  before writing** — exactly once, per target — and abort if the count is anything else. The
+  numbers move under you between reading the board and writing it, and nothing warns you.
+- **A stale name in an ADDRESS CELL is a bug; the same name in a dated observation is a record.**
+  Correcting a dead address where a station is meant to be reachable is a fix. Rewriting that same
+  dead name inside another station's written account of what happened is **reformatting their
+  narrative** — the observation was accurate about its date, and editing it makes the board lie
+  about the past instead of the present. Measured 2026-08-19: a station corrected its own address
+  cell and deliberately left an identical string standing three lines above, in a peer's note about
+  a roster that had died. **Fix the cells that route traffic. Leave the sentences that record it.**
 | `PROGRESS-LOG.md` | what happened, and why | past | append-only; never edit an old entry |
 | `PROJECT-STATUS-AND-BACKLOG.md` | what to work on next | future | items added, checked off, re-scoped |
 | `MISSION-CONTROL.md` | this project's own rules for running sessions | — | changes rarely |

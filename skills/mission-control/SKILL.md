@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.27.1
+version: 6.28.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -77,7 +77,7 @@ about git — the branch discriminates, never the author, because every session 
 same identity. **The same fact governs authority, and that consequence was missing until
 2026-08-18.**
 
-`ListAgents` lists *sessions*, not principals. Two stations asking "may I?" are two windows
+The fleet manifest lists *sessions*, not principals. Two stations asking "may I?" are two windows
 asking **the same human**, who sees one of them at a time. So:
 
 - **A yes in one tab is evidence about that tab's question only.** It is not evidence that the
@@ -198,7 +198,7 @@ leave the post empty.
 `~/.claude/mission-control.json`, under `naming` — **user-level and never in a repo**, exactly
 like the spawn preferences and for the same reason: a clone must not carry someone else's
 vocabulary. The *mapping* is still public to the fleet, because the board's address column
-records what `ListAgents` actually prints.
+records what the fleet manifest actually prints.
 
 
 **Better: use this project's real area names.** In an e-commerce platform that might be
@@ -227,6 +227,12 @@ session name**, and every live session split into on-fleet and off-fleet.
 
 **Do not re-derive a line it printed.** If a value is in that block it is measured,
 and measured at the ref you are about to write.
+
+> **The fleet manifest** — what `ListAgents` returns: **every live Claude Code session on this
+> machine**, not only this repo's. It is a list of *contacts*, not of stations: a session appears
+> in it whether or not it holds a post, and whether or not it is on this fleet at all. The board
+> says who is a station; the manifest says who is switched on. **`mc-init.sh` prints it already
+> split into on-fleet and off-fleet**, so nobody has to classify it by hand twice.
 
 ### Why this is a rule and not a convenience
 
@@ -287,7 +293,7 @@ so say *"CONTROL, in the shared checkout"* and not a ref you cannot see.
 
 - **You already hold another post.** A station running `/mc` to read the board is that station
   reading the board. Report; do not take Control on top of your own lane.
-- **A live station already holds it.** Live means **in `ListAgents`**, not **on the board** — a
+- **A live station already holds it.** Live means **in the fleet manifest**, not **on the board** — a
   row is a claim, and rows outliving their sessions is the whole failure this rule exists for.
   Two coordinators is a worse fleet than none.
 - **The invocation names something else** — `/mc identify FRONTEND` is explicit and wins.
@@ -372,7 +378,7 @@ The binding is a tool call, so make it one:
    **Make this check, don't assume either way.** A session reached by `deploy` and a session
    started by hand both run `identify`, and calling `EnterWorktree` from inside the target is a
    different situation from calling it from outside.
-4. **Write your `ListAgents` address onto the row** and flip it from reserved to on post, then
+4. **Write your fleet-manifest address onto the row** and flip it from reserved to on post, then
    push. Until that address is on the board, no other station can call you — which is exactly
    why a board full of 🚧 rows can still leave everyone unable to find anyone.
 
@@ -398,6 +404,14 @@ The binding is a tool call, so make it one:
    git push origin HEAD:main
    git worktree remove <scratchpad>/board-flip
    ```
+
+   **Remove your own when you are done — and never anybody else's.** Measured 2026-08-19:
+   `git worktree list` showed three `board-flip` worktrees under three different session
+   scratchpads, because each station cut one and only one had finished. **A detached throwaway at
+   somebody else's scratchpad path is either mid-edit or abandoned, and you cannot tell which from
+   outside.** Tidying it is exactly how work with no branch and no remote disappears — a detached
+   HEAD has nothing to recover it by. Report the strays to the fleet and let each station clear
+   its own; **a leftover worktree costs disk, and removing a live one costs the commit.**
 
    **Run it from inside your own worktree.** `git worktree add` works fine from an isolated
    session — measured, twice, by two different stations.
@@ -570,9 +584,9 @@ The binding is a tool call, so make it one:
 and never render it as working — a row that claims a holder it does not have makes free work
 look taken, which is the one failure this whole board exists to prevent.
 
-**A row whose address is not a real `ListAgents` name fails the same way, more quietly.** A cell
-reading `channels-1b` looks filled in and is uncallable; the row renders as manned while nothing
-can reach it. Record what `ListAgents` prints, exactly.
+**A row whose address is not a real fleet-manifest name fails the same way, more quietly.** A cell
+reading `acme-shop-1b` looks filled in and is uncallable; the row renders as manned while nothing
+can reach it. Record what the fleet manifest prints, exactly.
 
 **How to choose:**
 
@@ -668,17 +682,17 @@ reply to an incoming message, copy its `from` attribute as your `to`"* — fails
 `no agent named '<old-handle>' is reachable`. Four sessions hit it independently on 2026-08-18,
 including one in another repo that logged the bounce and failed to draw the rule from it.
 
-**So: never reply to the `from-name`. Resolve the sender through `ListAgents` first.**
+**So: never reply to the `from-name`. Resolve the sender through the fleet manifest first.**
 
 **The `[ref]` is the durable identifier; the name is not.** A renamed session keeps its ref and
-changes its name — `ecom-nexus-oss-98 [fd89d9]` became `CONTROL [fd89d9]`, same ref throughout.
+changes its name — `acme-shop-98 [fd89d9]` became `CONTROL [fd89d9]`, same ref throughout.
 That is why the board's address column carries **name *and* ref**: after a rename the name is
 stale and the ref still finds its station. **Match on the ref, address by the current name.**
 
 A stale `@` after a successful rename also reads exactly like a failed rename to the human
 watching — say which it is before they ask.
 
-**Verify by asking a peer, because a session never sees itself in `ListAgents`.** That is not a
+**Verify by asking a peer, because a session never sees itself in the fleet manifest.** That is not a
 quirk to work around; it is why the rename matters. You cannot read your own address, so the
 name you present is the only thing your peers have.
 
@@ -691,7 +705,7 @@ report a call-sign as taken when only the board knows it.
 ### 4 · The call-sign goes on the board
 
 Immediately, and **pushed before any code**. The row carries call-sign, session name from
-`ListAgents`, branch, workspace, the paths it holds, and what it plans to touch next.
+fleet-manifest name, branch, workspace, the paths it holds, and what it plans to touch next.
 
 This is the radio check written down. Until it is on the board, no other station can find you.
 
@@ -773,7 +787,7 @@ offering a list of ghosts.
 3. The session **closes, or re-identifies as something else.**
 4. *Then* **Control deletes the row** and pushes. With no Control manned, the next station to
    come on watch clears the rows it can *prove* are dead — a call-sign that **had** a session,
-   completed its handover, and is now absent from `ListAgents`. Never on a hunch, and **never a
+   completed its handover, and is now absent from the fleet manifest. Never on a hunch, and **never a
    reserved row while its deploy is still in flight**: that post was initiated for someone who has not
    arrived yet, and it is waiting, not dead.
 
@@ -1006,7 +1020,7 @@ should never have to find the right window first.
 
 **The same relay, fanned out — and the fan-out is the part that goes wrong.**
 
-1. **Resolve the roster from `ListAgents`, never from the board.** A row is a claim and you are
+1. **Resolve the roster from the fleet manifest, never from the board.** A row is a claim and you are
    about to spend a message on every name in it; dead rows cost one bounce each.
 2. **Send to every live station on THIS fleet, and to nobody else.** A session in another repo is
    off-fleet — it owes this board nothing, and an "all stations" that reaches it is a stranger's
@@ -1040,9 +1054,9 @@ case-insensitive"* is the right working conclusion; *"case can never bounce"* is
 data. A stale `from-name` after a rename **is** a real bounce — different failure, and the only
 one of the two anybody has actually seen.
 
-**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **They do NOT converge when a station renames, and the 2026-08-18 note here claimed they did.** Measured 2026-08-19: two stations took `FRONTEND` and `CHANNELS` with `set-callsign.sh`, both confirmed on each other's `ListAgents` — and every message they sent afterwards still arrived headed `@ ecom-nexus-oss-46)` and `@ ecom-nexus-oss-a0)`. **The header is resolved when the channel opens and never re-resolved.** That is the same capture that bounces a reply sent to a from-name, seen from the reading side instead of the sending side, and nothing invalidates it — a long-lived channel prints a name that is arbitrarily old.
+**Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **They do NOT converge when a station renames, and the 2026-08-18 note here claimed they did.** Measured 2026-08-19: two stations took `FRONTEND` and `CHANNELS` with `set-callsign.sh`, both confirmed on each other's `ListAgents` — and every message they sent afterwards still arrived headed `@ acme-shop-46)` and `@ acme-shop-a0)`. **The header is resolved when the channel opens and never re-resolved.** That is the same capture that bounces a reply sent to a from-name, seen from the reading side instead of the sending side, and nothing invalidates it — a long-lived channel prints a name that is arbitrarily old.
 
-**So treat the `@` header as provenance, not identity.** It tells you which session opened this channel and what it was called then. It does not tell you what that station is called now, and on a fleet where stations rename at identify it is wrong more often than right. **Resolve through `ListAgents` every time, and match on the `[ref]`** — the one field that survives a rename.
+**So treat the `@` header as provenance, not identity.** It tells you which session opened this channel and what it was called then. It does not tell you what that station is called now, and on a fleet where stations rename at identify it is wrong more often than right. **Resolve through the fleet manifest every time, and match on the `[ref]`** — the one field that survives a rename.
 
 **This is the antidote to the fleet's most expensive human error.** With four identical-looking
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
@@ -1070,7 +1084,7 @@ loop, even if the sweep failed.**
 
 **Name the session after its call-sign, and this problem mostly disappears** — at launch with
 `--name`, or afterwards with `set-callsign.sh`, which reaches the same field on a session that
-is already up. `claude --name <CALLSIGN>` sets the session's display name — and that name is what `ListAgents` shows other
+is already up. `claude --name <CALLSIGN>` sets the session's display name — and that name is what the fleet manifest shows other
 stations, what appears in their `SendMessage` address, and what the user sees on the prompt box
 of that window. **Verified 2026-08-17:** a session spawned `--name TESTRIG-CALLSIGN` listed to
 its peers as `TESTRIG-CALLSIGN [eefa7c]`, not as a generated handle. So `deploy` always passes
@@ -1100,7 +1114,7 @@ call-sign in the first place.
 
 #### The bootstrap trap: a session cannot see itself
 
-**`ListAgents` never lists the session calling it.** So a station that came up unnamed cannot
+**The fleet manifest never lists the session calling it.** So a station that came up unnamed cannot
 read its own address **from that tool**, and identify's step 4 — *write your `ListAgents` name onto
 the row* — looks unsatisfiable alone.
 
@@ -1135,7 +1149,7 @@ call-sign is its address — but **it cannot confirm the flag took**, because th
 would show it is the one tool that never shows it itself. Three sessions hit this in a single
 hour on 2026-08-17, and each was right to ask rather than assume: a row carrying an address that
 does not resolve is exactly the lie the board exists to prevent, and this repo has already been
-burned by one (`channels-1b`).
+burned by one (`acme-shop-1b`).
 
 **Two things close it properly, and the first is free:**
 
@@ -1174,12 +1188,12 @@ station which came up in the shared checkout against a row claiming it is on pos
 
 | | **Liveness check** | **Broadcast radio check** |
 |---|---|---|
-| What it is | `ListAgents` + read the board | *"all stations, report"* — everyone replies |
+| What it is | the fleet manifest + the board | *"all stations, report"* — everyone replies |
 | Costs | **nothing.** You ask no one anything | one reply from **every** live station |
 | Tells you | who is **active, idle, or gone** | call-signs, working directories, branches, held paths |
 | When | **on a schedule** | **on an event** |
 
-**The liveness check is free, so run it regularly.** `ListAgents` already reports each session as
+**The liveness check is free, so run it regularly.** the fleet manifest already reports each session as
 active or idle, and absence from it is what proves a station gone. That is the sweep for *"is
 anyone stuck, finished, or dead and still holding a row?"*, and it interrupts nobody — so there
 is no reason to be stingy with it. Do it when you come on watch, between tasks, and whenever the
@@ -1221,19 +1235,19 @@ should be *load-bearing*.
 
 Then put the answers on the board. **The board is the phone directory:**
 
-| Call-sign | Address (from `ListAgents`) | Branch | Holds |
+| Call-sign | Address (from the fleet manifest) | Branch | Holds |
 |---|---|---|---|
 | FRONTEND | `FRONTEND [6d86b0]` | `lane/frontend` | `frontend/src/checkout` |
 | BACKEND | `acme-shop-28 [e29977]` | `lane/backend` | `apps/orders` |
 
 Both forms are valid — the second is a station that came up by hand without `--name`, **and it
 does not have to stay that way: `set-callsign.sh <CALLSIGN>` converts row two into row one on a
-running session.** Until it does, **record what `ListAgents` actually prints, never what it
+running session.** Until it does, **record what the fleet manifest actually prints, never what it
 ought to print.** To call a station: look up its
-address on the board → confirm it is still listed in `ListAgents` → message that exact name. If
+address on the board → confirm it is still listed in the fleet manifest → message that exact name. If
 the bare name matches two rows, append the `[ref]`.
 
-#### `ListAgents` is not your fleet — it is every session on the machine
+#### The fleet manifest is not your fleet — it is every session on the machine
 
 **Measured 2026-08-17:** a session ran `ListAgents` and its only peer was **a session in a
 different repository entirely**, five hours into unrelated work — with nothing in the listing to
@@ -1242,10 +1256,10 @@ say so. `references/field-notes.md` §6.
 **So the two lists mean different things, and only one of them is the fleet:**
 
 - **The board** says who is a station on *this* repo. It is the roster, and it is authoritative.
-- **`ListAgents`** says which sessions are running on this computer. It is a phone book for the
+- **The fleet manifest** says which sessions are running on this computer. It is a phone book for the
   whole building, not for your floor.
 
-**Address a session only if its address is on this repo's board.** A stranger in `ListAgents` is
+**Address a session only if its address is on this repo's board.** A stranger in the fleet manifest is
 not an unnamed station and must not be treated as one:
 
 - **Never broadcast to it.** An "all stations" that reaches someone else's project is noise at
@@ -1257,7 +1271,7 @@ not an unnamed station and must not be treated as one:
 - **If you cannot match a listed session to a board row, leave it alone and say so.** It is
   probably a colleague's other window, doing work that has nothing to do with you.
 
-**This also works the other way:** a session missing from `ListAgents` is gone, but a session
+**This also works the other way:** a session missing from the fleet manifest is gone, but a session
 *present* in it proves only that some Claude Code window is open somewhere — not that your
 station is manned.
 
@@ -1626,7 +1640,7 @@ you cannot grep a path you have not looked up yet. So when you are working from 
 
 1. **Resolve the item to its paths first.** The check above is path-shaped and useless on a bare
    ID.
-2. **Then check the live roster, not just the board** — `ListAgents` is free and the board is
+2. **Then check the live roster, not just the board** — the fleet manifest is free and the board is
    stale by definition the moment a station comes up.
 3. **Then call the area owner if there is one**, before you claim. One line — *"taking B4 off
    the backlog, it's yours, do you hold it?"* — and the answer is usually instant.
@@ -1932,7 +1946,7 @@ green. **Ask which layer actually decides the thing you are testing**, and test 
    on a reply that is never coming is indistinguishable from a station that has crashed.
 10. **Silence is never evidence.** It does not acknowledge a sweep, release a hold, prove a
     station dead, or free a reserved post. Only a positive signal does — an answer, a bounce,
-    absence from `ListAgents`, or the user saying so.
+    absence from the fleet manifest, or the user saying so.
 11. **Automate exactly one thing: open a tab, enter the workspace, initiate mission control.**
     Everything else is asked for. **Certainty that the next step is obvious is not permission to
     take it** — that feeling is the symptom, not the exemption.
@@ -1940,7 +1954,7 @@ green. **Ask which layer actually decides the thing you are testing**, and test 
     names.** `/mc` is the request, and taking the coordinator's post is executing it rather than
     extending it (§1). Read this order as forbidding the *next* step, not the one asked for —
     on 2026-08-19 two sessions read it as forbidding both and left a dead fleet coordinator-less.
-12. **Check liveness on a schedule; broadcast only on an event.** `ListAgents` and the board cost
+12. **Check liveness on a schedule; broadcast only on an event.** the fleet manifest and the board cost
     nobody anything, so run them often. Asking every station to reply costs a reply from every
     station, so it needs a reason you can name.
 13. **If a peer is blocked behind you, post progress at intervals** — on the board, not over the
@@ -1995,7 +2009,7 @@ destructive in one direction only.**
 - **Default to the screen.** It is free, reversible, and what was meant nearly every time.
 - **Never delete a claims row on an ambiguous instruction.** Ask which they mean, in one line.
 - **When rows genuinely are being cleared, name them and say why each one goes** — *"deleting
-  BACKLOG [06dddf] and CONTROL [fd89d9], both absent from the live listing"*. A row you cannot
+  BACKLOG [028df2] and CONTROL [fd89d9], both absent from the live listing"*. A row you cannot
   justify by name is a row you are not clearing.
 - **Retiring a row is `secure`/`standdown`, which archives it.** Deletion is not the tidy version
   of that; it is the lossy one.
@@ -2012,12 +2026,12 @@ readable exactly when the fleet is busiest.
 ```
 BOARD — 3 manned, 1 open
 
-  CONTROL    [760f3b]  the watch    shared checkout
-  FRONTEND   [d31e6a]  no task      .claude/worktrees/design-foundation-shell
-  CHANNELS   [75a44e]  no task      .claude/worktrees/channels
+  CONTROL    [3f1a02]  the watch    shared checkout
+  FRONTEND   [7b6568]  no task      .claude/worktrees/frontend
+  CHANNELS   [5ea498]  no task      .claude/worktrees/channels
 
-  OPEN: C25 — unowned
-  NEXT: C28 over-releases reservations, unowned, now gateable.
+  OPEN: A-25 — unowned
+  NEXT: A-28 over-releases reservations, unowned, now gateable.
 ```
 
 **Nothing dated, nothing historical, no dead rows, no narrative.** Anything that is not a live

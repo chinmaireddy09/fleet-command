@@ -71,7 +71,7 @@ On `deploy`:
 **Every recipe below passes `claude --name "$CALLSIGN"`, and none of them is optional.** That
 flag sets the session's display name, which is simultaneously:
 
-- what **`ListAgents` shows other stations**, so the call-sign *is* the `SendMessage` address;
+- what **the fleet manifest shows other stations**, so the call-sign *is* the `SendMessage` address;
 - what the **user sees on that window's prompt box** and terminal title, so they can tell four
   identical windows apart at a glance;
 - what the station **knows about itself** — closing the bootstrap trap described under *Who is
@@ -214,7 +214,7 @@ can address, and a post that reads free while somebody sits in it. Four things c
 | Cause | Tell |
 |---|---|
 | **Waiting on a permission prompt** | Station alive, silent, no traffic. The prompt is in a tab nobody is looking at |
-| **Cannot read its own address** | It is *asking* for its name. `ListAgents` never shows a session itself — see the bootstrap trap |
+| **Cannot read its own address** | It is *asking* for its name. the fleet manifest never shows a session itself — see the bootstrap trap |
 | **The human interrupted `identify` mid-flow** | It stopped at a step *by instruction* and is waiting on the human to resume. Observed 2026-08-17 |
 | **The session died** | Calls bounce. Now it is a recovery job, not a deploy job |
 | **The command never ran** | The tab exists and sits at a plain shell prompt, with an error in the scrollback. Nothing is listed, because no session was ever started. **This is the cause that was missing on 2026-08-17**, when a mangled `cd` meant the four causes above were all wrong and Control had to ask a human what was on screen |
