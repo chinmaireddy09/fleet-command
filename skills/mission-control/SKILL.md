@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.22.0
+version: 6.23.0
 description: Fleet Command for any number of Claude Code sessions working one repo. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -314,8 +314,23 @@ The binding is a tool call, so make it one:
    bash <skill-dir>/set-callsign.sh <CALLSIGN> [HANDLE]
    ```
 
-   **There is also a supported, human-typed path: `/rename <HANDLE>`, and `/color` to tint the
-   session.** Claude Code suggests both itself when it notices several sessions running. They are
+   **`/rename` is the only thing that fixes the TAB, and it costs you the provenance.** Measured
+   2026-08-18, before and after, on the same session:
+
+   | | `set-callsign.sh` | `/rename` |
+   |---|---|---|
+   | `@` header and `ListAgents` | ✅ | ✅ |
+   | **Terminal tab title** | ✗ — Claude Code overwrites it next turn | **✅ sticks** |
+   | `formerNames` provenance | ✅ kept | **✗ wiped**, `nameSource` cleared too |
+   | Who can run it | **the station itself** | only a human, in that tab |
+
+   **Neither wins outright, so say which you are choosing.** The tab title is what a human reads
+   all day and the script can never hold it. Against that, `/rename` erases the record that this
+   session was once `acme-shop-47` — the thing a peer uses to reconcile a stale board row.
+   **Take the tab; the `[ref]` is the durable anchor anyway** and survives every rename. But it
+   is a real loss, not a free upgrade.
+
+   **There is also `/color` to tint the session.** Claude Code suggests both itself when it notices several sessions running. They are
    official where the script is unsupported internals — but **a session cannot type into its own
    TUI**, so only the human can run them. That is the whole division of labour: the script is
    what a station can do for itself, `/rename` is what you can do for it, and they reach the same
@@ -841,7 +856,11 @@ should never have to find the right window first.
    someone else's instruction to the wrong station.
 
 **Case-insensitive in, canonical out.** `@backend`, `@Backend` and `@BACKEND` all reach
-`BACKEND`; the board and the radio always render it `BACKEND`.
+`BACKEND`; the board and the radio always render it `BACKEND`. **Verified against the harness
+2026-08-18**, and it was worth verifying: a station renamed itself to lowercase `channels` while
+every board row said `CHANNELS`, and a message addressed to the uppercase form still arrived.
+**A case mismatch between a board row and a registry entry is not a bounce.** The `from-name`
+after a rename still is — those are different failures and only one of them is real.
 
 **Do not confuse this `@` with the one Claude Code prints.** The harness marks an *incoming* peer message with the sender's session handle — `@ acme-shop-75)` — which is a **display of the address**, not a call-sign, and not something anybody typed. Two different `@`s share one screen: **ours is what a human types to address a station; theirs is what the terminal shows when a station speaks.** Read the direction before reacting, and never copy the handle out of that prefix into a report — the board's call-sign is what a human reads. **Once a station has run `set-callsign.sh`, the two `@`s converge** — the harness prints the handle, and where the user kept the handle the same as the call-sign, that *is* the call-sign — and this whole distinction stops costing anybody anything.
 

@@ -482,6 +482,41 @@ awk '/^## Active/,/^## Done/' <scratchpad>/board.md
 **Say that you did this**, and file trimming the board as real work — it is the one file every
 station pays for on every read.
 
+### Re-measure an alarm before you relay it — verifying beats amplifying
+
+**A warning you pass on unchecked is a warning you have signed.** Three reports about one
+container circulated on 2026-08-18; all three were true when taken and all three were stale by
+the time they were read:
+
+| Report | True when sent | Why it expired |
+|---|---|---|
+| *"unreproducible, the daemon is down"* | yes | the daemon came up ~20 minutes later |
+| *"db/redis/minio all up"* | yes, **for 135 seconds** | `docker compose ps` **without `-a`** cannot show a container that has already died |
+| *"minio EXITED, probe unreachable"* — sent all-hands | yes | it had been restarted before the message was read |
+
+**The middle row is the durable lesson and it is this skill's own defect wearing infrastructure
+clothes:** a check that cannot observe the thing it claims to report on. `ps` without `-a` reads
+*absence of a line* as *nothing wrong*, when it also means *died and was reaped*.
+
+**So when an alarm reaches you, re-measure it before acting or relaying.** A station did exactly
+that here — re-checking an all-hands warning on receipt showed the condition had already been
+repaired, and passing it along would have sent a gate runner chasing something that no longer
+existed. **Relaying an expired alarm costs more than the silence would have**, because the
+recipient now trusts it.
+
+### An off-fleet session writing to this repo is not covered by anything here
+
+**It happened on 2026-08-18 and no rule addressed it.** A session belonging to a *different*
+repo, correctly excluded from the board and from every broadcast, was directed by the user to
+merge into this fleet's `main`. Nothing in the protocol says whether that is allowed, who it
+announces to, or whose row records it — the whole document assumes every writer is a station.
+
+**The minimum that makes it safe, and it is what that session did:** announce to the station
+whose lane it is *before touching anything*, take the collision stand-off explicitly rather than
+assuming absence of objection, use a throwaway worktree cut from `origin/main`, and leave every
+row and ref belonging to a real station alone. **An outsider gets no board row** — it is not on
+post — **so its work has to be visible in the announcement instead.**
+
 ### A rebase conflict on the board: abort and re-apply, never hand-resolve
 
 **Re-applying your edit onto fresh `origin/main` is both cleaner and more informative than
