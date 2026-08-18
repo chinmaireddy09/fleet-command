@@ -25,6 +25,24 @@ themselves.
 
 ---
 
+## Quick start
+
+1. **Install** — two `cp` commands, below. Thirty seconds.
+2. Open a session on your repo and run **`/mc`**. That session comes on watch as Control, takes
+   the call-sign, writes its row, and reports the board.
+3. Open a second window and run **`/mc identify FRONTEND`** (or any name you like — a call-sign
+   nobody has used is a normal answer). It moves *itself* into its own worktree.
+4. Before starting a job, run **`/mc depends <path>`** — it tells you who else touches it.
+5. When you finish, run **`/mc standdown`** — push, report, get acknowledged, close.
+
+That is the whole loop. Everything else is for when something goes wrong.
+
+**Requirements:** `git`, [Claude Code](https://claude.com/claude-code), and `python3` (already on
+macOS and most Linux). Tab labelling uses macOS Terminal.app; everywhere else it degrades to a
+no-op and says so. No accounts, no services, no config file to fill in.
+
+---
+
 ## The idea in one minute
 
 Each session takes a **call-sign** — ideally named after the part of the product it owns, so
@@ -178,6 +196,34 @@ first push, in its own tab — and deploy's report tells you to go and do that.
 
 ---
 
+## Uninstall
+
+Nothing here runs as a daemon, writes outside your repo, or phones anywhere — so removal is
+deleting files. **Per machine:**
+
+```bash
+# the four skills and the two short commands
+rm -rf ~/.claude/skills/mission-control ~/.claude/skills/work-lock \
+       ~/.claude/skills/status-and-backlog ~/.claude/skills/progress-and-log
+rm -f  ~/.claude/commands/mc.md ~/.claude/commands/backlog.md
+
+# the one preferences file, if deploy ever asked you (terminal + coordinator name)
+rm -f  ~/.claude/mission-control.json
+```
+
+**Per project**, if you used the board and want it gone. **Read these before deleting — they are
+the only record of what each station did:**
+
+```bash
+rm -f docs/WORK-LOCKS.md docs/WORK-LOCKS-ARCHIVE.md docs/MISSION-CONTROL.md
+git worktree list          # then `git worktree remove <path>` for any lane you no longer want
+```
+
+**`docs/PROGRESS-LOG.md` and `docs/PROJECT-STATUS-AND-BACKLOG.md` are yours, not the skill's** —
+they outlive it, and nothing here should delete them for you.
+
+---
+
 ## Using it
 
 Every skill runs **only when you ask**. None of them fire on their own — deliberate, because a
@@ -271,6 +317,36 @@ Six steps, and most collisions come from skipping one:
 - **`git log --author` cannot tell two sessions apart** when they run as one person. The
   branch is the discriminator.
 - **A finding that isn't in the repo doesn't exist.** Sessions end without warning.
+
+---
+
+## Troubleshooting
+
+Every row here is a real failure that cost somebody time, and the answer is what fixed it.
+
+| What you see | What it is | What to do |
+|---|---|---|
+| The tab title reverts to Claude Code's own text | Expected. Claude Code rewrites the title at every status change, i.e. every turn boundary | `/rename <CALLSIGN>` in that tab sticks — at the cost of the session's rename provenance. `/color` is worth more; it never lapses |
+| Messages keep arriving from a station's **old** handle | The `@` header is captured when the channel opens and never re-resolved | Ignore the header. Resolve names through the fleet manifest and match on the `[ref]`, which survives renames |
+| *"No agent named '…' is reachable"* | You replied to a from-name that has since been renamed | Re-resolve the current name and send again. This bounce is the trap working, not a broken tool |
+| The board's rows all name sessions that are gone | Sessions end without cleaning up; a row outlives its holder | Run `/mc` — Control re-mans the post and rewrites dead rows. Rows are rewritten, never duplicated |
+| `Read` refuses to open the board | It is over the size ceiling — usually the *working copy*, not `origin/main` | Measure at the ref: `git show origin/main:docs/WORK-LOCKS.md \| wc -c`. Then `/mc board clear` to archive done rows |
+| A worktree-isolated session refuses a command | The isolation guard rejects anything it cannot statically verify stays inside the worktree — `$$`, loops, heredocs, variable-built paths | Break it into plain commands with literal arguments, or run a shipped script instead of pasting one |
+| A station reports it "came up unnamed" and asks a peer | It may already know | `bash ~/.claude/skills/mission-control/mc-init.sh me` reads its own name locally. Only the `[ref]` needs a peer |
+| Identify or the board feels slow | Facts are being gathered one command at a time | Run `mc-init.sh` once and branch on it. One call, ~1.3s, instead of a dozen round-trips |
+
+## Docs
+
+| File | What is in it |
+|---|---|
+| [`skills/mission-control/SKILL.md`](skills/mission-control/SKILL.md) | The skill itself — protocol, call-signs, the radio, standing orders |
+| [`references/control-playbook.md`](skills/mission-control/references/control-playbook.md) | Control only — the board report, sitreps, recovery, standing a station down |
+| [`references/deploying-stations.md`](skills/mission-control/references/deploying-stations.md) | Putting a station on post — terminal recipes, verification, known stalls |
+| [`references/field-notes.md`](skills/mission-control/references/field-notes.md) | The measured incidents behind the rules, kept out of the hot path |
+| [`references/sweeps.md`](skills/mission-control/references/sweeps.md) · [`countermeasures.md`](skills/mission-control/references/countermeasures.md) | Changes that cross every area · what to do when something went wrong |
+| [`VOCABULARY.md`](VOCABULARY.md) | Every word this uses, what it is underneath, and the plain sentence to say instead |
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed, and the failure that forced each change |
+| [`templates/`](templates/) | `MISSION-CONTROL.md` to copy into your own project, and the spawn-preferences shape |
 
 ---
 
