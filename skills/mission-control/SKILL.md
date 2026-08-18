@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.27.0
+version: 6.27.1
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1260,6 +1260,35 @@ not an unnamed station and must not be treated as one:
 **This also works the other way:** a session missing from `ListAgents` is gone, but a session
 *present* in it proves only that some Claude Code window is open somewhere — not that your
 station is manned.
+
+##### It is a radar without IFF, and that is the whole problem
+
+**A user put it exactly right on 2026-08-19, after three stations independently raised the same
+stranger:** *"is it like a radar system where it detects, but you have to identify and verify as
+well, like how ships and flights communicate?"* **Yes — and the missing half is the point.** The
+listing returns every contact in range; it carries **no friend-or-foe bit at all.** Nothing in it
+says which contacts are your fleet, so every station re-derives that by hand, every time.
+
+**That re-derivation is what looks like an intrusion alert.** Measured across one evening: a
+session working in a *different repository on the same machine* appeared in all three stations'
+listings, and each one spent traffic and reasoning establishing that it was not theirs — correctly
+concluding *"off-fleet, holds no post, do not board it, do not broadcast to it"* — three separate
+times, for the same harmless window. **Nobody was interfering. The radar simply reports everything
+and the fleet has to sort it.**
+
+**So classify by working directory, and classify ONCE.** `mc-init.sh` does it in the preamble:
+every live session is printed already split into on-fleet and `OFF-FLEET`, decided by whether its
+`cwd` is inside this repo — **never by its name**, which is a display string a session can change.
+
+**Two rules follow, and they close the false alarm:**
+
+- **An off-fleet session is not an event.** Do not raise it, do not alert on it, do not put it on
+  the board, and do not spend a message on it. Name it once in the roster line as off-fleet and
+  move on. *"Another session is interfering"* is almost always this, and it is almost always
+  nothing.
+- **Verify before you treat a contact as a station** — the IFF half. On-fleet **and** carrying a
+  board row is a station. On-fleet with no row is an unidentified session that needs a call-sign.
+  Off-fleet is somebody else's window. **Three states, and only the first two are yours.**
 
 #### An address is an address, never a name
 
