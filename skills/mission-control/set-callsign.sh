@@ -109,8 +109,12 @@ if [ ! -x "$HERE/label-tab.sh" ]; then
   echo "tab title: skipped — label-tab.sh not found beside me"
 elif [ "$(uname -s)" != "Darwin" ] || ! command -v osascript >/dev/null; then
   echo "tab title: skipped — needs macOS Terminal.app; the @ address is set regardless"
-elif ! "$HERE/label-tab.sh" "$CALLSIGN"; then
-  echo "tab title: skipped — label-tab.sh could not match this tty"
+elif ! "$HERE/label-tab.sh" "$CALLSIGN" >/dev/null 2>&1; then
+  echo "tab title: skipped — could not match this tty"
+else
+  echo "tab title: set to \"$CALLSIGN\" — BUT Claude Code overwrites it at the next turn"
+  echo "           boundary. For a title that sticks: type  /rename $CALLSIGN  in this tab,"
+  echo "           or  /color  to tell tabs apart a way nothing overwrites."
 fi
 
 echo "pid $CLAUDE_PID · registry $REG"
