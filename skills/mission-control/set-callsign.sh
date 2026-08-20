@@ -1,5 +1,5 @@
 #!/bin/bash
-# set-callsign.sh <CALLSIGN> — make this session's call-sign the name everyone sees.
+# set-callsign.sh <CALLSIGN> — make this session's call-sign the address peers resolve.
 #
 # Two surfaces, one command, run BY the station IN its own tab. They are NOT equal:
 #   1. the ADDRESS peers resolve through ListAgents (~/.claude/sessions/<pid>.json) -- DURABLE.
@@ -11,7 +11,10 @@
 #   2. the Terminal tab title (delegated to label-tab.sh) -- BEST EFFORT ONLY. Claude Code
 #      rewrites the title with its own status glyph + summary at every status change, i.e.
 #      each turn boundary. The label holds while you work and is gone when the turn ends.
-#      Only `claude --name` at launch puts a call-sign in the title for good.
+#      `/rename <CALLSIGN>`, typed by the human in that tab, is the only thing MEASURED to hold
+#      the title (2026-08-18). `claude --name` at launch is expected to as well -- the flag's own
+#      help says it feeds the terminal title -- but no one has measured that across a turn
+#      boundary, so do not report it as verified.
 #
 # Finds its own pid and its own tty by walking up from this shell — never by
 # "front window" or by scanning for any `claude`, both of which hit somebody else's
@@ -90,20 +93,20 @@ PY
 )
 [ -n "$CLASH" ] && { echo "REFUSED: $HANDLE is answered by a live session — $CLASH" >&2; exit 3; }
 
-# --- 1. the @ header: read-modify-write, name only -----------------------------
+# --- 1. the address peers resolve: read-modify-write, name only ----------------
 CALLSIGN="$HANDLE" python3 - "$REG" <<'PY' || exit 1
 import json,os,sys,time,tempfile
 p=sys.argv[1]; new=os.environ["CALLSIGN"]
 d=json.load(open(p))
 old=d.get("name")
 if old==new:
-    print(f"@ header already {new}"); raise SystemExit(0)
+    print(f"address already {new}"); raise SystemExit(0)
 former=[x for x in d.get("formerNames",[]) if x!=old]
 if old: former.append(old)
 d.update(name=new, nameSource="user", nameSince=int(time.time()*1000), formerNames=former)
 fd,tmp=tempfile.mkstemp(dir=os.path.dirname(p)); os.close(fd)
 json.dump(d,open(tmp,"w")); os.replace(tmp,p)          # atomic, never a torn registry
-print(f"@ header {old} -> {json.load(open(p))['name']}")
+print(f"address (fleet manifest) {old} -> {json.load(open(p))['name']}")
 PY
 
 # --- 2. the tab title (best effort; never fails the rename) ---------------------
@@ -112,7 +115,7 @@ PY
 if [ ! -x "$HERE/label-tab.sh" ]; then
   echo "tab title: skipped — label-tab.sh not found beside me"
 elif [ "$(uname -s)" != "Darwin" ] || ! command -v osascript >/dev/null; then
-  echo "tab title: skipped — needs macOS Terminal.app; the @ address is set regardless"
+  echo "tab title: skipped — needs macOS Terminal.app; the manifest address is set regardless"
 elif ! "$HERE/label-tab.sh" "$CALLSIGN" >/dev/null 2>&1; then
   echo "tab title: skipped — could not match this tty"
 else
@@ -121,5 +124,8 @@ else
   echo "           or  /color  to tell tabs apart a way nothing overwrites."
 fi
 
+echo "NOTE: a peer whose channel to you is ALREADY OPEN keeps seeing your OLD handle. That name"
+echo "      was captured when the channel opened and is never re-resolved -- only a channel opened"
+echo "      after this rename carries the new one. Do not report the \`@\` header as changed."
 echo "pid $CLAUDE_PID · registry $REG"
 echo "VERIFY: ask a peer to run ListAgents. A session never sees itself."

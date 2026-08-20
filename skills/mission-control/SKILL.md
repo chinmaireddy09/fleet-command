@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.28.0
+version: 6.28.1
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -640,8 +640,11 @@ it needs no permission argument, unlike a merge.
 
 **A restart is still the only fix for some things** — a wrong workspace, a corrupted worktree, a
 permission mode set at launch — **so it is worth being the kind of station that can take one.**
-`--name` is no longer on that list: the address peers see can be changed in place with
-`set-callsign.sh`, and only the terminal tab title still needs a relaunch.
+`--name` is no longer on that list: the address peers resolve can be changed in place with
+`set-callsign.sh`. **Two surfaces stay beyond it.** The terminal tab title needs a `/rename` or a
+relaunch; the `@` header on a channel a peer has ALREADY opened is fixed by neither, because it is
+captured at open and never re-resolved — only a channel opened after the rename carries the new
+name.
 
 **If you came up unnamed, take the name — do not just apologise for not having it.** A
 hand-started session is given a generated handle like `acme-shop-4d`, and until 2026-08-18 this
@@ -652,21 +655,29 @@ the *name* is not.
 **`set-callsign.sh <CALLSIGN>` — run it the moment you take a call-sign.** One command, two
 surfaces — **and they are not equally reliable, so do not report them as one result:**
 
-1. **The `@` header** peers see on every message you send — the session registry at
+1. **The address peers resolve** through the fleet manifest — the session registry at
    `~/.claude/sessions/<pid>.json`. **This one is durable.** Measured 2026-08-18: the rename
    survived the session's own registry write 33 minutes later, because Claude Code
-   read-modify-writes that file rather than overwriting it from memory.
+   read-modify-writes that file rather than overwriting it from memory. **It is NOT the `@` header
+   a peer already sees on your messages.** That name was captured when the channel opened and is
+   never re-resolved, so a renamed station keeps arriving under its old handle on every channel
+   that was already open — measured 2026-08-19, under *"Do not confuse this `@` with the one Claude
+   Code prints"*. Nothing repairs an open channel; only one opened after the rename carries the
+   new name.
 2. **The Terminal tab title** — delegated to `label-tab.sh`. **Best effort only.** Claude Code
    rewrites the title with its own status glyph and summary at every status change, which means
    **every turn boundary.** The label holds while you work and is gone the moment the turn ends.
-   Re-running wins the tab back until the next one. **Only `--name` at launch fixes the title
-   for good** — the flag's own help says it feeds the prompt box, the `/resume` picker and the
-   terminal title.
+   Re-running wins the tab back until the next one. **`/rename <CALLSIGN>`, typed by the human in
+   that tab, is the only thing measured to hold it** — before and after, 2026-08-18, the table at
+   step 6. `--name` at launch is *expected* to hold it as well, on the strength of the flag's own
+   help, which says it feeds the prompt box, the `/resume` picker and the terminal title — **but
+   no one has measured a `--name` session's title across a turn boundary, so do not report that
+   half as verified.**
 
-**Report those two separately.** *"Call-sign is live on the radio; the tab will keep reverting to
-Claude Code's own title until this session is restarted with `--name`"* is the true sentence.
-Claiming both landed is the kind of confident-partial report this skill spends most of its rules
-preventing.
+**Report those surfaces separately.** *"The call-sign is live as the address peers resolve;
+channels already open will keep showing my old handle, and the tab will keep reverting to Claude
+Code's own title"* is the true sentence. Claiming they all landed is the kind of confident-partial
+report this skill spends most of its rules preventing.
 
 It finds its own pid and its own tty by walking up from the shell, never by "front window" or by
 scanning for any `claude` — both of which land on somebody else's session. It **refuses a
@@ -1061,8 +1072,10 @@ one of the two anybody has actually seen.
 **This is the antidote to the fleet's most expensive human error.** With four identical-looking
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
 done work nobody wanted, in a lane that does not own it. `@callsign` puts the target in the text
-instead of in whichever window had focus. **`@` makes misdirection recoverable; the pinned tab
-title from identify step 6 makes it unlikely.** Use both.
+instead of in whichever window had focus. **`@` makes misdirection recoverable. Nothing makes it
+unlikely for free** — the tab label from identify step 6 lapses at the next turn boundary, and an
+earlier note here called it *pinned*, which it is not. The surfaces that persist are `/rename` and
+`/color`, and **both need the human to type them**; a station cannot type into its own TUI.
 
 **If a human types a bare prompt that plainly belongs to another station** — no `@`, but the
 content is someone else's lane — **do not act on it and do not silently forward it.** Say which
@@ -1437,7 +1450,8 @@ everything a station needs on post. The rest loads only when the command in hand
 | `references/sweeps.md` | a change crosses areas several stations own | whoever runs the sweep |
 | `references/countermeasures.md` | something has already gone wrong | anyone, at the time |
 | `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost — the incidents, not the procedure | anyone, rarely |
-| `label-tab.sh` | at identify — pins your call-sign to your terminal tab | every station |
+| `set-callsign.sh` | **step 6 of identify — every station runs it, always.** Makes the call-sign the address peers resolve | every station |
+| `label-tab.sh` | called by the above — sets the tab title, which Claude Code takes back each turn | every station |
 | `spawn-station.sh` | at deploy — opens the station's tab in **your own** window and verifies a session actually started in it | Control |
 
 **`field-notes.md` is the one you should almost never open.** It holds the incidents behind the

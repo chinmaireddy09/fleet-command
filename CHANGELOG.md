@@ -9,6 +9,35 @@ repo as a whole.
 
 ---
 
+## 6.28.1 — 2026-08-20
+
+**The withdrawn claim was still in the file a station actually reads.** 6.26.0 retired
+*"`set-callsign.sh` makes the `@` header match the call-sign"* and this changelog said so — but
+`SKILL.md` still taught it in bold at identify step 6, and the script still printed
+`@ header <old> -> <new>` on success. A station read that line, reported the header updated, and
+every peer holding an open channel went on seeing the old handle. **A withdrawal that reaches the
+changelog and not the surfaces has not landed.** Corrected in both, and the script now states the
+limit on every run: a channel already open keeps the old name, and only one opened afterwards
+carries the new one.
+
+Five smaller overstatements of the same two surfaces, found in one sweep:
+
+- **"Only the terminal tab title still needs a relaunch" was not "only."** An already-open
+  channel's `@` header is repaired by neither `set-callsign.sh` nor `/rename`.
+- **"The pinned tab title makes misdirection unlikely"** — nothing is pinned. The label is gone at
+  the next turn boundary. `/rename` and `/color` persist, and both need the human to type them.
+- **The script index called `label-tab.sh` a pin** and omitted `set-callsign.sh` altogether, so it
+  pointed at the delegate rather than at the step every station runs.
+- **The script's one-line synopsis** still promised "the name everyone sees."
+- **`--name` holding the title for good was never measured.** It is sourced to the flag's own help
+  and is now labelled that way. `/rename` is the only surface here with a before-and-after.
+
+**The rule this earned:** *a claim is retired when every surface that teaches it stops teaching
+it* — including the strings a script prints. The changelog is where a correction is recorded, never
+where it takes effect.
+
+---
+
 ## 6.28.0 — 2026-08-19
 
 **The fleet manifest.** What `ListAgents` returns now has a name, because the tool name told
