@@ -9,6 +9,36 @@ repo as a whole.
 
 ---
 
+## 6.29.0 — 2026-08-20
+
+**A repo's work belongs to that repo, and crossing into another one is a decision the user
+makes.** Standing order 15. Two repos collaborating toward one goal is legitimate — but it is a
+**joint operation**: authorized, temporary, and finished when the goal is met. What it is not is
+somewhere a station ends up because a thread led there.
+
+**Every step in the incident was asked for, which is exactly what made it hard to see.** A
+session working this repo was asked about its own call-sign surfaces. The user then asked about
+their live fleet in another repo, and — one authorized step at a time — the session read that
+board, drafted two row fixes, and relayed them to that fleet's stations. Then a station replied
+with a genuinely good correction, and the session carried on into rewriting its own tooling,
+building a regression test, and re-verifying a draft **nobody had asked it to touch.** The user
+stopped it: *"are you fixing the issues of fleet command or building ecom nexus?"*
+
+**The mechanism is order 11 with a second repo as a disguise.** Certainty that the next step is
+obvious is not permission to take it — and a peer's reply is the most convincing disguise that
+feeling has, because it arrives looking like the work continuing rather than like a new decision.
+
+**Authorization is scoped to the thing asked.** *"Draft the edits"* is not *"and maintain the
+tooling."* *"Relay them"* is not *"and act on the replies."* Name which repo a piece of work
+belongs to before doing it; if the answer is the other one, stop and ask.
+
+**And when the joint operation IS granted, the deliverables still split:** the fix lands in the
+repo it fixes, the lesson lands in the repo that teaches it. This entry is that rule applied to
+itself — the board fixes stayed in the other repo, written by the stations that own those rows,
+and only the lesson came home.
+
+---
+
 ## 6.28.1 — 2026-08-20
 
 **The withdrawn claim was still in the file a station actually reads.** 6.26.0 retired

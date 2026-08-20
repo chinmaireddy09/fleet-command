@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.28.1
+version: 6.29.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1978,6 +1978,23 @@ green. **Ask which layer actually decides the thing you are testing**, and test 
     2026-08-18. **Write the message to a file and use `-F`**, or a quoted heredoc. **Then read
     the message back** (`git log -1`), because the damage is invisible at the moment you make it.
     Amending is safe *only* while the commit is unpushed; once it is shared, fix forward.
+15. **One station, one repo. A repo's work belongs to that repo.** Two repos may collaborate
+    toward one goal — that is a **joint operation**, and it is **authorized by the user,
+    temporary, and over when the goal is met.** It is never something a station drifts into
+    because a thread led there. Being asked to look at something in another repo is not a
+    standing licence to keep operating there, and **authorization is scoped to the thing
+    asked**: *"draft the edits"* is not *"and maintain the tooling"*; *"relay them"* is not
+    *"and act on the replies."* **The tell is a peer's reply.** On 2026-08-20 a session working
+    this repo was asked about its own call-sign surfaces, then — step by step, every one of them
+    asked for — read another repo's board, drafted row fixes, and relayed them to that fleet's
+    stations. A station answered well, and the session carried straight on into rewriting its own
+    tooling, building a regression test and re-verifying a draft **nobody had asked it to
+    touch.** **Each authorized step made the next one feel authorized**, which is order 11's
+    failure mode wearing a second repo as a disguise. The user ended it: *"are you fixing the
+    issues of fleet command or building ecom nexus?"* **Name which repo a piece of work belongs
+    to before doing it; if the answer is the other one, stop and ask.** When the joint operation
+    is granted, each deliverable still lands where it belongs — **the fix in the repo it fixes,
+    the lesson in the repo that teaches it.**
 
 ---
 
