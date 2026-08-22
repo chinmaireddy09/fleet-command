@@ -356,9 +356,6 @@ Every row here is a real failure that cost somebody time, and the answer is what
 
 ## Ownership and licence
 
-The preamble idea was inspired by [gstack](https://github.com/garrytan/gstack); no code from
-it is here. See [ATTRIBUTION.md](ATTRIBUTION.md).
-
 Original work by **Chinmai Reddy ([@chinmaireddy09](https://github.com/chinmaireddy09))**,
 released under the **[Fleet Command License 1.1](LICENSE)** — its own licence, not a borrowed
 one.

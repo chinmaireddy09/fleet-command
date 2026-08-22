@@ -6,14 +6,7 @@ released under the [Fleet Command License 1.1](LICENSE).
 ## Prior work
 
 **Fleet Command is original work.** No third-party code is copied into or distributed with this
-repository.
-
-One acknowledgement, because it costs nothing and the alternative is a repo that says two
-different things: the preamble idea in `skills/mission-control/mc-init.sh` — *one bash block per
-skill run, emitting greppable `KEY: VALUE` lines that everything downstream reads instead of
-re-deriving* — was **inspired by** [gstack](https://github.com/garrytan/gstack) (MIT, © 2026
-Garry Tan). The idea is gstack's; the keys, the logic and every line of the code are this
-project's. Ideas are not licensed, and nothing here is required by gstack's licence or ours.
+repository, and nothing here is derived from another project's source.
 
 ## The credit line
 

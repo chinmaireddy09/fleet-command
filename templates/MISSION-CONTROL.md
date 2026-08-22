@@ -17,6 +17,12 @@
 > discriminator is the **branch**, never the author. Do not invent per-session git identities;
 > they would misrepresent who actually wrote the code.
 
+> **Board: docs/WORK-LOCKS.md**
+>
+> Where this project's claim board lives, relative to the repo root. `/mc` reads this line, so
+> the board can be called anything and live anywhere — `CLAIMS.md`, `.claude/WORK-LOCKS.md`, a
+> path of your own. Delete the line and `/mc` looks in the usual places instead.
+>
 > **Coordinator: CONTROL**
 >
 > Replace `CONTROL` with whatever this project calls its coordinating station — `HQ`, `BRIDGE`,

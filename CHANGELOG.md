@@ -9,6 +9,37 @@ repo as a whole.
 
 ---
 
+## 6.43.0 — 2026-08-23
+
+**Third-party acknowledgement removed at the author's direction, and the repo now says one thing
+about it rather than two.** 6.41.0 added a credit for an *idea* — a preamble shape — after finding
+that a script comment described it more strongly than any human-readable file did. The author's
+position is that inspiration was what was asked for and inspiration obliges nothing, which is
+correct: **ideas are not licensed, no code from anywhere else is in this repository, and nothing
+was ever required.** All mentions are gone, including the comment whose wording started it.
+
+**The lesson that survives it is about consistency, not credit:** a repository must not describe
+the same fact two different ways in two places. That was the actual defect; the credit was one
+possible fix and removal is another, provided it is done *everywhere*.
+
+**Generalised so this is adoptable rather than merely public.** The board path was hardcoded to
+`docs/WORK-LOCKS.md` — one project's convention — so **every other project got `BOARD: none` and
+a coordinator offering to create a board it already had.** The sibling skills in this repo already
+say *"find whatever claim file the project already uses"*; this did not, and that inconsistency is
+what makes a skill feel like it was written for somebody else's repo.
+
+Now discovered, in order: `MC_BOARD` in the environment → a `Board:` line in the project's own
+`MISSION-CONTROL.md` → the common locations (`docs/WORK-LOCKS.md`, `WORK-LOCKS.md`,
+`docs/CLAIMS.md`, `CLAIMS.md`, `.claude/WORK-LOCKS.md`, `docs/BOARD.md`). **Nothing is guessed
+from file content** — a board is a file the project chose, not one we pattern-matched into. The
+rules file is found the same way instead of assuming `docs/`.
+
+Verified across six layouts: board at the repo root, board named `CLAIMS.md`, board under
+`.claude/`, an explicit `Board:` declaration, rules in `docs/` with a coordinator of `HQ`, and a
+project with no board at all — which still correctly reports none rather than inventing one.
+
+---
+
 ## 6.42.0 — 2026-08-23
 
 **The skill contradicted itself about the fastest way to raise a fleet — the one most people
@@ -37,11 +68,8 @@ tmux returns immediately and there is nothing to look at yet. They print `NOT YE
 point at the board, instead of borrowing the verified path's confidence. The Windows recipe also
 states it has never run against a real Windows Terminal.
 
-**gstack scaled back to one acknowledgement.** 6.41.0 over-built it. Ideas are not licensed,
-nothing is required, and the section now says so in three lines — kept only because
-`mc-init.sh` already said *"adapted from"* in a comment, and a repository that says two different
-things about the same fact is worse than one that says it once, plainly. The comment now says
-*inspired by*, which is what actually happened.
+**The third-party acknowledgement added in 6.41.0 was scaled back.** It recorded an *idea*, not
+code. Ideas are not licensed and nothing was required.
 
 ---
 
@@ -70,18 +98,9 @@ everywhere.
 the AppleScript would have targeted the wrong application; it now checks `TERM_PROGRAM` and prints
 instead of misfiring into somebody else's window.
 
-**Attribution: gstack was credited in a shell-script comment and nowhere a human reads.**
-`mc-init.sh` has said *"adapted from gstack's preamble pattern"* since it shipped, while
-`ATTRIBUTION.md` said "original work" and named it nowhere. **That is condition 2 of this
-project's own licence — credit belongs where people read it, not buried in a file nobody opens —
-failing against the project itself.** Now in `ATTRIBUTION.md` and `README.md`:
-[gstack](https://github.com/garrytan/gstack), MIT © 2026 Garry Tan, for the preamble pattern
-(one bash block per skill run, greppable `KEY: VALUE` output), and for `progress-and-log`, which
-exists by *disagreeing* with `context-save` and so is not independent of it.
-
-**Scoped honestly rather than generously:** the pattern was adapted, the code was not copied, and
-MIT asks nothing for a pattern. The credit is there because the project's own standard says so,
-not because a licence compelled it.
+**A third-party acknowledgement was added in this release and removed again in 6.43.0** — see
+that entry. It named an *idea* rather than any code, and no code from anywhere else is in this
+repository.
 
 ---
 

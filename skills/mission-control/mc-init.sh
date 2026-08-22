@@ -12,10 +12,11 @@
 # re-derive any line of it with a follow-up command -- if a value is here, it is
 # measured, and measured at the ref you are about to write.
 #
-# The one-bash-block preamble idea -- greppable KEY: VALUE output, computed once per
-# skill run, never re-derived downstream -- was inspired by gstack (MIT, Garry Tan),
-# "Preamble (run first)". Idea only: no code from it is here, and the keys and logic
-# below are this project's. Recorded so the repo says one thing about this, not two.
+# ONE BASH BLOCK, RUN ONCE PER SKILL INVOCATION, emitting greppable KEY: VALUE lines
+# that everything downstream reads instead of re-deriving. The value is that a figure
+# quoted later in the run is the figure that was MEASURED, at the ref it was measured
+# at -- re-deriving it mid-run is how two numbers for the same thing end up in one
+# report.
 #
 #   mc-init.sh          full block
 #   mc-init.sh me       just this session's identity (the bootstrap answer)
@@ -153,7 +154,11 @@ emit_coordinator() {
   # performs any of the assignments, so `local a="$1" b="$a/x"` leaves $a unbound --
   # and under `set -u` that is a hard exit, not an empty string. Cost one smoke test
   # 2026-08-22, having passed `bash -n` cleanly, because it is a runtime error.
-  local f="$root/docs/MISSION-CONTROL.md"
+  local f=""
+  for c in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
+    [ -f "$root/$c" ] && { f="$root/$c"; break; }
+  done
+  [ -z "$f" ] && f="$root/docs/MISSION-CONTROL.md"
   if [ -f "$f" ]; then
     # 1. AN EXPLICIT DECLARATION, and it works for ANY word the project chose.
     #    `Coordinator: HQ` / `**Coordinator:** BRIDGE` / `| Coordinator | COMMAND |`.
@@ -194,7 +199,33 @@ git -C "$ROOT" fetch -q origin 2>/dev/null
 # stations independently reported a 289 KB unreadable board while origin/main
 # held 50,137 bytes -- both had measured the shared checkout's stale working
 # copy, and one stale file read twice arrived as two confirmations.
-BOARD="docs/WORK-LOCKS.md"
+# FIND THE BOARD, DO NOT ASSUME IT. This was hardcoded to docs/WORK-LOCKS.md, which is
+# one project's convention -- so every other project got "BOARD: none" and a coordinator
+# that offered to create a board it already had. The sibling skills in this repo already
+# say "find whatever claim file the project already uses"; this did not, and that
+# inconsistency is what makes a skill feel like it was written for somebody else's repo.
+#
+# Order: an explicit override wins, then the common locations, and NOTHING is guessed
+# from content -- a board is a file the project chose, not one we pattern-matched into.
+# Set `board` in this project's own MISSION-CONTROL.md front matter, or MC_BOARD in the
+# environment, and this stops searching.
+BOARD=""
+if [ -n "${MC_BOARD:-}" ]; then
+  BOARD="$MC_BOARD"
+else
+  for f in "$ROOT/docs/MISSION-CONTROL.md" "$ROOT/MISSION-CONTROL.md" "$ROOT/.claude/MISSION-CONTROL.md"; do
+    [ -f "$f" ] || continue
+    d=$(grep -m1 -iE '^[[:space:]>*|-]*board[[:space:]|*]*[:=|][[:space:]*]*[^[:space:]|]+' "$f" 2>/dev/null \
+        | sed -E 's/^[[:space:]>*|-]*[Bb][Oo][Aa][Rr][Dd][[:space:]|*]*[:=|][[:space:]*]*//' | tr -d '`*|' | sed -E 's/[[:space:]]+$//')
+    [ -n "$d" ] && { BOARD="$d"; break; }
+  done
+fi
+if [ -z "$BOARD" ]; then
+  for c in docs/WORK-LOCKS.md WORK-LOCKS.md docs/CLAIMS.md CLAIMS.md .claude/WORK-LOCKS.md docs/BOARD.md; do
+    if git -C "$ROOT" cat-file -e "origin/main:$c" 2>/dev/null; then BOARD="$c"; break; fi
+  done
+fi
+[ -z "$BOARD" ] && BOARD="docs/WORK-LOCKS.md"   # nothing found: name the one Step 0 would create
 if git -C "$ROOT" cat-file -e "origin/main:$BOARD" 2>/dev/null; then
   echo "BOARD: $BOARD"
   echo "BOARD_BYTES: $(git -C "$ROOT" show "origin/main:$BOARD" | wc -c | tr -d ' ')   # at origin/main, NOT the working copy"
@@ -202,7 +233,11 @@ if git -C "$ROOT" cat-file -e "origin/main:$BOARD" 2>/dev/null; then
 else
   echo "BOARD: none at origin/main   # no board yet -- Step 0 offers to write one"
 fi
-[ -f "$ROOT/docs/MISSION-CONTROL.md" ] && echo "RULES: docs/MISSION-CONTROL.md   # its station names WIN over any default" || echo "RULES: none"
+RULES=""
+for f in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
+  [ -f "$ROOT/$f" ] && { RULES="$f"; break; }
+done
+[ -n "$RULES" ] && echo "RULES: $RULES   # its station names WIN over any default" || echo "RULES: none"
 
 emit_coordinator "$ROOT"
 

@@ -1,7 +1,7 @@
 ---
 name: progress-and-log
-version: 4.0.0
-description: Lightweight, user-owned progress checkpoint — no gstack dependency, no init or preamble. Detects whatever progress, status or backlog document a project already keeps, by content and purpose rather than a fixed filename list, asks once how to split updates when several exist, remembers that mapping, and creates a new file only when none exists at all. Writes what happened and why so it survives the session that learned it. Runs only when explicitly invoked — never on generic "save progress" phrasing.
+version: 4.1.0
+description: Lightweight, user-owned progress checkpoint — self-contained, no init or preamble. Detects whatever progress, status or backlog document a project already keeps, by content and purpose rather than a fixed filename list, asks once how to split updates when several exist, remembers that mapping, and creates a new file only when none exists at all. Writes what happened and why so it survives the session that learned it. Runs only when explicitly invoked — never on generic "save progress" phrasing.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1
@@ -16,12 +16,12 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# /progress-and-log — Save Progress, No Gstack, Adapted Per Project
+# /progress-and-log — Save Progress, Self-Contained, Adapted Per Project
 
-A plain, self-contained checkpoint skill. It does **not** call any `gstack-*`
-binary, does not run telemetry/upgrade/artifacts-sync preambles, and does not
-touch `~/.gstack/`. It exists specifically so progress can be captured without
-pulling in gstack's `context-save` machinery.
+A plain, self-contained checkpoint skill. It calls **no** external binaries,
+runs no telemetry, upgrade or sync preamble, and writes nothing outside the
+project and its own output file. It exists specifically so progress can be
+captured without pulling in a heavier checkpointing system.
 
 **Core behavior: every project is different — detect, don't assume.**
 Real projects name their living progress/status document all kinds of
@@ -42,9 +42,9 @@ not a clone of any other project's file.
 
 **HARD GATE:** Do not invoke this skill on generic phrasing like "save
 progress," "save the progress," "save my work," or "log where we are." Those
-phrases are `context-save`'s own registered triggers and must NOT fire this
-skill or that one automatically — only an explicit, unambiguous request
-counts: the user typing `/progress-and-log`, or saying "progress and log" /
+phrases are registered triggers of other checkpointing skills, and must NOT
+fire this one — or those — automatically. Only an explicit, unambiguous
+request counts: the user typing `/progress-and-log`, or saying "progress and log" /
 "log the progress" in close to those words. If a request is ambiguous, ask
 rather than guessing.
 
@@ -221,8 +221,8 @@ echo "TARGET=$TARGET"
 ```
 
 (Non-git, non-code scratch directory → fall back to
-`.claude/progress-log/<timestamp>-<slug>.md`, sanitized the same allowlist
-way gstack's own checkpoint writer does.) Seed minimally: a one-line title,
+`.claude/progress-log/<timestamp>-<slug>.md`, sanitized by allowlist so a
+title can never escape into the path.) Seed minimally: a one-line title,
 one sentence on the file's purpose, and the first dated entry (all four
 categories). Tell the user a new file was created and where — more
 consequential than appending to something existing.
@@ -249,7 +249,7 @@ list it.
 ## Important Rules
 
 - **User-level skill, works in any project** — lives in `~/.claude/skills/`,
-  not tied to gstack or any specific repo.
+  not tied to any specific repo or skill suite.
 - **Detect by purpose every time, per project — and per file when there's
   more than one.** No fixed filename list, no copy-pasting one project's file
   shape (or mapping) onto another.
