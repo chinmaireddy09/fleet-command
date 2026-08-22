@@ -89,7 +89,13 @@ PY
 # Precedence, and it does not bend: the project's MISSION-CONTROL.md names the
 # coordinator; then the user's recorded preference; then CONTROL.
 emit_coordinator() {
-  local root="$1" name="" f="$root/docs/MISSION-CONTROL.md"
+  local root="$1"
+  local name=""
+  # Separate statements on purpose: bash expands EVERY argument of `local` before it
+  # performs any of the assignments, so `local a="$1" b="$a/x"` leaves $a unbound --
+  # and under `set -u` that is a hard exit, not an empty string. Cost one smoke test
+  # 2026-08-22, having passed `bash -n` cleanly, because it is a runtime error.
+  local f="$root/docs/MISSION-CONTROL.md"
   if [ -f "$f" ]; then
     # 1. AN EXPLICIT DECLARATION, and it works for ANY word the project chose.
     #    `Coordinator: HQ` / `**Coordinator:** BRIDGE` / `| Coordinator | COMMAND |`.

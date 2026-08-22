@@ -9,6 +9,20 @@ repo as a whole.
 
 ---
 
+## 6.33.1 — 2026-08-22
+
+**`bash -n` passed and the script died on its first real run.** 6.33.0's rewritten
+`emit_coordinator` opened with `local root="$1" name="" f="$root/docs/MISSION-CONTROL.md"`. Bash
+expands **every argument of `local` before it performs any of the assignments**, so `$root` was
+still unbound when `f` was built — and under `set -u` that is a hard exit, not an empty string.
+`/mc` died four lines into its own preamble, before printing a coordinator at all.
+
+**A syntax check is not a smoke test.** This was caught only because the release was followed by
+actually running `mc-init.sh` in a repo. Every script in this skill now gets run, not parsed,
+before a release is called ready.
+
+---
+
 ## 6.33.0 — 2026-08-22
 
 **One project's example name had become the default for every fleet on the machine, and the
