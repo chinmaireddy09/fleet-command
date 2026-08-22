@@ -124,7 +124,7 @@ own worktree. Nothing is typed for you and nothing can be mistyped — the call-
 and path are already filled in.
 
 Then verify by the BOARD, not by the tab looking right: the deploy is done when
-$CALLSIGN's row on origin/main carries its ListAgents address.
+$CALLSIGN's row on the repo's base branch carries its ListAgents address.
 TXT
   exit 0
 fi
@@ -151,7 +151,7 @@ Open a new tab yourself and paste this:
 That is not a degraded deploy. The tab is the only part a human was ever doing, and
 the post is already prepared: worktree, branch and board row are done. Verify by the
 BOARD, not by the tab looking right — the deploy is finished when $CALLSIGN's row on
-origin/main carries its fleet-manifest address.
+the repo's base branch carries its fleet-manifest address.
 TXT
 }
 
@@ -165,7 +165,7 @@ if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
     # rather than borrowing the other path's confidence.
     echo "TMUX WINDOW OPENED · named $CALLSIGN · command dispatched"
     echo "NOT YET A STATION. Verify by the fleet manifest or the board — $CALLSIGN is on"
-    echo "post when its row on origin/main carries its address, not when this printed."
+    echo "post when its row on the base branch carries its address, not when this printed."
     echo "  tmux list-panes -t '$CALLSIGN' -F '#{pane_current_command}'   # should say: claude"
     exit 0
   fi

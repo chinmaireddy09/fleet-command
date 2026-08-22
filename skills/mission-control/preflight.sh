@@ -66,7 +66,23 @@ check_at_risk() {
       # under a different sha". Without this, six doc commits whose content had
       # already landed read as a day of exposure. Reachability is not content.
       local up ours dupes
-      up=$(git -C "$wt" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo origin/main)
+      # No upstream set: fall back to the repo's real base ref, not a guessed
+      # "origin/main". On a master/trunk repo, or one whose remote is not called
+      # origin, the old fallback compared against a ref that does not exist and
+      # reported everything as at risk.
+      up=$(git -C "$wt" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null) || up=""
+      if [ -z "$up" ]; then
+        r=$(git -C "$wt" remote 2>/dev/null | grep -qx origin && echo origin || git -C "$wt" remote 2>/dev/null | head -1)
+        if [ -n "$r" ]; then
+          up=$(git -C "$wt" symbolic-ref -q --short "refs/remotes/$r/HEAD" 2>/dev/null)
+          if [ -z "$up" ]; then
+            for c in main master trunk develop; do
+              git -C "$wt" rev-parse --verify -q "$r/$c" >/dev/null 2>&1 && { up="$r/$c"; break; }
+            done
+          fi
+        fi
+      fi
+      [ -z "$up" ] && up="HEAD"   # no remote anywhere: nothing to be at risk against
       ours=$(git -C "$wt" cherry "$up" 2>/dev/null | grep -c '^+' || echo 0)
       dupes=$(git -C "$wt" cherry "$up" 2>/dev/null | grep -c '^-' || echo 0)
       if [ "${ours:-0}" = "0" ]; then

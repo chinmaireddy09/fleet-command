@@ -78,6 +78,25 @@ chk "preamble runs from inside a worktree"   "$O" "COORDINATOR: HQ"
 chk "worktree resolves the same board"       "$O" "BOARD: docs/claims.md"
 
 echo
+echo "── 4b. repositories that are not on 'main' ────────────────────────"
+altrepo(){ local br="$1" rem="$2" r; r=$(mktemp -d "$WORK/alt.XXXXXX"); cd "$r"
+  git init -q -b "$br" 2>/dev/null || { git init -q; git checkout -qb "$br"; }
+  git config user.email t@example.com; git config user.name t
+  mkdir -p docs; printf '| x |\n' > docs/WORK-LOCKS.md; git add -A; git commit -qm init
+  [ -n "$rem" ] && { git remote add "$rem" "$r"; git update-ref "refs/remotes/$rem/$br" HEAD; }
+  printf '%s' "$r"; }
+for spec in "master origin" "trunk origin" "develop origin" "main upstream"; do
+  set -- $spec; A=$(altrepo "$1" "$2"); cd "$A"
+  O=$(bash "$D/mc-init.sh" 2>&1)
+  chk "board found on $1 via $2" "$O" "BOARD: docs/WORK-LOCKS.md"
+  chk "base ref resolves to $2/$1" "$O" "BASE_REF: $2/$1"
+done
+A=$(altrepo main ""); cd "$A"; O=$(bash "$D/mc-init.sh" 2>&1)
+chk "board found with NO remote"          "$O" "BOARD: docs/WORK-LOCKS.md"
+chk "no-remote is flagged, not silent"    "$O" "NO REMOTE"
+cd "$REPO"
+
+echo
 echo "── 5. deploy, on every host ───────────────────────────────────────"
 chk "print path yields a paste-able launch line" \
     "$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --print 2>&1)" \

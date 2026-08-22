@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.46.0
+version: 6.47.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -268,6 +268,29 @@ session name**, and every live session split into on-fleet and off-fleet.
 
 **Do not re-derive a line it printed.** If a value is in that block it is measured,
 and measured at the ref you are about to write.
+
+> ### WHEREVER THIS SKILL SAYS `origin/main`, IT MEANS `BASE_REF`
+>
+> This document says `origin/main` in about thirty places because that is what most
+> repositories call it and a concrete ref reads better than a placeholder. **It is not a
+> literal instruction.** The preamble prints **`BASE_REF`** — the branch this repository
+> actually treats as the truth — and that is the value to use, every time, in every command
+> you run and every row you write.
+>
+> It resolves in this order: `MC_BASE_REF` if set → the remote's own published default branch
+> → the first of `main`, `master`, `trunk`, `develop` that exists on that remote → and if
+> there is **no remote at all**, your local branch, flagged as such.
+>
+> **The flagged case matters more than it looks.** With no remote, `AHEAD` and `BEHIND` are
+> measured against yourself: they will read `0` and `0`, which is the same thing a fully
+> pushed, fully agreed branch prints. **Nothing has been agreed with anyone.** Say so in the
+> report rather than passing on a zero that means the opposite of what a reader will take it
+> for.
+>
+> Until 2026-08-23 the scripts hardcoded `origin/main`, so a repository on `master`, `trunk`
+> or `develop`, or one whose remote is not called `origin`, or one with no remote, read as
+> having **no board at all** — and the coordinator politely offered to create the board that
+> was sitting right there. Five of six common layouts were broken.
 
 **WITH ONE EXCEPTION, AND IT HAS BITTEN: `ME_NAME` and `ME_NAMESOURCE` are invalidated
 by identify step 1.** The preamble runs before you take your call-sign, so those two

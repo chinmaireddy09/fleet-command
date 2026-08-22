@@ -24,6 +24,35 @@ set -uo pipefail
 
 SESSIONS="$HOME/.claude/sessions"
 
+# ── which ref is "the truth" for this repo ──────────────────────────────────
+# EVERYTHING HERE USED TO SAY origin/main, HARDCODED. That is one project's
+# convention, and on a repo using master, trunk or develop -- or a remote not
+# called origin, or no remote at all -- every board read came back empty and the
+# coordinator offered to create a board the project already had. Same class of bug
+# as the hardcoded board path, and a much larger share of adopters.
+#
+# Resolution, in order, so a correct answer is preferred to a lucky one:
+#   1. MC_BASE_REF, if the user set it
+#   2. the remote's own published default branch (refs/remotes/<r>/HEAD)
+#   3. the first of main/master/trunk/develop that actually exists on that remote
+#   4. no remote at all -> the local branch, and SAY SO, because "ahead/behind"
+#      against yourself is meaningless and a reader must not take it as agreement
+resolve_base_ref() {
+  local root="$1" r b
+  if [ -n "${MC_BASE_REF:-}" ]; then printf '%s' "$MC_BASE_REF"; return; fi
+  r=$(git -C "$root" remote 2>/dev/null | grep -qx origin && echo origin || git -C "$root" remote 2>/dev/null | head -1)
+  if [ -n "$r" ]; then
+    b=$(git -C "$root" symbolic-ref -q --short "refs/remotes/$r/HEAD" 2>/dev/null)
+    if [ -n "$b" ] && git -C "$root" rev-parse --verify -q "$b" >/dev/null 2>&1; then printf '%s' "$b"; return; fi
+    for c in main master trunk develop; do
+      if git -C "$root" rev-parse --verify -q "$r/$c" >/dev/null 2>&1; then printf '%s' "$r/$c"; return; fi
+    done
+  fi
+  b=$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  [ -z "$b" ] || [ "$b" = "HEAD" ] && b="HEAD"
+  printf 'LOCAL:%s' "$b"
+}
+
 # ── who am I ────────────────────────────────────────────────────────────────
 # THE REGISTRY IS THE ONLY SURFACE THAT IS LIVE. It is on disk, keyed by pid, and
 # this process is a descendant of its own claude -- so walk up until a pid has a
@@ -190,6 +219,16 @@ if [ -z "$ROOT" ]; then
   emit_me
   exit 0
 fi
+
+BASE=$(resolve_base_ref "$ROOT")
+BASE_NOTE=""
+case "$BASE" in
+  LOCAL:*)
+    BASE="${BASE#LOCAL:}"
+    BASE_NOTE="   # NO REMOTE -- this is your own branch. AHEAD/BEHIND against yourself mean nothing,"
+    BASE_NOTE="$BASE_NOTE and nothing here has been agreed with anyone. Push before you trust a number." ;;
+  */*) : ;;
+esac
 echo "ROOT: $ROOT"
 echo "REPO: $(basename "$ROOT")"
 
@@ -222,16 +261,16 @@ else
 fi
 if [ -z "$BOARD" ]; then
   for c in docs/WORK-LOCKS.md WORK-LOCKS.md docs/CLAIMS.md CLAIMS.md .claude/WORK-LOCKS.md docs/BOARD.md; do
-    if git -C "$ROOT" cat-file -e "origin/main:$c" 2>/dev/null; then BOARD="$c"; break; fi
+    if git -C "$ROOT" cat-file -e "$BASE:$c" 2>/dev/null; then BOARD="$c"; break; fi
   done
 fi
 [ -z "$BOARD" ] && BOARD="docs/WORK-LOCKS.md"   # nothing found: name the one Step 0 would create
-if git -C "$ROOT" cat-file -e "origin/main:$BOARD" 2>/dev/null; then
+if git -C "$ROOT" cat-file -e "$BASE:$BOARD" 2>/dev/null; then
   echo "BOARD: $BOARD"
-  echo "BOARD_BYTES: $(git -C "$ROOT" show "origin/main:$BOARD" | wc -c | tr -d ' ')   # at origin/main, NOT the working copy"
-  echo "BOARD_LINES: $(git -C "$ROOT" show "origin/main:$BOARD" | wc -l | tr -d ' ')"
+  echo "BOARD_BYTES: $(git -C "$ROOT" show "$BASE:$BOARD" | wc -c | tr -d ' ')   # at $BASE, NOT the working copy"
+  echo "BOARD_LINES: $(git -C "$ROOT" show "$BASE:$BOARD" | wc -l | tr -d ' ')"
 else
-  echo "BOARD: none at origin/main   # no board yet -- Step 0 offers to write one"
+  echo "BOARD: none at $BASE   # no board yet -- Step 0 offers to write one"
 fi
 RULES=""
 for f in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
@@ -242,9 +281,10 @@ done
 emit_coordinator "$ROOT"
 
 echo "HEAD: $(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null) @ $(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)"
-echo "ORIGIN_MAIN: $(git -C "$ROOT" rev-parse --short origin/main 2>/dev/null)"
-echo "AHEAD: $(git -C "$ROOT" rev-list --count origin/main..HEAD 2>/dev/null)"
-echo "BEHIND: $(git -C "$ROOT" rev-list --count HEAD..origin/main 2>/dev/null)"
+echo "BASE_REF: $BASE$BASE_NOTE"
+echo "BASE_HEAD: $(git -C "$ROOT" rev-parse --short "$BASE" 2>/dev/null)"
+echo "AHEAD: $(git -C "$ROOT" rev-list --count "$BASE..HEAD" 2>/dev/null)"
+echo "BEHIND: $(git -C "$ROOT" rev-list --count "HEAD..$BASE" 2>/dev/null)"
 
 echo "WORKTREES:"
 git -C "$ROOT" worktree list 2>/dev/null | sed 's/^/  /'

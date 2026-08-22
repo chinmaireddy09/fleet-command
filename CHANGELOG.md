@@ -9,6 +9,41 @@ repo as a whole.
 
 ---
 
+## 6.47.0 — 2026-08-23
+
+**The scripts hardcoded `origin/main`, so five of six common repository layouts read as having no
+board at all.** Fourteen references across three scripts, and no check that a remote even existed.
+A project on `master`, `trunk` or `develop`, or whose remote is not called `origin`, or with no
+remote — every board read came back empty, and the coordinator politely offered to create the
+board that was sitting right there. **Same class as the hardcoded board path in 6.43.0, and a far
+larger share of adopters.**
+
+**Now resolved, in order:** `MC_BASE_REF` if set → the remote's own published default branch
+(`refs/remotes/<remote>/HEAD`) → the first of `main`, `master`, `trunk`, `develop` that exists on
+that remote → and with **no remote at all**, the local branch, *flagged as such*.
+
+**That last flag matters more than it looks.** With no remote, `AHEAD` and `BEHIND` are measured
+against yourself: both read `0`, which is exactly what a fully pushed, fully agreed branch prints.
+**Nothing has been agreed with anyone.** The preamble now says so on the line, rather than handing
+a reader a zero that means the opposite of what they will take it for.
+
+**One rule instead of thirty-six edits.** `SKILL.md` and the reference files say `origin/main` in
+about thirty places because a concrete ref reads better than a placeholder. Mechanically rewriting
+each was the larger risk. Instead there is now a single normative statement at the preamble:
+**wherever this skill says `origin/main`, it means `BASE_REF`** — the value the preamble prints —
+and that governs every command and every row.
+
+**Verified across six layouts** (`main`/`master`/`trunk`/`develop` on `origin`, a remote named
+`upstream`, and no remote at all), all now finding the board; previously only the first worked.
+`test/e2e.sh` covers all six and is up to **38 checks**.
+
+**Wording:** *"muster… no roster, no ceiling"* became *"bring up as many as the job needs: nothing
+to register, no limit"* — the same fact, in words that do not need a glossary. The naval register
+stays where it is doing work: **command a fleet · call-sign · holds · reports to a live board ·
+stands down · the same ground · goes down with the window.**
+
+---
+
 ## 6.46.0 — 2026-08-23
 
 **A coordinator cleaned a dead fleet's board, and corrected the session that had told it how.**
