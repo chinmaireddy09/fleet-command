@@ -128,7 +128,7 @@ it, so four stations do not each carry procedure they will never run:
 | `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost | anyone, rarely |
 | `preflight.sh` | **before a gate, a standdown, a baseline diff, or addressing a peer** — the four checks that were got wrong by hand | anyone |
 | `set-callsign.sh` | **step 6 of identify — every station runs it, always.** Makes the call-sign the address peers see | every station |
-| `label-tab.sh` | called by the above — pins the tab title, which Claude Code takes back each turn | every station |
+| `label-tab.sh` | called by the above — sets the tab title, and reports whether this session's launch lets it hold | every station |
 | `spawn-station.sh` | at deploy — opens the tab in *your* window and verifies a session really started | Control |
 
 ---
@@ -326,7 +326,8 @@ Every row here is a real failure that cost somebody time, and the answer is what
 
 | What you see | What it is | What to do |
 |---|---|---|
-| The tab title reverts to Claude Code's own text | Expected. Claude Code rewrites the title at every status change, i.e. every turn boundary | `/rename <CALLSIGN>` in that tab sticks — at the cost of the session's rename provenance. `/color` is worth more; it never lapses |
+| The tab title reverts to Claude Code's own text, or to the last turn's summary | Expected **on a session started as plain `claude`** — Claude Code rewrites the title at every status change. Measured 2026-08-22: 7 writes in one turn, ending as the turn summary | `/rename <CALLSIGN>` in that tab sticks — at the cost of the session's rename provenance. `/color` is worth more; it never lapses. A session cannot fix this for itself: argv and env are fixed at launch |
+| You want tab titles that just work, without anyone typing `/rename` | Launch the session with `claude --name <HANDLE>` — what `/mc deploy` already does. Measured 2026-08-22: every title Claude Code writes then reads `<glyph> <HANDLE>`, and the turn summary never displaces it. It is plain `ESC]0;`, so it holds in iTerm2/Ghostty/tmux too | Nothing. This is why deployed stations have correct tabs and hand-started ones do not |
 | Messages keep arriving from a station's **old** handle | The `@` header is captured when the channel opens and never re-resolved | Ignore the header. Resolve names through the fleet manifest and match on the `[ref]`, which survives renames |
 | *"No agent named '…' is reachable"* | You replied to a from-name that has since been renamed | Re-resolve the current name and send again. This bounce is the trap working, not a broken tool |
 | The board's rows all name sessions that are gone | Sessions end without cleaning up; a row outlives its holder | Run `/mc` — Control re-mans the post and rewrites dead rows. Rows are rewritten, never duplicated |

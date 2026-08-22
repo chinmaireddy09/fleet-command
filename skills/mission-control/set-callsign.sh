@@ -8,13 +8,20 @@
 #      captured when the channel opens and is never re-resolved, so a renamed station keeps
 #      arriving under its old handle -- measured 2026-08-19, and it is the same capture that
 #      bounces a reply addressed to a from-name. Resolve names here; match on the [ref].
-#   2. the Terminal tab title (delegated to label-tab.sh) -- BEST EFFORT ONLY. Claude Code
-#      rewrites the title with its own status glyph + summary at every status change, i.e.
-#      each turn boundary. The label holds while you work and is gone when the turn ends.
-#      `/rename <CALLSIGN>`, typed by the human in that tab, is the only thing MEASURED to hold
-#      the title (2026-08-18). `claude --name` at launch is expected to as well -- the flag's own
-#      help says it feeds the terminal title -- but no one has measured that across a turn
-#      boundary, so do not report it as verified.
+#   2. the Terminal tab title (delegated to label-tab.sh) -- CONDITIONAL, and the condition
+#      is fixed at LAUNCH, so THIS SCRIPT CANNOT CHANGE IT for a session already up.
+#      Claude Code writes the title once per status change. Measured 2026-08-22 on 2.1.239,
+#      one real turn, three launches:
+#        plain `claude`      -> 7 writes, ending as the TURN SUMMARY. Our label is gone.
+#        `claude --name FOO` -> 5 writes, every one "<glyph> FOO". The summary never
+#                               displaces it, so the tab carries the call-sign all watch.
+#                               This is what `/mc deploy` passes, and it is plain OSC, so
+#                               it holds outside Terminal.app too.
+#        CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 -> 0 writes; the custom title stands alone.
+#      For a session ALREADY RUNNING as plain `claude`, `/rename <CALLSIGN>` typed by the
+#      human is the only thing that holds (measured 2026-08-18). label-tab.sh reads this
+#      session's own argv and env and reports which case it is in -- believe that line, and
+#      never report the tab as labelled without it.
 #
 # Finds its own pid and its own tty by walking up from this shell — never by
 # "front window" or by scanning for any `claude`, both of which hit somebody else's
@@ -112,16 +119,16 @@ PY
 # --- 2. the tab title (best effort; never fails the rename) ---------------------
 # macOS Terminal.app only. Anywhere else this is a clean skip, not an error: the
 # address above is the half the fleet reads, and it has already landed.
-if [ ! -x "$HERE/label-tab.sh" ]; then
+if [ ! -f "$HERE/label-tab.sh" ]; then
   echo "tab title: skipped — label-tab.sh not found beside me"
 elif [ "$(uname -s)" != "Darwin" ] || ! command -v osascript >/dev/null; then
   echo "tab title: skipped — needs macOS Terminal.app; the manifest address is set regardless"
-elif ! "$HERE/label-tab.sh" "$CALLSIGN" >/dev/null 2>&1; then
-  echo "tab title: skipped — could not match this tty"
 else
-  echo "tab title: set to \"$CALLSIGN\" — BUT Claude Code overwrites it at the next turn"
-  echo "           boundary. For a title that sticks: type  /rename $CALLSIGN  in this tab,"
-  echo "           or  /color  to tell tabs apart a way nothing overwrites."
+  # Do not restate the outcome here. label-tab.sh reads this session's own env and
+  # says whether the label survives the next turn; a second voice on the same fact is
+  # how 6.28.1 happened -- one surface kept promising what another had withdrawn.
+  bash "$HERE/label-tab.sh" "$CALLSIGN" 2>&1 | sed "s/^/tab title: /" || \
+    echo "tab title: skipped — could not match this tty"
 fi
 
 echo "NOTE: a peer whose channel to you is ALREADY OPEN keeps seeing your OLD handle. That name"

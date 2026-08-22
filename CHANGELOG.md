@@ -9,6 +9,51 @@ repo as a whole.
 
 ---
 
+## 6.30.0 — 2026-08-22
+
+**The tab title was never a lost cause; `--name` had been holding it all along and this skill
+called that unverified.** A user reported both identity surfaces failing in a live fleet: *"tab
+name is set only for a certain time and it is changing when a new prompt is given."* That is the
+documented behaviour, so the question was why the documented behaviour was the one they were
+getting. Measured on 2.1.239 by capturing the pty across one real turn, three launches of the
+same session:
+
+| launched as | `ESC]0;` title writes in one turn | what the tab ends up reading |
+|---|---|---|
+| `claude` | 7 | `✳ Claude Code` → **`✳ <turn summary>`** |
+| `claude --name TESTSTATION` | 5 | **`✳ TESTSTATION`** — every write |
+| `CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 claude` | 0 | whatever `label-tab.sh` set |
+
+**Claude Code overwrites the title either way. What changes is what it overwrites it WITH.**
+With `--name`, every write carries the call-sign and the turn summary never appears — so a
+station `deploy` spawned has had a correct tab since launch, in any terminal, because it is plain
+OSC rather than AppleScript. The skill had said *"no one has measured a `--name` session's title
+across a turn boundary, so do not report that half as verified."* Now measured; caveat retired.
+
+**The reported failure is real but is a different case: a session started as plain `claude`.**
+Control itself, and anything hand-started, is in that world — and **nothing it runs can move it
+out**, because argv and env are fixed at exec. `label-tab.sh` and `set-callsign.sh` cannot fix a
+tab there and never could; `/rename` typed by the human still can.
+
+**So the scripts stopped guessing and started reading.** `label-tab.sh` now walks to its own
+`claude` process, reads argv and env, and prints `persists: YES`, `persists: YES (as <handle>)`
+or `persists: NO` with what to do about it — and where the handle differs from the call-sign it
+says so, because the tab will show the handle. `set-callsign.sh` pipes that verdict through
+instead of restating it: **one fact, one voice.** Restating it in a second place is exactly how
+6.28.1 happened.
+
+**A fix that was measured and then thrown away.** `CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1` genuinely
+works — zero writes — and was wired into `spawn-station.sh` before the `--name` measurement came
+in. It was then reverted: it buys a bare title with no status glyph, at the price of switching off
+the durable portable mechanism and replacing it with a Terminal.app-only one. **A measured fix is
+not automatically the right fix, and the second measurement is what tells you which.** It is
+documented as the user's lever for their own settings, not something the skill sets for them.
+
+**The `@` header did not move.** It is still captured when a channel opens and never re-resolved.
+Nothing in this release changes that, and nothing should be reported as though it did.
+
+---
+
 ## 6.29.0 — 2026-08-20
 
 **A repo's work belongs to that repo, and crossing into another one is a decision the user

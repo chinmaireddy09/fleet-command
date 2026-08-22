@@ -75,6 +75,17 @@ Q_WT=${WT//\'/\'\\\'\'}
 # never sees itself), and the spawner knows it before the station exists — so
 # asserting it here removes a radio round-trip that happened three times in one hour.
 PROMPT="/mc identify $CALLSIGN — your ListAgents address is $HANDLE; confirm with ps -o args= on your own claude process"
+# `--name` is not only the ListAgents address. MEASURED 2026-08-22 on 2.1.239, by capturing
+# the pty across one real turn, three launches of the same session:
+#   plain `claude`          -> 7 title writes: "✳ Claude Code" ... then "✳ Pong reply".
+#                              The turn SUMMARY takes the tab. This is the tab going wrong.
+#   `claude --name FOO`     -> 5 title writes, every one "<glyph> FOO". The summary never
+#                              displaces it, so the call-sign is on the tab all watch.
+#   with CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 -> 0 writes.
+# So the tab is held by --name at LAUNCH and by nothing a running session can do to itself.
+# It is also plain OSC, so it holds in iTerm2/Ghostty/tmux where the AppleScript path cannot
+# reach. Do not "fix" the tab by disabling title writes here: that switches the durable,
+# portable mechanism off and replaces it with a Terminal.app-only one.
 CMD="cd '$Q_WT' && claude --name '$HANDLE' '$PROMPT'"
 
 if [ "$MODE" = "--print" ]; then
