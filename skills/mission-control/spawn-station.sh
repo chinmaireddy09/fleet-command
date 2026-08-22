@@ -129,6 +129,62 @@ TXT
   exit 0
 fi
 
+# ── which automation can actually open a tab here ────────────────────────────
+# ONE RECIPE PER HOST, AND `--print` IS THE ONE THAT WORKS EVERYWHERE. This used to
+# call `osascript` unconditionally, so on Linux, on Windows, and inside the VS Code
+# integrated terminal it failed with "osascript: command not found" instead of simply
+# handing over the paste-able line it already had. **A missing recipe is not an
+# error** -- the human opening a tab by hand is the normal path on most machines, and
+# the deploy is finished by the board either way.
+#
+# tmux is checked FIRST and deliberately: it is the only recipe that works on macOS,
+# Linux, Windows (WSL) and INSIDE VS Code's terminal, so a user who runs tmux gets
+# real automation on every platform this skill will ever meet.
+
+print_fallback() {   # $1 = why
+  cat <<TXT
+CANNOT AUTOMATE HERE — $1
+Open a new tab yourself and paste this:
+
+  $CMD
+
+That is not a degraded deploy. The tab is the only part a human was ever doing, and
+the post is already prepared: worktree, branch and board row are done. Verify by the
+BOARD, not by the tab looking right — the deploy is finished when $CALLSIGN's row on
+origin/main carries its fleet-manifest address.
+TXT
+}
+
+# 1. tmux — portable, and the station lands in its own worktree directly.
+if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+  if tmux new-window -c "$WT" -n "$CALLSIGN" "$CMD" 2>/dev/null; then
+    echo "TMUX ok · new window named $CALLSIGN"
+    [ -n "$BATCH" ] && { echo "BATCH: window opened for $CALLSIGN — NOT yet verified."; }
+    exit 0
+  fi
+  print_fallback "tmux is running but refused to open a window"; exit 1
+fi
+
+# 2. Windows Terminal.
+if [ -n "${WT_SESSION:-}" ] && command -v wt.exe >/dev/null 2>&1; then
+  if wt.exe -w 0 nt -d "$WT" cmd /k "claude --name $HANDLE \"/mc identify $CALLSIGN\"" 2>/dev/null; then
+    echo "WT ok · new tab for $CALLSIGN"
+    [ -n "$BATCH" ] && { echo "BATCH: tab opened for $CALLSIGN — NOT yet verified."; }
+    exit 0
+  fi
+  print_fallback "Windows Terminal is running but \`wt\` refused to open a tab"; exit 1
+fi
+
+# 3. macOS Terminal.app — the measured path, and the only one with a verification step.
+if [ "$(uname -s)" != "Darwin" ] || ! command -v osascript >/dev/null 2>&1; then
+  print_fallback "no recipe for this host ($(uname -s)${TERM_PROGRAM:+, $TERM_PROGRAM}). tmux would give you one on every platform."
+  exit 0     # not a failure: the human has everything they need
+fi
+if [ "${TERM_PROGRAM:-}" != "Apple_Terminal" ]; then
+  print_fallback "this is $TERM_PROGRAM, not Apple Terminal — the AppleScript recipe here is written for Terminal.app and would target the wrong application. Inside VS Code, run tmux and re-run, or paste the line."
+  exit 0
+fi
+
 # Automated path. Find our own tty so the tab opens in OUR window, never "front window".
 p=$$; MYTTY=""
 while [ "$p" -gt 1 ]; do

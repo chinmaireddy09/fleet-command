@@ -356,6 +356,10 @@ Every row here is a real failure that cost somebody time, and the answer is what
 
 ## Ownership and licence
 
+Learned from [gstack](https://github.com/garrytan/gstack) (MIT, © 2026 Garry Tan) — the
+preamble pattern, and `progress-and-log` by disagreeing with `context-save`. No gstack code is
+copied here; see [ATTRIBUTION.md](ATTRIBUTION.md) → *Prior work this learned from*.
+
 Original work by **Chinmai Reddy ([@chinmaireddy09](https://github.com/chinmaireddy09))**,
 released under the **[Fleet Command License 1.1](LICENSE)** — its own licence, not a borrowed
 one.

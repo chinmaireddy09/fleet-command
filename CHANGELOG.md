@@ -9,6 +9,46 @@ repo as a whole.
 
 ---
 
+## 6.41.0 — 2026-08-23
+
+**`spawn-station.sh` called `osascript` unconditionally, so on Linux, on Windows and inside the
+VS Code terminal a deploy failed with `osascript: command not found` instead of handing over the
+paste-able line it already had.** The reference docs and the config template have described five
+terminals since 6.18; the script knew one. Now it dispatches, and **a missing recipe is not a
+failure** — it prints, explains which host it is on, and exits 0, because the tab is the only part
+a human was ever doing and the post is already prepared.
+
+| host | recipe |
+|---|---|
+| **tmux** (checked first) | `tmux new-window -c <worktree> -n <CALLSIGN>` |
+| **Windows Terminal** | `wt -w 0 nt -d <worktree> …` |
+| **macOS Terminal.app** | the measured AppleScript path, the only one with an in-tab verification |
+| **VS Code / anything else** | prints the line, and points at tmux |
+
+**tmux is checked first on purpose: it is the only recipe that works on macOS, Linux, Windows via
+WSL, *and inside VS Code's integrated terminal*.** One recipe covering every platform this skill
+will meet is worth more than four that each cover one — a user who runs tmux gets real automation
+everywhere.
+
+**It also stopped pretending to be Terminal.app when it is not.** Running under iTerm2 or Warp,
+the AppleScript would have targeted the wrong application; it now checks `TERM_PROGRAM` and prints
+instead of misfiring into somebody else's window.
+
+**Attribution: gstack was credited in a shell-script comment and nowhere a human reads.**
+`mc-init.sh` has said *"adapted from gstack's preamble pattern"* since it shipped, while
+`ATTRIBUTION.md` said "original work" and named it nowhere. **That is condition 2 of this
+project's own licence — credit belongs where people read it, not buried in a file nobody opens —
+failing against the project itself.** Now in `ATTRIBUTION.md` and `README.md`:
+[gstack](https://github.com/garrytan/gstack), MIT © 2026 Garry Tan, for the preamble pattern
+(one bash block per skill run, greppable `KEY: VALUE` output), and for `progress-and-log`, which
+exists by *disagreeing* with `context-save` and so is not independent of it.
+
+**Scoped honestly rather than generously:** the pattern was adapted, the code was not copied, and
+MIT asks nothing for a pattern. The credit is there because the project's own standard says so,
+not because a licence compelled it.
+
+---
+
 ## 6.40.0 — 2026-08-23
 
 **Two usability defects, both reported as "this will not work for other users", and both fixed
