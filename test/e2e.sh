@@ -141,6 +141,23 @@ else
 fi
 
 echo
+echo "── 6b. at-risk tells scratch apart from real work ─────────────────"
+cd "$REPO"; echo "modified" >> README.md; : > docs/scratch-untracked.txt
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "tracked modification named as real work" "$O" "tracked file(s) MODIFIED"
+chk "untracked counted separately"            "$O" "untracked file(s)"
+chk "untracked is not called work at risk"    "$O" "untracked is NOT automatically at risk"
+git checkout -q -- README.md; rm -f docs/scratch-untracked.txt
+
+echo
+echo "── 6c. detached HEAD and worktree wording ─────────────────────────"
+git worktree add -q --detach "$REPO/.claude/worktrees/det" HEAD 2>/dev/null
+O=$(cd "$REPO/.claude/worktrees/det" && bash "$D/mc-init.sh" 2>&1)
+chk "detached HEAD says detached, not 'HEAD'"     "$O" "HEAD: detached @"
+chk "dirty line names the worktree, not the checkout" "$O" "a worktree, not the shared checkout"
+cd "$REPO"
+
+echo
 echo "── 7. identity surfaces ───────────────────────────────────────────"
 O=$(bash "$D/mc-init.sh" me 2>&1)
 if printf '%s' "$O" | grep -q "ME_PID: unknown"; then

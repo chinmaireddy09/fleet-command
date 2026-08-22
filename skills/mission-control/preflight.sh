@@ -96,11 +96,35 @@ check_at_risk() {
     fi
   done
   [ "$any" = "0" ] && ok "every commit in every worktree exists on a remote"
-  echo "uncommitted work (dies with a tidy-up, not with a window):"
+  # TRACKED AND UNTRACKED ARE NOT THE SAME RISK, AND THIS USED TO ADD THEM UP.
+  # `git status --porcelain | wc -l` counts a modified source file and a scratch
+  # gate log identically, and the total was printed under "uncommitted work (dies
+  # with a tidy-up)". Reported 2026-08-23 by a coordinator that had to check all
+  # thirteen worktrees by hand to establish that six flagged files were ALL gate
+  # logs and not one line of source was at risk. The header did the damage: it is
+  # the sentence that makes a reader think source is in danger.
+  #
+  # This skill's own rule: a check must be able to observe the thing it claims to
+  # measure. This was observing `git status` and reporting "work".
+  echo "uncommitted work:"
+  local any=0
   for wt in $(git worktree list --porcelain | awk '/^worktree /{print $2}'); do
-    local d; d=$(git -C "$wt" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-    [ "$d" != "0" ] && printf '  %-40s %s file(s)\n' "$(basename "$wt")" "$d"
+    local st tracked untracked
+    st=$(git -C "$wt" status --porcelain 2>/dev/null)
+    [ -z "$st" ] && continue
+    untracked=$(printf '%s\n' "$st" | grep -c '^??')
+    tracked=$(printf '%s\n' "$st" | grep -vc '^??')
+    any=1
+    if [ "$tracked" != "0" ]; then
+      printf '  %-34s %s tracked file(s) MODIFIED  <- real work, lost by a checkout or reset\n' "$(basename "$wt")" "$tracked"
+    fi
+    if [ "$untracked" != "0" ]; then
+      printf '  %-34s %s untracked file(s)          scratch until added; lost only to `git clean`\n' "$(basename "$wt")" "$untracked"
+    fi
   done
+  [ "$any" = "0" ] && echo "  none -- no tracked modifications and no untracked files anywhere"
+  echo "  (untracked is NOT automatically at risk. Gate logs and scratch live here."
+  echo "   Do not report a station as having work in danger on an untracked count alone.)"
   return 0
 }
 

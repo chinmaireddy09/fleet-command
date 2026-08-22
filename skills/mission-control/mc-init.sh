@@ -280,7 +280,11 @@ done
 
 emit_coordinator "$ROOT"
 
-echo "HEAD: $(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null) @ $(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)"
+# A detached worktree used to print "HEAD: HEAD @ abc1234", which reads as a bug
+# rather than as the intended state. Say detached; it costs nothing.
+_BR=$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)
+[ "$_BR" = "HEAD" ] && _BR="detached"
+echo "HEAD: $_BR @ $(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)"
 echo "BASE_REF: $BASE$BASE_NOTE"
 echo "BASE_HEAD: $(git -C "$ROOT" rev-parse --short "$BASE" 2>/dev/null)"
 echo "AHEAD: $(git -C "$ROOT" rev-list --count "$BASE..HEAD" 2>/dev/null)"
@@ -293,4 +297,14 @@ MYPID=$(find_me || echo 0)
 emit_me
 emit_peers "$ROOT" "$MYPID"
 
-echo "DIRTY: $(git -C "$ROOT" status --porcelain 2>/dev/null | wc -l | tr -d ' ') file(s) in the shared checkout"
+# ROOT is the WORKTREE when a station runs this, not the shared checkout -- so the
+# old fixed wording described the wrong directory to every station that read it.
+# Name what was actually measured, and split tracked from untracked for the same
+# reason preflight does: they are not the same risk.
+_ST=$(git -C "$ROOT" status --porcelain 2>/dev/null)
+_UN=$(printf '%s\n' "$_ST" | grep -c '^??'); _TR=$(printf '%s\n' "$_ST" | grep -vc '^??')
+[ -z "$_ST" ] && { _UN=0; _TR=0; }
+_WHERE="$(basename "$ROOT")"
+git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null | grep -qv '^\.git$' \
+  && _WHERE="$_WHERE (a worktree, not the shared checkout)" || _WHERE="$_WHERE (the shared checkout)"
+echo "DIRTY: $_TR tracked modified, $_UN untracked -- in $_WHERE"

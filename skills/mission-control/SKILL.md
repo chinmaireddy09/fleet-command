@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.47.0
+version: 6.48.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -830,7 +830,39 @@ provenance with its own arrival. **Read why there are two before deciding there 
 archive rather than merge.** *"Keep the honest one"* is not a resolution; it loses whichever you
 drop.
 
-**A blocker that names an outside condition outlives the condition.** Rows carried *"gate when the
+**AN OUTSIDE READ OF YOUR BOARD HAS LESS CONTEXT THAN YOUR BOARD DOES — weigh it against the rows
+before acting on it, however specific it looks.** This is the general form of the rule above, and
+it is worth more than the specific case.
+
+**A confident defect report from somebody who read your board but did not live it is frequently an
+artifact of exactly what they could not see.** Measured 2026-08-23: an off-fleet session read the
+board, correctly identified six dead station rows, and recommended collapsing two of them — with
+line numbers, a rationale, and a suggested resolution. It was wrong, because the second row was a
+retired provenance record whose whole reason for existing is invisible from a row read. **The
+precision of the report is what made it persuasive; it was also what made it wrong**, because
+line-accurate detail reads as evidence of having understood the thing.
+
+**So: an outside read is a HYPOTHESIS, and the rows are the evidence.** Take the parts that name
+something you can check — a dead address, a branch cell pointing at the wrong commit — and check
+them. Refuse the parts that ask you to destroy something whose purpose you would have to already
+know to defend. **The advisor cannot tell those two categories apart from outside, and you can.**
+
+**It applies to this skill's own advice too.** A rule written from one fleet's incident is an
+outside read of yours.
+
+**A blocker that names an outside condition outlives the condition — and the duty runs BOTH ways.**
+Reading a blocked row obliges you to re-check the condition; **discovering that a condition has
+cleared obliges you to sweep the board for every row waiting on it.** The second half is the one
+that actually fires, and it was missing until 2026-08-23: nobody was reporting a station blocked
+when the stale rows were found — a coordinator probed the daemon for an unrelated reason and
+noticed. **The reader of a blocked row and the person who learns the world changed are different
+people at different times**, and a rule aimed only at the first leaves rows stale indefinitely.
+This is the same duty the hold-expiry section states from the other side — *whoever changes that
+condition re-reads the holds, because they are the only person who knows it changed* — and the two
+are one rule: **if you learn a blocker's condition no longer holds, you own the sweep, whatever you
+were doing at the time.**
+
+** Rows carried *"gate when the
 daemon returns"* long after the daemon returned — **nothing tells a board when the outside world
 changes.** Re-check every external blocker before reporting a station blocked; the cheapest lie on
 a board is a true statement that stopped being true.
@@ -2457,6 +2489,16 @@ tidy-up. **A row is who · what · where · status · a pointer** — the reason
 new `origin/main` on rejection.**
 
 ### "Clear the board" almost never means delete the rows
+
+> **BEFORE YOU TIDY ANYTHING, READ *A ROW IS A CLAIM, NOT A MEASUREMENT* ABOVE — especially
+> *do not collapse rows that merely look duplicated*.** Those rules live in the row section, which
+> is where a station reads at identify; **the mistake they prevent happens HERE, during cleanup,
+> and a rule only prevents a mistake if it is in front of the person about to make it.** Flagged
+> 2026-08-23 by the coordinator that had just been advised to merge two rows and correctly refused:
+> the second was the retired record of a previous holder, and merging would have destroyed the
+> provenance it was kept for.
+
+
 
 **A human saying *"clear the board"* is usually talking about the screen in front of them** —
 the scrollback, the recap, the clutter of a long session. **This skill has trained you to hear

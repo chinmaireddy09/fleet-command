@@ -9,6 +9,55 @@ repo as a whole.
 
 ---
 
+## 6.48.0 — 2026-08-23
+
+**A coordinator tested 6.47.0 against a real 68 KB board, thirteen worktrees and live remotes, and
+returned eight passes and five findings. All five are fixed here.** It changed nothing to make
+anything pass, and it reported a negative result it had expected to be a bug — which is the part
+worth copying.
+
+**The real bug: `at-risk` was adding untracked scratch to tracked edits and calling the total
+"uncommitted work (dies with a tidy-up)".** Six flagged files across two worktrees were *all* gate
+logs; not one line of source was at risk, and establishing that took a hand check of all thirteen
+worktrees. **The header did the damage** — it is the sentence that makes a reader think source is
+in danger. Now split: tracked modifications are named as real work lost by a checkout or reset;
+untracked is counted separately and labelled scratch, with an explicit line saying an untracked
+count alone is not grounds to report work in danger. **This skill's own rule, failing against
+itself: a check must be able to observe the thing it claims to measure.** It was observing
+`git status` and reporting *work*.
+
+**Rule 3 had a duty gap, and it was the one rule that would not have prevented the mistake it was
+written from.** It said *re-check every external blocker before reporting a station blocked* — but
+nobody was reporting a station blocked. The coordinator probed Docker for an unrelated reason and
+found rows that had carried *"gate when the daemon returns"* for nine hours after the daemon
+returned. **The reader of a blocked row and the person who learns the world changed are different
+people at different times.** The duty now runs both ways and is joined to the hold-expiry rule that
+already said the other half.
+
+**Rule 2 was in the wrong place to fire.** *Do not collapse rows that merely look duplicated* sat
+in the row section, which a station reads at identify; **the mistake happens during board
+cleanup.** A rule only prevents a mistake if it is in front of the person about to make it. Now
+cross-referenced from *"Clear the board" almost never means delete the rows*.
+
+**And the rule that was missing entirely — the general form of this repository's own error:**
+**an outside read of your board has less context than the board does.** An off-fleet session read
+the board, correctly found six dead rows, and recommended collapsing two — with line numbers, a
+rationale and a resolution. It was wrong, because the second row was a retired provenance record
+whose reason for existing is invisible from a row read. **The precision of the report is what made
+it persuasive, and it is also what made it wrong.** An outside read is a hypothesis; the rows are
+the evidence. Take the parts naming something checkable and check them; refuse the parts asking you
+to destroy something whose purpose you would have to already know to defend. *Including advice from
+this skill, which is an outside read of every fleet but the one it was written from.*
+
+**Cosmetic, both from the same report:** a detached worktree printed `HEAD: HEAD @ abc1234` and now
+says `detached`; and `DIRTY: … in the shared checkout` was printed to stations running inside a
+worktree, describing the wrong directory — it now names what it measured and splits tracked from
+untracked for the same reason `at-risk` does.
+
+`test/e2e.sh` gains five regression checks and is at **43**.
+
+---
+
 ## 6.47.0 — 2026-08-23
 
 **The scripts hardcoded `origin/main`, so five of six common repository layouts read as having no
