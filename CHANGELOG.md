@@ -9,6 +9,26 @@ repo as a whole.
 
 ---
 
+## 6.45.2 — 2026-08-23
+
+**6.45.1 kept the naval nouns and made every verb plain, which drained the register it was
+supposed to set.** *Fleet*, *call-sign* and *station* sat in a sentence that otherwise said *run*,
+*shows* and *is not duplicated* — the vocabulary was there and the voice was not. Tone lives in
+verbs, and that was the miss.
+
+Raised: **command · takes a call-sign · holds · reports to · stands down · the same ground ·
+goes down with the window · muster · no roster, no ceiling.** Every one of them is a word this
+skill already uses operationally — `standdown` is a command, a station really does hold a
+worktree, and *nothing goes down with the window* is the exact failure the whole project exists to
+prevent, not a flourish.
+
+**The constraint from 6.45.1 still holds and is what keeps this from being costume:** the concrete
+anchors stay in the sentence. A reader still learns there is a call-sign, a git worktree per
+session, and a shared board, because those are what the thing does. The register is how it is
+said; the facts are not negotiable.
+
+---
+
 ## 6.45.1 — 2026-08-23
 
 **Register set to match the project's own name, without spending the clarity 6.45.0 bought.** The
