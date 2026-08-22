@@ -9,6 +9,35 @@ repo as a whole.
 
 ---
 
+## 6.35.0 — 2026-08-22
+
+**"A stale reading of a live source, mistaken for a limit of the source."** A station that had
+paid the identity round-trip reported *why* it paid it, and the reason was not the one 6.34.0
+fixed. It had not reasoned from the old `ME_REF` text at all. It ran the preamble **once, before
+`set-callsign.sh`**, saw its pre-rename handle in `ME_NAME`, and concluded **the registry could
+not know its new name** — so it went to the radio for a fact sitting in a file.
+
+**The preamble's own rule is what licensed that.** *"Do not re-derive a line it printed"* is
+correct for repo state — the board, HEAD, the worktrees — and **exactly wrong for `ME_NAME`**,
+because the preamble runs before identify step 1 renames the session. Those two lines are
+**pre-rename by construction, every time.** The rule now carries that exception explicitly, and
+`mc-init.sh` marks `ME_NAME` as a snapshot at the point of printing rather than leaving the
+reader to infer it.
+
+**The generalisation, which outlives this field:** two different failures sit in the identity
+table and **their remedies are opposite.** A surface that is a *cache* — the `ListAgents`
+self-line name, the `@` header — must never be trusted. A surface that is *live* — the registry —
+must simply be **re-read**. Picking the wrong remedy costs you the fact either way: distrust a
+live source and you go to the radio; trust a cache and you publish something false. **When a
+cached value looks wrong after you changed what it came from, re-read the source before
+concluding anything about the source.**
+
+**Credit where it is due:** this came back from the station that lost the time, unprompted, as a
+correction to the fix rather than an acknowledgement of it — and it verified 6.34.0 locally rather
+than taking it on relay before replying. That is the loop this skill is supposed to produce.
+
+---
+
 ## 6.34.0 — 2026-08-22
 
 **A four-station fleet measured every identity surface at once, and the skill had one of them

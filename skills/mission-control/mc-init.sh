@@ -54,8 +54,11 @@ import json,os
 pid=os.environ["MYPID"]
 d=json.load(open(os.path.expanduser(f"~/.claude/sessions/{pid}.json")))
 print(f"ME_PID: {pid}")
-print(f"ME_NAME: {d.get('name','?')}")
+print(f"ME_NAME: {d.get('name','?')}   # SNAPSHOT AS OF NOW. If you have not run set-callsign.sh yet, this is your PRE-rename handle")
 print(f"ME_NAMESOURCE: {d.get('nameSource','?')}   # 'derived' = generated handle, you have NOT taken a call-sign yet")
+print("ME_NAME_AFTER_RENAME: re-run `mc-init.sh me`   # the registry is LIVE; a preamble reading is merely OLD.")
+print("                      Do NOT infer from a stale reading that the source cannot know -- reported 2026-08-22,")
+print("                      it cost a station a radio round-trip for a fact sitting in a file.")
 print(f"ME_CWD: {d.get('cwd','?')}")
 print("ME_REF: run ListAgents -- your own self-line carries it, and that ref is CORRECT")
 print("ME_SELFLINE_NAME: DO NOT USE   # the name on that self-line is a start-time snapshot: false after any rename")

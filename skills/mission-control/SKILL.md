@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.34.0
+version: 6.35.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -256,6 +256,25 @@ session name**, and every live session split into on-fleet and off-fleet.
 
 **Do not re-derive a line it printed.** If a value is in that block it is measured,
 and measured at the ref you are about to write.
+
+**WITH ONE EXCEPTION, AND IT HAS BITTEN: `ME_NAME` and `ME_NAMESOURCE` are invalidated
+by identify step 1.** The preamble runs before you take your call-sign, so those two
+lines are **pre-rename by construction** — every time, not occasionally. `set-callsign.sh`
+prints the authoritative post-rename address itself (`address (fleet manifest) <old> -> <new>`);
+that line supersedes the preamble's, and `mc-init.sh me` re-reads it on demand.
+
+**The failure this prevents is subtler than a stale value, which is why it needs saying.**
+Reported 2026-08-22 by a station that had paid the round-trip: it ran the preamble, saw its
+pre-rename handle in `ME_NAME`, and **inferred that the registry could not know its new name** —
+so it went to the radio for something sitting in a file. *"A stale reading of a live source,
+mistaken for a limit of the source."* Nothing was wrong with the registry; the reading was older
+than the rename, and the age of a reading was read as a property of what it read.
+
+**Generalise it, because this shape outlives this field:** when a value you cached looks wrong
+after you changed the thing it came from, **re-read the source before concluding anything about
+the source.** The two remedies are opposite and picking the wrong one costs you the fact —
+a genuinely stale surface (the `ListAgents` self-line name) must never be trusted, while a live
+one read too early (the registry) must simply be read again.
 
 > **The fleet manifest** — what `ListAgents` returns: **every live Claude Code session on this
 > machine**, not only this repo's. It is a list of *contacts*, not of stations: a session appears
@@ -1295,11 +1314,18 @@ reading every surface at once:
 
 | surface | correct after a rename? | when it reads the name |
 |---|---|---|
-| **session registry on disk** | ✅ **live** | the moment `set-callsign.sh` writes it |
+| **session registry on disk** | ✅ **live** — but *your reading of it* can be old | the moment `set-callsign.sh` writes it |
 | **`ListAgents` → peer rows** | ✅ **live** | re-read on every call |
 | `ListAgents` → **your own self-line** | **name stale · `[ref]` correct** | name snapshotted at session start |
 | `@` header on an already-open channel | ❌ stale | once, when that socket opened |
 | terminal tab title | per launch argv | every status change |
+
+**Two different failures live in this table and their remedies are opposite.** A surface that is
+a *cache* (self-line name, `@` header) must never be trusted. A surface that is *live* (the
+registry) must simply be **re-read** — and the preamble's `ME_NAME` is always a pre-rename
+reading, because the preamble runs before identify step 1. Reading an old snapshot of a live
+source and concluding *the source cannot know* is how a station reached for the radio to fetch
+something already on disk; see the exception under *Preamble*.
 
 **So a session answers BOTH halves of its own identity locally, and the radio round-trip that
 used to be mandatory is not needed at all:**
