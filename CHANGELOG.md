@@ -9,6 +9,42 @@ repo as a whole.
 
 ---
 
+## 6.42.0 — 2026-08-23
+
+**The skill contradicted itself about the fastest way to raise a fleet — the one most people
+actually use.** §3 says a call-sign nobody has used is *"a normal answer, not an error… it creates
+the station"*. Identify step 3 said *"if the row has none, that is the bug, fix the row."* Both
+cannot be true. The second was written with only `deploy` in mind, where Control prepares the row
+before the station exists.
+
+**So the open-a-tab-and-identify flow was undocumented in the one step where it differs.** A human
+opening four tabs and typing `/mc identify <name>` in each arrives at a call-sign with **no row**,
+which the step called a bug. It is not a bug — it is a station **initiating its own post**:
+create the worktree and branch, then write the row. Now a first-class branch at steps 2 and 4.
+
+**And it is the faster flow, which is the reason to say so plainly.** `deploy` is serial —
+prepare, spawn, wait, verify, repeat — while a human with four tabs *is* the parallelism. The
+skill should not quietly describe only the path it automates.
+
+**tmux, Windows Terminal and the fallbacks were tested with recording stubs** rather than
+installed, so the dispatch and the exact argv are verified while the recipes themselves are not:
+tmux receives `new-window -c <worktree> -n <CALLSIGN> <cmd>`; a refusal falls back to printing
+rather than dying; `--batch` announces itself as unverified.
+
+**Both non-macOS recipes now say what they actually proved.** `tmux new-window` returning 0 proves
+a *window*, not a station — the AppleScript path can look inside its own tab for a live `claude`,
+tmux returns immediately and there is nothing to look at yet. They print `NOT YET A STATION` and
+point at the board, instead of borrowing the verified path's confidence. The Windows recipe also
+states it has never run against a real Windows Terminal.
+
+**gstack scaled back to one acknowledgement.** 6.41.0 over-built it. Ideas are not licensed,
+nothing is required, and the section now says so in three lines — kept only because
+`mc-init.sh` already said *"adapted from"* in a comment, and a repository that says two different
+things about the same fact is worse than one that says it once, plainly. The comment now says
+*inspired by*, which is what actually happened.
+
+---
+
 ## 6.41.0 — 2026-08-23
 
 **`spawn-station.sh` called `osascript` unconditionally, so on Linux, on Windows and inside the

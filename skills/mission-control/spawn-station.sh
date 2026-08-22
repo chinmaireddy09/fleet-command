@@ -158,8 +158,15 @@ TXT
 # 1. tmux — portable, and the station lands in its own worktree directly.
 if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
   if tmux new-window -c "$WT" -n "$CALLSIGN" "$CMD" 2>/dev/null; then
-    echo "TMUX ok · new window named $CALLSIGN"
-    [ -n "$BATCH" ] && { echo "BATCH: window opened for $CALLSIGN — NOT yet verified."; }
+    # tmux's exit code proves a WINDOW was created. It does not prove a station started,
+    # and this script exists because "a tab is not a station". The AppleScript path can
+    # look inside its own tab for a live `claude`; tmux is told to run a command and
+    # returns immediately, so there is nothing here to look at yet. Say exactly that
+    # rather than borrowing the other path's confidence.
+    echo "TMUX WINDOW OPENED · named $CALLSIGN · command dispatched"
+    echo "NOT YET A STATION. Verify by the fleet manifest or the board — $CALLSIGN is on"
+    echo "post when its row on origin/main carries its address, not when this printed."
+    echo "  tmux list-panes -t '$CALLSIGN' -F '#{pane_current_command}'   # should say: claude"
     exit 0
   fi
   print_fallback "tmux is running but refused to open a window"; exit 1
@@ -168,8 +175,11 @@ fi
 # 2. Windows Terminal.
 if [ -n "${WT_SESSION:-}" ] && command -v wt.exe >/dev/null 2>&1; then
   if wt.exe -w 0 nt -d "$WT" cmd /k "claude --name $HANDLE \"/mc identify $CALLSIGN\"" 2>/dev/null; then
-    echo "WT ok · new tab for $CALLSIGN"
-    [ -n "$BATCH" ] && { echo "BATCH: tab opened for $CALLSIGN — NOT yet verified."; }
+    # Same caveat as tmux, plus one more: this recipe has never been run against a real
+    # Windows Terminal. Do not report it as a verified deploy on either count.
+    echo "WT TAB OPENED · $CALLSIGN · command dispatched"
+    echo "NOT YET A STATION, and this recipe is UNVERIFIED against a real Windows Terminal."
+    echo "Verify by the board: $CALLSIGN is on post when its row carries its address."
     exit 0
   fi
   print_fallback "Windows Terminal is running but \`wt\` refused to open a tab"; exit 1

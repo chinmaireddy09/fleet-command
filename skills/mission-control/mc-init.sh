@@ -12,8 +12,10 @@
 # re-derive any line of it with a follow-up command -- if a value is here, it is
 # measured, and measured at the ref you are about to write.
 #
-# Adapted from gstack's preamble pattern (one bash block, greppable output,
-# computed once per skill run) -- gstack/SKILL.md, "Preamble (run first)".
+# The one-bash-block preamble idea -- greppable KEY: VALUE output, computed once per
+# skill run, never re-derived downstream -- was inspired by gstack (MIT, Garry Tan),
+# "Preamble (run first)". Idea only: no code from it is here, and the keys and logic
+# below are this project's. Recorded so the repo says one thing about this, not two.
 #
 #   mc-init.sh          full block
 #   mc-init.sh me       just this session's identity (the bootstrap answer)

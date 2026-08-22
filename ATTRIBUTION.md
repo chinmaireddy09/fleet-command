@@ -3,31 +3,17 @@
 **Fleet Command** is original work by **Chinmai Reddy ([@chinmaireddy09](https://github.com/chinmaireddy09))**,
 released under the [Fleet Command License 1.1](LICENSE).
 
-## Prior work this learned from
+## Prior work
 
-**Fleet Command is original work, and it did not arrive from nowhere.** Naming what it learned
-from costs nothing and is the same standard this project asks of the people who use it.
+**Fleet Command is original work.** No third-party code is copied into or distributed with this
+repository.
 
-**[gstack](https://github.com/garrytan/gstack) — MIT, © 2026 Garry Tan.**
-
-- **The preamble pattern.** `skills/mission-control/mc-init.sh` — *one bash block, run once per
-  skill invocation, emitting greppable `KEY: VALUE` lines that everything downstream reads instead
-  of re-deriving* — is adapted from gstack's *"Preamble (run first)"*. The **shape** is gstack's;
-  the keys, the logic and the code are this project's, and it is a separate script rather than an
-  inline block.
-- **`skills/progress-and-log` exists because of gstack, by disagreeing with it.** It is a
-  deliberately gstack-free checkpoint skill, written so progress can be captured without pulling
-  in `context-save`'s machinery, and it explicitly declines `context-save`'s trigger phrases. That
-  is a divergence rather than a derivation — but it is not independent of gstack and should not be
-  presented as though it were.
-
-**What this is not.** No gstack code is copied into this repository, and no part of it is
-distributed here. A pattern is an idea, and MIT asks nothing for ideas — this section exists
-because **condition 2 of this project's own licence argues that credit belongs where people read
-it, and a credit buried in a shell-script comment is precisely the failure that condition was
-written against.** Applying that standard to ourselves is the least it can mean.
-
-If you know of an influence missing from this list, that is a bug worth filing.
+One acknowledgement, because it costs nothing and the alternative is a repo that says two
+different things: the preamble idea in `skills/mission-control/mc-init.sh` — *one bash block per
+skill run, emitting greppable `KEY: VALUE` lines that everything downstream reads instead of
+re-deriving* — was **inspired by** [gstack](https://github.com/garrytan/gstack) (MIT, © 2026
+Garry Tan). The idea is gstack's; the keys, the logic and every line of the code are this
+project's. Ideas are not licensed, and nothing here is required by gstack's licence or ours.
 
 ## The credit line
 

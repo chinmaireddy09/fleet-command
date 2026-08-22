@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.41.0
+version: 6.42.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -501,15 +501,35 @@ The binding is a tool call, so make it one:
    `persists: YES/NO` line for the tab. Those are two different surfaces with two different
    answers — see *Your two identity surfaces* below, and report them separately.
 
-2. **Read the board**, find the row for the call-sign given.
-3. **Take the workspace path from that row** — the board already carries it. Do not ask the
-   user for a path; if the row has none, that is the bug, fix the row.
+2. **Read the board and find the row for your call-sign. THERE MAY NOT BE ONE, AND THAT IS A
+   NORMAL START, NOT AN ERROR.** Two flows arrive at this step and they need different things:
+
+   - **A row exists** — `deploy` or Control initiated the post ahead of you. Everything below is
+     already prepared; you are filling a post, not making one.
+   - **No row exists** — you are the first session to hold this call-sign, which is what happens
+     when a human opens a tab and types `/mc identify <something new>`. **You are initiating the
+     post yourself.** Create the worktree and branch, then write the row. Do not ask the user
+     where to work and do not wait for Control: the post is yours to open.
+
+   **This branch was missing until 2026-08-23, and the skill contradicted itself about it** —
+   §3 says a name nobody has used is *"a normal answer, not an error… it creates the station"*,
+   while this step said a row without a workspace *"is the bug, fix the row."* Both cannot be
+   true, and the second was written with only `deploy` in mind. **The open-a-tab-and-identify
+   flow is a first-class way to raise a fleet**, not a degraded one — it is faster than deploy
+   for a human with several tabs, because the human is the parallelism.
+
+3. **Take the workspace path from the row if it has one** — do not ask the user for a path. If
+   the row exists and its workspace cell is empty, *that* is the bug: fix the row. If there is
+   no row at all, use this project's own convention (`.claude/worktrees/<call-sign>`, lowercased)
+   and record it on the row you write in step 5.
 4. **Move in, if you are not already there.** Compare your working directory to the row's
    workspace:
    - **already there** → skip the move entirely and go to step 5. This is the normal case when
      `deploy` spawned you, because it starts you inside the lane.
-   - **somewhere else** → **`EnterWorktree({path: "<workspace from the row>"})`**. The session
-     moves *itself*. No `cd`, no restart, no second window.
+   - **somewhere else** → **`EnterWorktree({path: "<workspace>"})`**. The session moves *itself*.
+     No `cd`, no restart, no second window.
+   - **initiating your own post** → create the worktree and branch off current `origin/main`
+     first, then move in the same way. You are doing what `deploy` would have done for you.
 
    **Make this check, don't assume either way.** A session reached by `deploy` and a session
    started by hand both run `identify`, and calling `EnterWorktree` from inside the target is a
