@@ -9,6 +9,28 @@ repo as a whole.
 
 ---
 
+## 6.36.3 — 2026-08-22
+
+**Tonight's entries put a private repo's session handles into a public skill.** 6.36.0 quoted a
+real measurement using the real handle from the fleet it was measured on. That fleet is a private
+repo; this skill is public. Replaced with the house placeholder (`acme-shop-3c`), which every
+other example here already uses.
+
+**This is 6.28.0's rule — no private repo left in a public skill — broken by the mechanism that
+rule exists for.** The leak did not arrive by carelessness about privacy; it arrived because
+quoting the *exact* string is what makes a measurement credible, and the exact string was
+somebody's repo. **Anonymise at the moment you write the evidence down, not at review** — by
+review the specific string looks load-bearing and you will be reluctant to touch it.
+
+Release audit run before calling this final, and recorded here because "it works" is not a
+verification: version agreement across `SKILL.md` and this file; all four in-text section
+cross-references resolve to real headings; nine retired phrasings return nothing outside this
+changelog; the config template is valid JSON; all six scripts execute (not merely parse) against
+the installed copy; and all five input guards refuse — AppleScript injection, shell injection,
+multi-word call-sign without a handle, live call-sign clash, over-length call-sign.
+
+---
+
 ## 6.36.2 — 2026-08-22
 
 **6.36.0 leaned on a coincidence and called it corroboration.** It offered `formerNames[0] == the
@@ -74,7 +96,7 @@ which implies a channel opened **after** a rename carries the new name. **It doe
 
 **Decisive case.** An off-fleet session had never messaged `FINANCE`. It resolved `FINANCE` off
 `ListAgents` — the current name — and sent, so that channel opened *after* the rename. The reply
-arrived headed **`ecom-nexus-oss-3c`**, the pre-rename handle.
+arrived headed **`acme-shop-3c`**, the pre-rename handle.
 
 **Mechanism, from the registry:** `messagingSocketPath` is `/tmp/cc-socks/<pid>.sock` — **one
 socket per session, keyed by pid.** There is no per-channel handshake, so there is no per-channel

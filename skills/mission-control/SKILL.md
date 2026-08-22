@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.36.2
+version: 6.36.3
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1329,7 +1329,7 @@ opened **after** a rename would carry the new name. **It does not.**
 
 **The decisive case:** an off-fleet session had never messaged `FINANCE`. It resolved `FINANCE`
 from `ListAgents` — the current name — and sent. That channel therefore opened *after* the
-rename. `FINANCE`'s reply arrived headed **`ecom-nexus-oss-3c`**, the pre-rename handle.
+rename. `FINANCE`'s reply arrived headed **`acme-shop-3c`**, the pre-rename handle.
 
 **The mechanism, from the registry:** `messagingSocketPath` is `/tmp/cc-socks/<pid>.sock` — **one
 socket per session, keyed by pid.** There is no per-channel handshake, so there is no per-channel
