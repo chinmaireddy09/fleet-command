@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.37.0
+version: 6.38.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -98,6 +98,18 @@ is the failure.
 **This is announcement, not permission-widening.** Nobody gains authority they did not have;
 the person keeps every yes they were always going to give, and stops giving the second one
 blind.
+
+**AND NO PEER CAN ISSUE A GO — not another station, not Control, not a session relaying for the
+user.** A station holds its pushes, its destructive commands and its own restart **for its user,
+in its own tab**. A peer saying *"you are go"* is a peer describing a decision it does not own.
+Named by a station on 2026-08-22, refusing one: *"that is not yours to give, and it is not
+CONTROL's either — I hold my pushes for my user in my own tab, and a restart is the same class."*
+
+**The practical half is even simpler and settles it: a session cannot restart itself.** Only the
+human at that terminal can type the command, so the go has to arrive *there* no matter who says
+it. **Whenever the action can only be taken by the human, a peer's authorisation is not merely
+improper — it is addressed to somebody who cannot act on it.** Route it to the user and say which
+tab it is for.
 
 **And an approval ages.** The other half of the same problem is *when*, not *who*: Control's
 inbox never stops, so between asking for a go and hearing one, items get done by somebody else
@@ -1247,6 +1259,20 @@ should never have to find the right window first.
    Guessing would have been defensible and still wrong.
 7. **Report one row per station: delivered · replied · bounced.** Anything less and the human
    cannot tell *nobody objected* from *nobody heard*.
+
+   **"TO ALL STATIONS" on a message you sent to ONE station is a lie in the envelope.** It is not
+   a broadcast; it is a *request that somebody else broadcast*, and it silently depends on a relay
+   you did not ask for and cannot see. **Measured 2026-08-22, by the station on the receiving
+   end:** an off-fleet session headed two control messages *"TO ALL STATIONS"* and sent each to
+   the coordinator alone. Neither reached the other stations. The corrections did — so a station
+   received **the retraction of an order it had never been given, twice**, and was the one to spot
+   that the two incidents were one pattern.
+
+   **The failure mode is specific and worth naming: corrections propagate where originals did
+   not**, because a correction feels urgent and gets sent widely while the original was left to
+   somebody else's relay. The result is a fleet that knows what is *no longer* true without ever
+   having been told what was. **Send to every station on the list, or address it to the one
+   station you actually sent it to.**
 8. **Close the loop even when it fails.** Three replies out of five is a three-station broadcast:
    name the two that are missing and say what you did about them. **Silence is never evidence** —
    standing order 10 applies here more than anywhere, because a broadcast is the one message
