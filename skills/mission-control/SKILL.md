@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.36.1
+version: 6.36.2
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1336,15 +1336,29 @@ socket per session, keyed by pid.** There is no per-channel handshake, so there 
 moment at which a name could be captured. What travels with a message is whatever the sending
 process cached about itself **at startup**.
 
-**Which makes it the same value as the self-line.** Checked across a four-station fleet, each
-station's `formerNames[0]` is character-for-character the string in **both** its `@` header and
-its `ListAgents` self-line:
+**Which makes it the same value as the self-line** — the header and the self-line print one
+cached string, and it is the sender's startup name.
 
-| station | `formerNames[0]` | `@` header | self-line name |
-|---|---|---|---|
-| FRONTEND | `ecom-nexus-oss-db` | `ecom-nexus-oss-db` | `ecom-nexus-oss-db` |
-| CHANNELS | `ecom-nexus-oss-5d` | `ecom-nexus-oss-5d` | `ecom-nexus-oss-5d` |
-| FINANCE | `ecom-nexus-oss-3c` | `ecom-nexus-oss-3c` | — |
+**`formerNames[0]` looks like corroboration and is not. Do not use it.** Across a five-session
+fleet it did match the `@` header every time, which is exactly what made it tempting — but a
+station checking the claim found a row that appeared not to fit, and running down why showed the
+match is an artifact of those sessions' rename histories, not a law:
+
+`set-callsign.sh` appends the outgoing name and **filters any duplicate of it out of the list
+first**. So the list is oldest-first, and `[0]` is the startup name *only until you rename back to
+a name already in it* — at which point the filter deletes `[0]` and the invariant breaks silently:
+
+```
+A -> B    formerNames [A]
+  -> A    formerNames [A, B]
+  -> B    formerNames [B, A]      <-- [0] is now B; the startup name A is no longer first
+```
+
+**The two facts above carry this claim on their own**: one socket per session means no
+per-channel capture is possible, and the post-rename channel test shows the old name arriving
+anyway. `formerNames[0]` adds nothing and would mislead the first reader whose session renamed
+three times. **A coincidence that holds across every case you happen to have is still a
+coincidence** — it is the shape of evidence this skill is otherwise built to distrust.
 
 **So the five surfaces are really four**, and the practical consequences are sharper than
 "ignore the header":

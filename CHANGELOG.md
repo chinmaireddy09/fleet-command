@@ -9,6 +9,40 @@ repo as a whole.
 
 ---
 
+## 6.36.2 — 2026-08-22
+
+**6.36.0 leaned on a coincidence and called it corroboration.** It offered `formerNames[0] == the
+`@` header` across a five-session fleet as supporting evidence. A station checking the claim
+rather than adopting it found the one row that appeared not to fit — the off-fleet session's, whose
+`formerNames` held **two** entries with its *current* name at `[0]` — and filed it as
+**unexplained rather than letting the rule harden around it.**
+
+**Run down: that row does fit, and the general rule still does not hold.** The off-fleet session
+started as `fleet-command-c2`, renamed away during a clash test and back, so `[0]` is its startup
+name and the match is real. But `set-callsign.sh` **filters any duplicate of the outgoing name out
+of the list before appending**, so `[0]` is the startup name *only until a session renames back to
+a name already in it*:
+
+```
+A -> B    formerNames [A]
+  -> A    formerNames [A, B]
+  -> B    formerNames [B, A]      <-- [0] is now B
+```
+
+**So the invariant breaks silently on the third rename, and the match across five sessions was an
+artifact of their histories.** Demoted, with the trace, and marked *do not use*.
+
+**What 6.36.0 actually rests on is unchanged and sufficient:** one socket per session
+(`/tmp/cc-socks/<pid>.sock`) means no per-channel capture is *possible*, and the post-rename
+channel test shows the old name arriving anyway. Those two are the proof; the third line was
+decoration that would have misled the first reader whose session renamed three times.
+
+**A coincidence that holds across every case you happen to have is still a coincidence** — which
+is the kind of evidence this skill spends most of its rules teaching stations to distrust, offered
+here by the skill itself.
+
+---
+
 ## 6.36.1 — 2026-08-22
 
 **Sweep after three releases in one evening: the retired claims had survived in two places
