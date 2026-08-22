@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.36.3
+version: 6.37.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1219,9 +1219,35 @@ should never have to find the right window first.
    answers as though it were personally asked, and four stations do that four times.
 4. **Do not exempt yourself.** If the instruction applies to a station it applies to you — you are
    relaying it, not supervising it. Do your own half in the same turn.
-5. **Report one row per station: delivered · replied · bounced.** Anything less and the human
+5. **A RELAY CARRIES WHAT THE USER SAID, NOT WHAT YOU CONCLUDED FROM IT.** Quote them, or say
+   plainly that the next sentence is yours. **An inference dressed as a verdict is worse than no
+   relay at all**, because it arrives already wearing the authority of the person who did not say
+   it — and it is then unfalsifiable to everyone downstream, who have no way to check it against
+   what was actually typed.
+
+   **Measured 2026-08-22, and the fleet caught it, not the relayer.** A user said, in full,
+   *"there is no progress."* An off-fleet session measured the log, concluded a planned restart
+   was churn, and broadcast **"RESTART CANCELLED, the user's verdict is that it buys nothing."**
+   The user had never said that. They had told the coordinator directly, *"restart just channels
+   with `--name` and see how it looks"* — an order that was never withdrawn and that the relay
+   silently overrode.
+
+   **The tell was available before the broadcast:** the relayer's sentence was longer and more
+   specific than the user's. *"There is no progress"* is four words and contains no instruction;
+   *"the restart is cancelled because it buys nothing"* is a decision. **When your relay says more
+   than the user did, the surplus is yours and it must be labelled** — *"the user said X; my read
+   is Y"* keeps both, and lets the reader disagree with Y without disbelieving X.
+
+6. **A relay never outranks a direct instruction, and when they conflict you ASK.** The
+   coordinator that received the contradictory relay above did the right thing: it acted on
+   neither, said which two it was holding, and asked the user which was current — *"your
+   instruction to me is the one I'd follow, and a peer's relay doesn't override it, but you're the
+   only one who knows which is current, so I'm not guessing."* **That is the correct shape of
+   every conflict between a peer's word and the user's**: name both, act on neither, ask once.
+   Guessing would have been defensible and still wrong.
+7. **Report one row per station: delivered · replied · bounced.** Anything less and the human
    cannot tell *nobody objected* from *nobody heard*.
-6. **Close the loop even when it fails.** Three replies out of five is a three-station broadcast:
+8. **Close the loop even when it fails.** Three replies out of five is a three-station broadcast:
    name the two that are missing and say what you did about them. **Silence is never evidence** —
    standing order 10 applies here more than anywhere, because a broadcast is the one message
    everybody is assumed to have received.
