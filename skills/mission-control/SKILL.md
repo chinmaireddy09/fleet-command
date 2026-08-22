@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.35.0
+version: 6.36.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -816,9 +816,9 @@ it needs no permission argument, unlike a merge.
 permission mode set at launch — **so it is worth being the kind of station that can take one.**
 `--name` is no longer on that list: the address peers resolve can be changed in place with
 `set-callsign.sh`. **Two surfaces stay beyond it.** The terminal tab title needs a `/rename` or a
-relaunch; the `@` header on a channel a peer has ALREADY opened is fixed by neither, because it is
-captured at open and never re-resolved — only a channel opened after the rename carries the new
-name.
+relaunch; the `@` header is fixed by neither, and **nothing short of restarting the sender fixes
+it at all** — it is not per-channel, so opening a fresh channel does not help. See *The `@` header
+and the self-line are one cache*.
 
 **If you came up unnamed, take the name — do not just apologise for not having it.** A
 hand-started session is given a generated handle like `acme-shop-4d`, and until 2026-08-18 this
@@ -834,10 +834,10 @@ surfaces — **and they are not equally reliable, so do not report them as one r
    survived the session's own registry write 33 minutes later, because Claude Code
    read-modify-writes that file rather than overwriting it from memory. **It is NOT the `@` header
    a peer already sees on your messages.** That name was captured when the channel opened and is
-   never re-resolved, so a renamed station keeps arriving under its old handle on every channel
-   that was already open — measured 2026-08-19, under *"Do not confuse this `@` with the one Claude
-   Code prints"*. Nothing repairs an open channel; only one opened after the rename carries the
-   new name.
+   never re-resolved, so a renamed station keeps arriving under its old handle **on every channel,
+   including ones opened after the rename** — measured 2026-08-22, correcting the 2026-08-19 note
+   under *"Do not confuse this `@` with the one Claude Code prints"*, which said a fresh channel
+   would carry the new name. It does not. Nothing repairs it but a restart.
 2. **The Terminal tab title** — delegated to `label-tab.sh`, and **the outcome was fixed at
    launch, not by this script.** On a station `deploy` spawned with `--name`, Claude Code's own
    title writes carry the call-sign (`<glyph> FRONTEND`) and the turn summary never displaces it
@@ -861,7 +861,8 @@ field but the name (the old one is kept in `formerNames`).
 **A rename reaches `ListAgents` at once; the `@` on an OPEN channel lags — and REPLYING TO IT
 BOUNCES.** This was filed as cosmetic when first seen and that was wrong within the hour.
 
-The envelope's `from-name` is captured when the channel opens. Once the sender renames, that
+The envelope's `from-name` is the **sender's own start-time name** — see the section below; it is
+not captured per channel and a fresh channel does not refresh it. Once the sender renames, that
 name **no longer resolves**, so the obvious reply — the one the harness itself instructs, *"to
 reply to an incoming message, copy its `from` attribute as your `to`"* — fails with
 `no agent named '<old-handle>' is reachable`. Four sessions hit it independently on 2026-08-18,
@@ -1319,6 +1320,43 @@ reading every surface at once:
 | `ListAgents` → **your own self-line** | **name stale · `[ref]` correct** | name snapshotted at session start |
 | `@` header on an already-open channel | ❌ stale | once, when that socket opened |
 | terminal tab title | per launch argv | every status change |
+
+##### The `@` header and the self-line are ONE cache, not two surfaces
+
+**Measured 2026-08-22, and it retires a piece of false hope this skill was handing out.** The
+earlier model said the `@` header is *captured when a channel opens*, which implied a channel
+opened **after** a rename would carry the new name. **It does not.**
+
+**The decisive case:** an off-fleet session had never messaged `FINANCE`. It resolved `FINANCE`
+from `ListAgents` — the current name — and sent. That channel therefore opened *after* the
+rename. `FINANCE`'s reply arrived headed **`ecom-nexus-oss-3c`**, the pre-rename handle.
+
+**The mechanism, from the registry:** `messagingSocketPath` is `/tmp/cc-socks/<pid>.sock` — **one
+socket per session, keyed by pid.** There is no per-channel handshake, so there is no per-channel
+moment at which a name could be captured. What travels with a message is whatever the sending
+process cached about itself **at startup**.
+
+**Which makes it the same value as the self-line.** Checked across a four-station fleet, each
+station's `formerNames[0]` is character-for-character the string in **both** its `@` header and
+its `ListAgents` self-line:
+
+| station | `formerNames[0]` | `@` header | self-line name |
+|---|---|---|---|
+| FRONTEND | `ecom-nexus-oss-db` | `ecom-nexus-oss-db` | `ecom-nexus-oss-db` |
+| CHANNELS | `ecom-nexus-oss-5d` | `ecom-nexus-oss-5d` | `ecom-nexus-oss-5d` |
+| FINANCE | `ecom-nexus-oss-3c` | `ecom-nexus-oss-3c` | — |
+
+**So the five surfaces are really four**, and the practical consequences are sharper than
+"ignore the header":
+
+- **Do not reopen a channel hoping for a fresh name.** It was the one repair the old text implied
+  and it does not exist. Only restarting the sender clears it.
+- **Do not re-verify a peer's rename because its header looks wrong.** A station on this fleet had
+  to say *"not a failed rename; do not re-verify it on my account"* — that round-trip is pure
+  waste and the skill invited it.
+- **The mitigation is already in the protocol:** every transmission opens *"CALLSIGN TO CALLSIGN"*.
+  The body carries the truth the envelope cannot. That convention is not politeness — **it is the
+  only correct identity on an inbound message**, and it costs nothing.
 
 **Two different failures live in this table and their remedies are opposite.** A surface that is
 a *cache* (self-line name, `@` header) must never be trusted. A surface that is *live* (the

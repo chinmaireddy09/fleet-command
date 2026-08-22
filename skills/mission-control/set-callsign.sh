@@ -5,7 +5,8 @@
 #   1. the ADDRESS peers resolve through ListAgents (~/.claude/sessions/<pid>.json) -- DURABLE.
 #      Measured 2026-08-18: survived the session's own registry write 33 minutes later.
 #      This is NOT the `@` header on a channel a peer has already opened. That name is
-#      captured when the channel opens and is never re-resolved, so a renamed station keeps
+#      the SENDER'S OWN START-TIME NAME -- not a per-channel capture, so a channel opened after
+#      the rename carries the old name too (measured 2026-08-22). A renamed station keeps
 #      arriving under its old handle -- measured 2026-08-19, and it is the same capture that
 #      bounces a reply addressed to a from-name. Resolve names here; match on the [ref].
 #   2. the Terminal tab title (delegated to label-tab.sh) -- CONDITIONAL, and the condition
@@ -131,8 +132,14 @@ else
     echo "tab title: skipped — could not match this tty"
 fi
 
-echo "NOTE: a peer whose channel to you is ALREADY OPEN keeps seeing your OLD handle. That name"
-echo "      was captured when the channel opened and is never re-resolved -- only a channel opened"
-echo "      after this rename carries the new one. Do not report the \`@\` header as changed."
+echo "NOTE: every peer keeps seeing your OLD handle on the \`@\` header -- not only the ones with a"
+echo "      channel already open. That name is your SESSION'S START-TIME name, stamped on everything"
+echo "      you send; there is one socket per session and no per-channel handshake, so a channel"
+echo "      opened after this rename carries the old name too (measured 2026-08-22). ONLY A RESTART"
+echo "      clears it. Do not report the \`@\` header as changed, and do not reopen a channel"
+echo "      expecting a fresh one. Open every transmission with \"<CALLSIGN> TO <CALLSIGN>\" -- the"
+echo "      body is the only correct identity your peer receives."
 echo "pid $CLAUDE_PID · registry $REG"
-echo "VERIFY: ask a peer to run ListAgents. A session never sees itself."
+echo "VERIFY: re-run mc-init.sh me -- ME_NAME is live in the registry, so this is a LOCAL check."
+echo "        Your [ref] is on your own ListAgents self-line and is correct; the NAME on that line"
+echo "        is not. A peer read-back is corroboration, not retrieval -- it is not a blocker."

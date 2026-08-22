@@ -9,6 +9,41 @@ repo as a whole.
 
 ---
 
+## 6.36.0 — 2026-08-22
+
+**The `@` header and the `ListAgents` self-line are one cache, and this skill was offering a
+repair that does not exist.** The old model said the header is *captured when a channel opens* —
+which implies a channel opened **after** a rename carries the new name. **It does not.**
+
+**Decisive case.** An off-fleet session had never messaged `FINANCE`. It resolved `FINANCE` off
+`ListAgents` — the current name — and sent, so that channel opened *after* the rename. The reply
+arrived headed **`ecom-nexus-oss-3c`**, the pre-rename handle.
+
+**Mechanism, from the registry:** `messagingSocketPath` is `/tmp/cc-socks/<pid>.sock` — **one
+socket per session, keyed by pid.** There is no per-channel handshake, so there is no per-channel
+moment at which a name could be captured. What travels with a message is what the sending process
+cached about itself **at startup** — the same value its self-line prints. Across a four-station
+fleet, each station's `formerNames[0]` is character-for-character the string in *both* places.
+
+**So five surfaces are really four, and two pieces of waste die with the correction:**
+
+- **Reopening a channel to get a fresh name.** The old text implied that repair existed. It does
+  not; only restarting the sender clears it.
+- **Re-verifying a peer's rename because its header looks wrong.** A station on this fleet had to
+  tell its coordinator *"not a failed rename; do not re-verify it on my account."* The skill
+  invited that round-trip.
+
+**The mitigation was already in the protocol and is now stated as load-bearing:** every
+transmission opens *"CALLSIGN TO CALLSIGN"*. **The body is the only correct identity on an inbound
+message** — the envelope cannot carry it. Every station on the measured fleet was already doing
+this, which is why nothing was actually misrouted.
+
+Corrected in `SKILL.md` (three sites plus a new subsection), `README.md`, and the note
+`set-callsign.sh` prints on every run — which also stopped ending with *"a session never sees
+itself"*, retired in 6.34.0 and still being printed at people.
+
+---
+
 ## 6.35.0 — 2026-08-22
 
 **"A stale reading of a live source, mistaken for a limit of the source."** A station that had
