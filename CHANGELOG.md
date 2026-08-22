@@ -9,6 +9,44 @@ repo as a whole.
 
 ---
 
+## 6.32.0 — 2026-08-22
+
+**Identify assigns its own call-sign now. `Identify as: ____` was a station not on post.**
+The prompt was there because naming felt like a decision only a human should make. It is not:
+a fleet's call-signs come from the areas the work already has, and a session that has read the
+board and knows which worktree it is standing in has strictly more information about which post
+it is filling than the human who just opened a tab.
+
+**The resolution order, first match wins:** the project's own `MISSION-CONTROL.md` names a
+standing station for this area → a reserved row on the board, preferring the one whose workspace
+is the directory you are in → the area or lane the work names → a team name, only when the area
+is genuinely undecided. Never one that is on the board or answered by a live session.
+
+**Announcing beats asking because the correction is free.** The call-sign is taken at step 1 and
+the row that publishes it does not land until step 5. Between those points a wrong guess costs
+one `/mc identify <other>` and nobody has seen it. Asking up front trades that free correction
+for a guaranteed stall — and the stall is not free, because a session with no call-sign is
+invisible to the fleet the entire time it is waiting.
+
+**Control resolves its own name the same way** — this project's board, then the user's recorded
+preference, then plain `CONTROL`. Every fleet has a coordinator and it is always the same post,
+so there was never a real question there either.
+
+**What still gets asked, and why it is not the same thing.** A handle for a call-sign *the user
+typed* that cannot be a session name — `FLEET COMMAND` → `FLEETCOM`. The scripts still refuse
+rather than guess, because there you are shortening **their** word and they live with the result
+in every message afterwards. Naming yourself when they named nothing is not that: there is no
+word of theirs to shorten, and anything you pick is one command from being replaced. The rule
+was never "never choose a name", it was **"never put words in the user's mouth"**, and 6.32.0
+is what that distinction looks like applied.
+
+**Preferences are recorded when stated, never solicited.** The old text said *"ask at the first
+identification of a fleet, record it, and stop asking"*. Now: if they have never said, the
+coordinator is `CONTROL` and a station names itself off its area — and the moment they say
+otherwise, that is what gets written down.
+
+---
+
 ## 6.31.1 — 2026-08-22
 
 **"Before you touch the board" was not what 6.31.0 meant.** Identify can be invoked bare, in

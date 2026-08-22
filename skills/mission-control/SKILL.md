@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.31.1
+version: 6.32.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -194,10 +194,13 @@ ran `/mc` on this fleet holds the coordinator's post from that moment — see §
 against a session in another repo, or on another post, wearing the name; it is not a reason to
 leave the post empty.
 
-**Ask at the first identification of a fleet, record it, and stop asking:**
-`~/.claude/mission-control.json`, under `naming` — **user-level and never in a repo**, exactly
-like the spawn preferences and for the same reason: a clone must not carry someone else's
-vocabulary. The *mapping* is still public to the fleet, because the board's address column
+**Record a preference the user states; never ask for one.** `~/.claude/mission-control.json`,
+under `naming` — **user-level and never in a repo**, exactly like the spawn preferences and for
+the same reason: a clone must not carry someone else's vocabulary. If they have never said, the
+coordinator is `CONTROL` and a station names itself off its area; both are replaced the moment
+the user says otherwise, and *that* is when you write it down and stop deriving it. **The one
+thing still worth asking for is a handle for a call-sign THEY typed that cannot be a session
+name** — there you would be shortening their word, and the scripts refuse rather than guess. The *mapping* is still public to the fleet, because the board's address column
 records what the fleet manifest actually prints.
 
 
@@ -273,7 +276,11 @@ whichever you prefer on the radio.
 
 So the order is **bind, then report**, and the binding is two steps, not a project:
 
-1. **Take the call-sign** — `bash <skill-dir>/set-callsign.sh <COORDINATOR>`.
+1. **Take the call-sign** — `bash <skill-dir>/set-callsign.sh <COORDINATOR>`. **Resolve
+   `<COORDINATOR>` yourself, in this order, and do not ask:** this project's `MISSION-CONTROL.md`
+   if it names one → the user's recorded preference in `~/.claude/mission-control.json` → plain
+   **`CONTROL`**. Every fleet has a coordinator and it is always the same post, so there was
+   never a real question here. Say which one you used and why when the first two disagree.
 2. **Write the row** — the same board push every station makes at identify steps 5–6. **If the
    project has no board yet there is no row to write**; Step 0 covers offering to create one, and
    the row follows the board rather than blocking the call-sign.
@@ -329,12 +336,16 @@ record it **while on watch**, not as a gate in front of taking the post.
 Started by you in a new window, or by the CLI. At this point it has **no call-sign** and is
 invisible to everyone else.
 
-### 3 · It identifies itself — `/mission-control identify <call-sign>`
+### 3 · It identifies itself — `/mission-control identify [call-sign]`
 
-The first thing a new session does. It shows what is already taken, suggests what is free,
-and **lets you type your own — a name nobody has used before is a normal answer, not an
-error.** Typing one creates the station: the call-sign exists from the moment its row is on
-the board, and no list has to be edited first.
+The first thing a new session does. **The call-sign is optional and normally left off: the
+session assigns its own and reports what it took.** A human who wanted to choose names would
+not be running a fleet — and a prompt sitting on `Identify as: ____` is a station that is not
+on post yet, which is the state this whole skill exists to get out of quickly.
+
+**Typing one still wins, and always will.** A name nobody has used before is a normal answer,
+not an error: it creates the station, the call-sign exists from the moment its row is on the
+board, and no list has to be edited first.
 
 ```
 MISSION CONTROL — identify
@@ -351,8 +362,17 @@ MISSION CONTROL — identify
     3  PAYMENTS       billing, refunds, invoices
     4  TIGER          no area yet — decide later
 
-  Identify as:  ________
+  Self-assigned  INTEGRATIONS  — reserved post, and its workspace is the one I am in
+  Address        INTEGRATIONS  (fleet manifest)
+  Tab            persists: YES (as INTEGRATIONS)
+
+  Not it?  /mc identify PAYMENTS  — the row is not pushed yet, so a change costs nothing.
 ```
+
+**That last line is the whole reason self-assigning is safe.** The call-sign is taken at step 1,
+and the row that publishes it does not land until step 5 — so between those two points a wrong
+guess is one command to correct and nobody has seen it. **Asking up front trades a free
+correction for a guaranteed stall.**
 
 #### The session binds itself. Never the human.
 
@@ -372,9 +392,10 @@ The binding is a tool call, so make it one:
    ```
 
    **This is a step, not a suggestion, and its position in the list is the point.** By the time
-   this list starts you have a call-sign — it came in the command, or the user picked one off the
-   listing — so there is nothing left to wait for. (Reading the board to *render* that listing is
-   fine and happens earlier; what must not happen before this step is a **write**.) **Everything below writes your address down**: step 5 puts it on
+   this list starts you have a call-sign — it came in the command, the user picked one off the
+   listing, or you assigned it yourself below — so there is nothing left to wait for. (Reading
+   the board to *render* that listing, or to resolve a self-assignment, is fine and happens
+   earlier; what must not happen before this step is a **write**.) **Everything below writes your address down**: step 5 puts it on
    the row that peers resolve you through. Take the call-sign afterwards and you have changed the
    address out from under a row you already pushed — **a row that advertises an address nobody
    answers to**, which fails exactly like the row with no address at all, only more quietly.
@@ -384,9 +405,40 @@ The binding is a tool call, so make it one:
    matches and exits saying so, which costs nothing. Skipping it is how a hand-started station
    spends its whole life as `acme-shop-4d`.
 
+   **If no call-sign was given, assign one. Do not ask.** In order, first match wins:
+
+   1. **This project's `MISSION-CONTROL.md`** (Step 0) names a standing station for the area you
+      are about to hold, and nothing live answers to it → **take that.** The project's names win
+      over everything below, exactly as they do everywhere else in this skill.
+   2. **A reserved row on the board** — a post initiated and waiting. If one's workspace is the
+      directory you are in, that row is yours and the match is not a coincidence: somebody
+      initiated the post and then started you there. Otherwise take the topmost reserved row.
+   3. **Derive it from the work you are about to hold** — the area, the lane, the directory the
+      task names: `CHECKOUT`, `PAYMENTS`, `ADAPTERS`. One token, uppercase, words joined with
+      `-`. A listener should learn what you own by hearing it, which is the entire point.
+   4. **Only when the area is genuinely undecided, take a team name** — `ALPHA`, `BRAVO`,
+      `TIGER`. A placeholder is honest; a wrong area name is not. Rename when the work is clear.
+
+   **Assign yourself a name that is already a valid address and no question can arise.** Keep it
+   `[A-Za-z0-9_-]`, and the handle equals the call-sign — nothing to ask about, nothing to
+   invent. **This does not weaken the rule two sections up.** That rule forbids shortening *a
+   word the user chose* — deriving `FLEETCOM` from their `FLEET COMMAND`. Naming yourself when
+   they named nothing is not that: there is no word of theirs to shorten, and anything you pick
+   is one `/mc identify <other>` from being replaced.
+
+   **Never take a call-sign that is on the board or answered by a live session.** `set-callsign.sh`
+   refuses a live clash on its own (exit 3) — the board is the half you must check yourself, and
+   a **retired** call-sign is free but not instantly safe: while its work is still landing, a
+   human's `@checkout` reaches whoever holds it now, carrying the old intent.
+
    **`HANDLE` is optional and defaults to the call-sign.** Pass it when the user wants a
-   different address — or when the call-sign has a space, in which case the script refuses and
-   tells you to ask rather than inventing one.
+   different address — or when a call-sign *they typed* has a space, in which case the script
+   refuses and tells you to ask rather than inventing one.
+
+   **Say what you took and why, in one line, and say how to change it** — *"Self-assigned
+   INTEGRATIONS: reserved post, and its workspace is the one I am in. `/mc identify PAYMENTS` if
+   that is wrong."* Announcing beats asking: the human corrects it if they care, and does nothing
+   if they do not.
 
    **Read what it prints before moving on.** It reports the address it took and a
    `persists: YES/NO` line for the tab. Those are two different surfaces with two different
@@ -661,22 +713,25 @@ look taken, which is the one failure this whole board exists to prevent.
 reading `acme-shop-1b` looks filled in and is uncallable; the row renders as manned while nothing
 can reach it. Record what the fleet manifest prints, exactly.
 
-**How to choose:**
+**What makes a good one** — the shape a session aims for when it names itself at identify
+step 1, whose resolution order is the operative version of this:
 
-- **Prefer an area name** — `INTEGRATIONS`, `CHECKOUT`, `PAYMENTS`. Hearing it tells everyone
-  what you own, which is the entire point.
-- **Use a team name when the area isn't decided yet** — `ALPHA`, `BRAVO`, `CHARLIE`, `DELTA`,
-  `TIGER`, `FALCON`. Fine as a placeholder; rename once the work is clear.
+- **An area name beats everything** — `INTEGRATIONS`, `CHECKOUT`, `PAYMENTS`. Hearing it tells
+  everyone what you own, which is the entire point.
+- **A team name is an honest placeholder when the area isn't decided** — `ALPHA`, `BRAVO`,
+  `CHARLIE`, `DELTA`, `TIGER`, `FALCON`. Rename once the work is clear. **A placeholder beats a
+  wrong area name**, which teaches every listener something false.
 - **Two sessions in one area?** The second one names itself after **its job**, not the area with
   a live holder in it: `CHECKOUT` keeps the area, `CHECKOUT-REFUNDS` takes the piece. Falling
   back to a letter — `FRONTEND-ALPHA`, `FRONTEND-BRAVO` — works when the split has no name yet,
   but a letter tells a listener nothing and the job name tells them everything.
-- **Never take a call-sign already on the board.** Check first.
 - **A retired call-sign is free, but not instantly safe to reuse.** While the old work is still
   landing or in review, a human's `@checkout` and any relay already in flight will reach the new
   holder carrying the old intent. Take a fresh name until the previous row is gone *and* the
-  previous session is confirmed closed.
-- **Anything the user types wins** — suggestions are suggestions.
+  previous session is confirmed closed. **This is the one clash the board does not show you** —
+  the row is gone, so nothing looks taken.
+- **Anything the user types wins** — a self-assigned name is a default, not a decision, and
+  `/mc identify <other>` replaces it for free until the row is pushed.
 
 ### What a restart would cost is the measure of how well you have been filing
 
@@ -1551,7 +1606,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 | Type this | What happens |
 |---|---|
 | `/mission-control` | **Board** — who holds what, what's next, what needs attention — **and this session comes on watch as Control** while it reports, unless it already holds a post or a live one holds the coordinator's. **→ read `references/control-playbook.md` FIRST; the report's shape lives there** |
-| `/mission-control identify <call-sign>` | **Identify** — take a call-sign, **move yourself into its workspace**, and go on the board |
+| `/mission-control identify [call-sign]` | **Identify** — take a call-sign (**self-assigned if you omit one**), **move yourself into its workspace**, and go on the board |
 | `/mission-control board clear` | **Fresh board view** — re-render from `origin/main` showing only live stations, open items and the most urgent thing. **Archives done rows; never deletes a live one.** "Clear the board" defaults to this, never to wiping claims |
 | `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
 | `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |

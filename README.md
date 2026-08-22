@@ -294,7 +294,8 @@ Six steps, and most collisions come from skipping one:
    is what puts a coordinator on watch: that session takes the call-sign, writes its own row,
    and *then* reports the board. It is not a post you deploy and wait for
 2. **A new session opens** — no call-sign yet, invisible to everyone
-3. **It identifies itself** (`identify <call-sign>`) — and **binds itself to the post**: it
+3. **It identifies itself** (`identify [call-sign]` — **it assigns its own if you omit one**,
+   and announces what it took rather than asking) — and **binds itself to the post**: it
    reads the row, takes the workspace path from it, and moves into that worktree on its own.
    You never `cd` anywhere. That step used to be the human's job, and when it was skipped the
    board claimed a station that wasn't there
