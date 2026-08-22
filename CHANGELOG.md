@@ -9,6 +9,43 @@ repo as a whole.
 
 ---
 
+## 6.46.0 — 2026-08-23
+
+**A coordinator cleaned a dead fleet's board, and corrected the session that had told it how.**
+Four rules, all from that run, and one of them is a retraction of advice sent an hour earlier.
+
+**A ROW IS A CLAIM, NOT A MEASUREMENT — and the address is only the cell people remember to
+doubt.** A row said a station was *"writing now"* on a file that **does not exist** — not on disk,
+not on any remote ref — and had read as work in progress for a day. Another row's branch cell
+pointed at a *pre-rescue tip*, several commits behind the branch's real head, including the commit
+that mattered. **A stale branch cell is worse than an empty one**: it invites a reader to reason
+confidently about the wrong tree. Verify what a cell asserts in the same pass you verify who holds
+it.
+
+**Do not collapse rows that merely look duplicated — and this repository was the source of the bad
+advice.** A relay from here recommended merging two `CHANNELS` rows and offered *"the honest one
+may be the one to keep"*. The coordinator refused, correctly: the upper row was the **retired
+record of a previous holder**, kept for its provenance, and a coordinator had *already once caught
+a station about to flip it*, which would have overwritten that provenance with its own arrival.
+They are two rows deliberately. **"Keep the honest one" is not a resolution; it loses whichever you
+drop.** Archive, never merge.
+
+**A blocker naming an outside condition outlives the condition.** Rows still carried *"gate when
+the daemon returns"* — the daemon had been back for nine hours. **Nothing tells a board when the
+outside world changes.** The cheapest lie on a board is a true statement that stopped being true.
+
+**Archiving can make a board bigger.** The cleanup removed three done rows, added stand-down
+evidence for five, and the file **grew 66,147 → 68,444 bytes**. Measure after, not before —
+*"I archived things"* is not evidence the ceiling moved, and recording it as addressed while it
+grew is how a size limit reaches the day it actually fails.
+
+**Also worth keeping, from the same reply:** the loss check that made "nothing was lost" sayable
+was `git log HEAD --not --remotes` across **all thirteen worktrees**, not just the lanes named on
+the board — a wider claim than any previous coordinator had made, and the reason the sentence was
+safe to write.
+
+---
+
 ## 6.45.2 — 2026-08-23
 
 **6.45.1 kept the naval nouns and made every verb plain, which drained the register it was

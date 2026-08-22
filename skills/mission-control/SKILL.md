@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.45.2
+version: 6.46.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -782,6 +782,40 @@ more, because choosing between tabs is when a prompt goes to the wrong station.
 session runs — but **Claude Code writes that same field**, so *"overrides Claude Code"* is
 more than was measured. **If a tab ever shows the wrong call-sign, run the script again**
 rather than trusting it to have stuck.
+
+#### A ROW IS A CLAIM, NOT A MEASUREMENT — and that covers every cell, not just the address
+
+**Reading a row tells you what somebody asserted when they wrote it. It does not tell you any of
+it is still true, and the address is only the cell people remember to doubt.** Found 2026-08-23,
+cleaning a board after a fleet had died:
+
+- **A row said a station was *"writing now"* on a file that does not exist** — not on disk, not on
+  any remote ref. Claimed-but-unstarted, and it had read as work in progress for a day.
+- **A branch cell pointed at a pre-rescue tip.** The row named one commit; the branch was several
+  ahead, including the commit that mattered. **A stale branch cell is worse than an empty one**,
+  because it invites a reader to reason confidently about the wrong tree.
+
+**So check what a cell asserts in the same pass you check who holds it:** does the named branch
+point where the row says, and does the claimed work exist? One command each, and both changed a
+row.
+
+**Do not collapse rows that merely look duplicated.** Two rows for one call-sign can be
+deliberate: a **retired record** of a previous holder, kept for its provenance, sitting beside the
+live row. Merging them destroys exactly what the older one was preserved for — a coordinator had
+already once caught a station about to flip such a row, which would have overwritten the
+provenance with its own arrival. **Read why there are two before deciding there should be one, and
+archive rather than merge.** *"Keep the honest one"* is not a resolution; it loses whichever you
+drop.
+
+**A blocker that names an outside condition outlives the condition.** Rows carried *"gate when the
+daemon returns"* long after the daemon returned — **nothing tells a board when the outside world
+changes.** Re-check every external blocker before reporting a station blocked; the cheapest lie on
+a board is a true statement that stopped being true.
+
+**Archiving can make a board bigger.** One cleanup removed three done rows, added stand-down
+evidence for five, and the file grew by 2,297 bytes. **Measure the file after, not before** —
+"I archived things" is not evidence the ceiling moved, and reporting it as addressed while it grew
+is how a size limit reaches the day it actually fails.
 
 **A call-sign with no address on its row is reserved, not manned.** Say so in that state
 and never render it as working — a row that claims a holder it does not have makes free work
