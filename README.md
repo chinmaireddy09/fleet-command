@@ -1,7 +1,10 @@
 # Fleet Command
 
-Four skills for [Claude Code](https://claude.com/claude-code) that let **several sessions work
-one repository at the same time without tripping over each other.**
+Four skills for [Claude Code](https://claude.com/claude-code) that let **as many sessions as you
+want work on one repository at the same time without overwriting each other.**
+
+There is no fixed number and no roster to set up. Open a window, give it a name, and it is part
+of the group; close it and it is not.
 
 Open three windows on the same project and they will quietly ruin each other's day: one
 switches branches and the files change under another; one runs `git add -A` and swallows a
@@ -28,18 +31,28 @@ themselves.
 ## Quick start
 
 1. **Install** — two `cp` commands, below. Thirty seconds.
-2. Open a session on your repo and run **`/mc`**. That session comes on watch as Control, takes
-   the call-sign, writes its row, and reports the board.
-3. Open a second window and run **`/mc identify FRONTEND`** (or any name you like — a call-sign
-   nobody has used is a normal answer). It moves *itself* into its own worktree.
-4. Before starting a job, run **`/mc depends <path>`** — it tells you who else touches it.
-5. When you finish, run **`/mc standdown`** — push, report, get acknowledged, close.
+2. Open a session on your repo and run **`/mc`**. It becomes the coordinator, names itself, and
+   tells you who else is working and on what.
+3. Open another window and run **`/mc identify FRONTEND`** — **any name you like**, and a name
+   nobody has used before is a normal answer, not an error. That session gives itself its own
+   copy of the repo (a git worktree) and moves into it on its own. You never `cd` anywhere.
+4. Repeat step 3 for as many windows as you want. They do not have to be started in any order,
+   and none of them waits for the others.
+5. Before starting a job, run **`/mc depends <path>`** — it tells you who else is touching that
+   file, so you find out before you start rather than in a merge conflict.
+6. When you finish, run **`/mc standdown`** — it pushes your work, writes down what you learned,
+   and hands over, so nothing dies with the window.
 
 That is the whole loop. Everything else is for when something goes wrong.
 
 **Requirements:** `git`, [Claude Code](https://claude.com/claude-code), and `python3` (already on
-macOS and most Linux). Tab labelling uses macOS Terminal.app; everywhere else it degrades to a
-no-op and says so. No accounts, no services, no config file to fill in.
+macOS and most Linux). No accounts, no services, no config file to fill in.
+
+**Platforms.** Naming a window and everything on the board works anywhere Claude Code runs.
+*Opening* a new window for you is automated on macOS Terminal.app, in tmux (which covers Linux,
+Windows via WSL, and inside VS Code's terminal), and in Windows Terminal. Anywhere else it prints
+the one line for you to paste — which is not a lesser path, because opening a window was the only
+part a human was ever doing.
 
 ---
 

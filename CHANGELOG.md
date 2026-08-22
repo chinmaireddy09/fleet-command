@@ -9,6 +9,36 @@ repo as a whole.
 
 ---
 
+## 6.45.0 — 2026-08-23
+
+**The outward-facing description contradicted the skill's central claim, and understated it.**
+`SKILL.md` has said *"any number… there is no fixed roster and no ceiling"* since 6.26.0. The
+GitHub description and the README both said **"several sessions"** — which reads as *three or
+four*, and is the first and often only thing anyone reads. **A project that undersells its own
+main property in the one place people actually look has a documentation bug, not a wording
+preference.** Both now say as many as you want, and the README states plainly that there is no
+roster to set up: open a window, name it, it is part of the group; close it and it is not.
+
+**Jargon removed from the places a newcomer meets first.** *"Comes on watch as Control, takes the
+call-sign, writes its row, and reports the board"* is four pieces of vocabulary in one sentence,
+none defined yet. The quick start now says what happens in ordinary words — it becomes the
+coordinator, names itself, tells you who else is working — and explains a worktree the first time
+it appears rather than assuming it. The internal vocabulary is still exact everywhere it matters;
+it is just no longer the first thing a stranger has to decode.
+
+**And a stale claim the rewrite exposed:** the README still said *"tab labelling uses macOS
+Terminal.app; everywhere else it degrades to a no-op"*, written before 6.41.0. That is now wrong
+in the direction that loses users — naming works anywhere Claude Code runs, and opening windows is
+automated on macOS Terminal.app, in tmux (Linux, Windows via WSL, and inside VS Code), and in
+Windows Terminal. Anywhere else it prints one line to paste, **which is not a lesser path, because
+opening a window was the only part a human was ever doing.**
+
+**The quick start also gained the step that was missing:** *repeat for as many windows as you
+want — they do not have to be started in any order and none waits for the others.* That is the
+fastest way to raise a fleet, it was already true, and the guide described only the slower one.
+
+---
+
 ## 6.44.0 — 2026-08-23
 
 **`test/e2e.sh` — the whole flow, executed rather than asserted.** 28 checks over the path a new
