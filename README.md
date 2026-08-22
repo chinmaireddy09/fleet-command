@@ -1,10 +1,10 @@
 # Fleet Command
 
-Four skills for [Claude Code](https://claude.com/claude-code) that let **as many sessions as you
-want work on one repository at the same time without overwriting each other.**
+Four skills for [Claude Code](https://claude.com/claude-code) that let you run **a fleet of
+sessions on one repository at the same time without them overwriting each other.**
 
-There is no fixed number and no roster to set up. Open a window, give it a name, and it is part
-of the group; close it and it is not.
+There is no fixed number and no roster to set up. Open a window, give it a call-sign, and it is
+on the fleet; close it and it is not.
 
 Open three windows on the same project and they will quietly ruin each other's day: one
 switches branches and the files change under another; one runs `git add -A` and swallows a

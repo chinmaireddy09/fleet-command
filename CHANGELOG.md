@@ -9,6 +9,25 @@ repo as a whole.
 
 ---
 
+## 6.45.1 — 2026-08-23
+
+**Register set to match the project's own name, without spending the clarity 6.45.0 bought.** The
+repository is called Fleet Command; *fleet*, *call-sign* and *station* are its native words, not
+jargon borrowed for effect. Two extremes were drafted and both rejected — a plain version that
+read like any other utility and gave the name nothing to stand on, and a heavier one stacking four
+metaphors in one sentence, where *"no two stations work the same ground"* sounded good and told a
+reader nothing about what the tool does.
+
+**The rule kept: every clause still has to state a fact.** *Call-sign* and *git worktree* survive
+because they are what actually happens; *"stands down cleanly"* and *"nothing goes down with the
+window"* did not, because they decorate rather than describe. One naval word per idea, and the
+rest in ordinary English.
+
+Applied to the GitHub description and the README's first lines so the outside voice and the inside
+explanation agree.
+
+---
+
 ## 6.45.0 — 2026-08-23
 
 **The outward-facing description contradicted the skill's central claim, and understated it.**
