@@ -71,9 +71,13 @@ if [ ${#CALLSIGN} -gt 64 ]; then echo "FAILED: call-sign too long (max 64)" >&2;
 # The worktree path is not ours either. Escape it for the single-quoted context.
 Q_WT=${WT//\'/\'\\\'\'}
 
-# Hand the station its own address. It cannot read it from ListAgents (a session
-# never sees itself), and the spawner knows it before the station exists — so
-# asserting it here removes a radio round-trip that happened three times in one hour.
+# Hand the station its own address anyway. It CAN read it for itself now -- ME_NAME off
+# the registry, [ref] off its own ListAgents self-line (6.34.0) -- so this is no longer
+# the rescue it once was. It is still worth sending: the spawner knows the address before
+# the station exists, so the station starts already agreeing with the board instead of
+# deriving agreement. What it must NOT do is trust the NAME on that self-line, which is a
+# start-time snapshot; the prompt below therefore asserts the address rather than telling
+# it to go look one up.
 PROMPT="/mc identify $CALLSIGN — your ListAgents address is $HANDLE; confirm with ps -o args= on your own claude process"
 # `--name` is not only the ListAgents address. MEASURED 2026-08-22 on 2.1.239, by capturing
 # the pty across one real turn, three launches of the same session:

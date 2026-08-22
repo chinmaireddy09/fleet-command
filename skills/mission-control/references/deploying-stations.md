@@ -74,9 +74,12 @@ flag sets the session's display name, which is simultaneously:
 - what **the fleet manifest shows other stations**, so the call-sign *is* the `SendMessage` address;
 - what the **user sees on that window's prompt box** and terminal title, so they can tell four
   identical windows apart at a glance;
-- what the station **knows about itself** — closing the bootstrap trap described under *Who is
-  who*, where an unnamed session cannot read its own address and therefore cannot honestly fill
-  in its own row.
+- what the station **knows about itself** — narrowing the bootstrap trap described under *Who is
+  who*. **It no longer closes it, because the trap is no longer there to close:** since 6.34.0 a
+  session reads its live name off the registry (`mc-init.sh me`) and its correct `[ref]` off its
+  own `ListAgents` self-line, so even a hand-started station can fill in its own row honestly.
+  What `--name` still buys is agreement from the first instant rather than agreement derived a
+  step later.
 
 **Verified 2026-08-17:** a session spawned `--name TESTRIG-CALLSIGN` appeared to its peers as
 `TESTRIG-CALLSIGN [eefa7c]`. Without the flag the same session would have listed as

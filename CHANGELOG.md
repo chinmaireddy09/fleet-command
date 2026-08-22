@@ -9,6 +9,29 @@ repo as a whole.
 
 ---
 
+## 6.36.1 — 2026-08-22
+
+**Sweep after three releases in one evening: the retired claims had survived in two places
+nobody greps.** 6.34.0 retired *"a session cannot see itself"* and 6.36.0 retired *"the header is
+captured when the channel opens"*, but both were still being taught — once in a **script comment**
+that explains why `deploy` asserts a station's address, and once in **`references/`**, which is
+loaded on demand and so is easy to forget is a surface at all.
+
+Neither changed behaviour; both would have taught a station something false at the moment it was
+deciding whether to trust itself. **This is 6.28.1's rule again — a withdrawal that reaches the
+changelog and not every surface has not landed** — and the honest reading is that a doc-sweep on
+each of the three releases would have caught it, and did not happen because the finding felt
+like the deliverable.
+
+**Dated changelog entries were deliberately left alone.** They record what was believed on the
+day, later entries supersede them, and rewriting history to match current knowledge would destroy
+the one thing this file is for.
+
+Verified after: a grep sweep for all seven retired phrasings across every `.md` and `.sh` outside
+`CHANGELOG.md` returns nothing.
+
+---
+
 ## 6.36.0 — 2026-08-22
 
 **The `@` header and the `ListAgents` self-line are one cache, and this skill was offering a
