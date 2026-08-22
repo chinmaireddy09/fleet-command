@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.39.0
+version: 6.40.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1067,6 +1067,41 @@ produced a lie, not a station.
 **Asking to deploy is the authorisation to automate.** `/mc deploy X` means *put X on post
 without me typing anything*, so it opens the tab and runs the command. **Anything short of that
 prints instead** — initiating a post nobody is walking to yet, or a session coming up by hand.
+
+### Deploying SEVERAL at once — `/mc deploy BACKEND FRONTEND FINANCE`
+
+**Deploy accepts a list, and a list is not a loop.** Deploying one station at a time is what makes
+a fleet slow to raise: each spawn spends ~4s proving its own tab came up, and the identify that
+follows adds another 30–45s of registration before the next one starts. Five stations that way is
+minutes of a human watching a progress line. **The waiting is latency, not work** — nothing about
+station two depends on station one existing.
+
+**So prepare every post first, open every tab, then verify the whole fleet in one pass:**
+
+1. **Initiate every post** — worktree, branch, `CLAUDE.md`, row — and push the rows in **one**
+   board commit, not one per station. Several stations pushing the same file in sequence is the
+   collision the board's retry exists for; one commit avoids needing it.
+2. **Spawn each with `--batch`**, which opens the tab and returns immediately instead of doing its
+   own 4-second check:
+   ```bash
+   bash <skill-dir>/spawn-station.sh BACKEND  <worktree> BACKEND  --batch
+   bash <skill-dir>/spawn-station.sh FRONTEND <worktree> FRONTEND --batch
+   ```
+3. **Then verify ALL of them once** — poll the fleet manifest for every call-sign together, not
+   each in turn. The tabs are already coming up in parallel while you poll.
+4. **Report one row per station: on post · tab opened but no session · not attempted.** A batch
+   spawn that nobody verified is a tab, not a station, and `--batch` deliberately says so on every
+   run so an unverified deploy cannot be mistaken for a finished one.
+
+**Never use `--batch` without step 3.** The per-spawn check exists because synthesising ⌘T
+misfired twice in one deploy on 2026-08-17; batching moves that check, it does not remove it.
+
+**Why this is the path to teach rather than a hand-typed launch line.** A user *can* open tabs
+themselves and paste `claude --name X '/mc identify X'` into each — it is fast and it produces a
+clean station. But it only works if they remember the exact shape, and **a workflow that depends
+on remembering a flag is one most people will get wrong the second time and every new person will
+get wrong the first.** Deploy is one command they already know. Make the command they already know
+fast, rather than teaching a faster one they have to memorise.
 
 **And the automated path prints too, the moment it cannot prove it worked.** Synthesising ⌘T is
 the same keypress a finger makes and the only version that can misfire — measured doing exactly

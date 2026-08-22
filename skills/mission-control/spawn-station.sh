@@ -28,10 +28,19 @@
 # `cd` is required whoever opens the tab.
 set -u
 # --print may appear anywhere; the rest are positional.
-MODE=""; ARGS=""
+MODE=""; BATCH=""; ARGS=""
 for a in "$@"; do
-  if [ "$a" = "--print" ]; then MODE="--print"; else ARGS="$ARGS
-$a"; fi
+  case "$a" in
+    --print) MODE="--print" ;;
+    # --batch: open the tab and return WITHOUT the 4s in-tab verification. For deploying
+    # several stations at once: the per-spawn wait is what makes N stations take N times
+    # as long, and it is pure latency -- the tabs can all be opened first and the whole
+    # fleet verified in ONE pass afterwards. Use it ONLY when a batch verification really
+    # follows; a spawn nobody checks is the 2026-08-17 failure this script exists to stop.
+    --batch) BATCH="1" ;;
+    *) ARGS="$ARGS
+$a" ;;
+  esac
 done
 CALLSIGN=$(printf '%s' "$ARGS" | sed -n '2p'); WT=$(printf '%s' "$ARGS" | sed -n '3p'); HANDLE=$(printf '%s' "$ARGS" | sed -n '4p')
 [ -z "$CALLSIGN" ] || [ -z "$WT" ] && { echo "usage: spawn-station.sh <CALLSIGN> <WORKTREE> [HANDLE] [--print]" >&2; exit 2; }
@@ -78,7 +87,19 @@ Q_WT=${WT//\'/\'\\\'\'}
 # deriving agreement. What it must NOT do is trust the NAME on that self-line, which is a
 # start-time snapshot; the prompt below therefore asserts the address rather than telling
 # it to go look one up.
-PROMPT="/mc identify $CALLSIGN — your ListAgents address is $HANDLE; confirm with ps -o args= on your own claude process"
+# KEEP THIS PROMPT SHORT, AND THE REASON IS THE TAB TITLE. Terminal composes a tab's
+# title out of the working directory, the title the process sets, the process name AND
+# ITS FULL ARGUMENT LIST. This prompt IS an argument, so every character of it is on
+# the user's tab bar, pushing the repo and the call-sign off the readable part.
+#
+# It used to read "/mc identify X -- your ListAgents address is X; confirm with
+# ps -o args= on your own claude process", which existed only because a station could
+# not read its own address. 6.34.0 retired that: ME_NAME is live in the registry and
+# the [ref] is on the station's own ListAgents self-line. The long form is now both
+# unnecessary and wrong-headed, so the tab gets its width back for free -- no Terminal
+# setting to change, which matters because we should not be asking people to
+# reconfigure their terminal to make our own output legible.
+PROMPT="/mc identify $CALLSIGN"
 # `--name` is not only the ListAgents address. MEASURED 2026-08-22 on 2.1.239, by capturing
 # the pty across one real turn, three launches of the same session:
 #   plain `claude`          -> 7 title writes: "✳ Claude Code" ... then "✳ Pong reply".
@@ -154,7 +175,7 @@ tell application "Terminal"
 end tell
 
 -- A tab existing is not the claim. A claude process running in it is.
-delay 4
+delay __VERIFYDELAY__
 tell application "Terminal"
   set procs to (processes of (selected tab of window id myWin)) as string
   if procs contains "claude" then
@@ -167,6 +188,9 @@ tell application "Terminal"
 end tell
 ASEOF
 )
+# In batch mode the per-spawn verification is skipped here and done once for the whole
+# fleet afterwards -- so this delay goes to 0 rather than the check being deleted.
+if [ -n "$BATCH" ]; then AS_SRC=${AS_SRC//__VERIFYDELAY__/0}; else AS_SRC=${AS_SRC//__VERIFYDELAY__/4}; fi
 AS_SRC=${AS_SRC//__MYTTY__/$MYTTY}
 AS_SRC=${AS_SRC//__CMD__/$CMD}
 OUT=$(printf '%s' "$AS_SRC" | osascript - 2>&1)
@@ -176,8 +200,13 @@ echo "$OUT"
 # osascript exits 0 even when the SCRIPT returns "FAILED:" — so inspect what it said,
 # not just how it exited. Either way the human must end up with something to act on.
 case "$OUT" in
-  *FAILED*|*"not found by tty"*|*"no Accessibility"*) RC=1 ;;
+  *"not found by tty"*|*"no Accessibility"*) RC=1 ;;
+  *FAILED*) [ -n "$BATCH" ] || RC=1 ;;   # in batch mode "no claude yet" is expected, not a failure
 esac
+if [ -n "$BATCH" ]; then
+  echo "BATCH: tab opened for $CALLSIGN — NOT yet verified. The batch verification after"
+  echo "       the last spawn is what makes this a deploy; without it you have opened a tab."
+fi
 if [ $RC -ne 0 ]; then
   printf '\nAutomated spawn did not finish cleanly. Open a tab (⌘T) and paste this instead:\n\n  %s\n' "$CMD"
 fi

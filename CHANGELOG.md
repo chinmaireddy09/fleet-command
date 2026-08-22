@@ -9,6 +9,50 @@ repo as a whole.
 
 ---
 
+## 6.40.0 — 2026-08-23
+
+**Two usability defects, both reported as "this will not work for other users", and both fixed
+without asking anyone to change a setting or remember a flag.**
+
+**1. The deploy prompt was eating the tab bar.** Terminal composes a tab's title from the working
+directory, the title the process sets, the process name **and its full argument list** — so the
+prompt `deploy` passes is *on the tab*, pushing the repo and the call-sign off the readable part.
+That prompt read *"/mc identify X — your ListAgents address is X; confirm with `ps -o args=` on
+your own claude process"* — 230 characters, existing only because a station could not read its own
+address. **6.34.0 retired that premise**; the registry gives the name and the self-line gives the
+`[ref]`. Now it is `/mc identify X`, the command line is 100 characters, and the tab gets its
+width back.
+
+**Measured first, because the obvious fix was wrong.** Setting Terminal's `custom title` to a
+stable `repo — CALLSIGN` looked like the answer. It is not: **Claude Code writes that same
+property.** A custom title set to `fleet-command — SKILLDEV` was replaced by `◐ Issues resolution
+check` within seconds. There is no separate field to hide in — which leaves exactly two levers,
+`--name` (already ours) and the length of what we put on the command line (now fixed).
+
+**The rule this establishes: do not solve our legibility problem out of the user's settings.**
+Telling people to reconfigure Terminal to make our output readable is a bad first impression and
+most will not do it. Shorten our own output first; the setting is then optional, not required.
+
+**2. `deploy` was serial, so raising a fleet meant watching a progress line.** Each spawn spent
+~4s proving its own tab came up, and the identify that followed added 30–45s before the next
+began. **None of that waiting is work** — nothing about station two depends on station one
+existing. `spawn-station.sh` now takes `--batch`, which opens the tab and returns; deploy prepares
+every post, pushes all rows in **one** board commit, opens every tab, then verifies the whole fleet
+in a single pass.
+
+**`--batch` moves the verification, it does not remove it** — it prints, on every run, that the
+tab is not yet verified, because the check exists for a keypress that misfired twice in one deploy
+on 2026-08-17.
+
+**Why this rather than teaching the faster hand-typed launch.** Opening tabs yourself and pasting
+`claude --name X '/mc identify X'` is genuinely fast and produces a clean station — but it only
+works if you remember the exact shape. **A workflow that depends on remembering a flag is one most
+people get wrong the second time and every new person gets wrong the first.** The user's own words:
+*"everytime remembering that will not help."* So the command they already know got faster, rather
+than a faster command being added to what they must know.
+
+---
+
 ## 6.39.0 — 2026-08-23
 
 **Every station in its own worktree saw its whole fleet as strangers.** The preamble's
