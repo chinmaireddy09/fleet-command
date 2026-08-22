@@ -150,6 +150,15 @@ chk "untracked is not called work at risk"    "$O" "untracked is NOT automatical
 git checkout -q -- README.md; rm -f docs/scratch-untracked.txt
 
 echo
+echo "── 6bb. at-risk names WHICH worktree holds unpushed work ──────────"
+WT="$WORK/scratch-flip"; git -C "$REPO" worktree add -q --detach "$WT" HEAD 2>/dev/null
+( cd "$WT" && echo x > f.txt && git add -A && git -c user.email=t@e -c user.name=t commit -qm "lock: unpushed" ) >/dev/null 2>&1
+O=$(cd "$REPO" && bash "$D/preflight.sh" at-risk 2>&1)
+chk "unpushed commit in a detached worktree is flagged" "$O" "AT RISK"
+chk "the worktree is named, not just 'HEAD'"            "$O" "scratch-flip"
+git -C "$REPO" worktree remove --force "$WT" 2>/dev/null; cd "$REPO"
+
+echo
 echo "── 6c. detached HEAD and worktree wording ─────────────────────────"
 git worktree add -q --detach "$REPO/.claude/worktrees/det" HEAD 2>/dev/null
 O=$(cd "$REPO/.claude/worktrees/det" && bash "$D/mc-init.sh" 2>&1)

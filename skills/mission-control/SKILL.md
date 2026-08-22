@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.48.0
+version: 6.49.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -599,6 +599,32 @@ The binding is a tool call, so make it one:
    outside.** Tidying it is exactly how work with no branch and no remote disappears — a detached
    HEAD has nothing to recover it by. Report the strays to the fleet and let each station clear
    its own; **a leftover worktree costs disk, and removing a live one costs the commit.**
+
+   **YOU CAN TELL, AND IT IS ONE COMMAND. Run it before you form an opinion:**
+
+   ```bash
+   git -C <worktree> log --oneline HEAD --not --remotes    # non-empty = IN FLIGHT, full stop
+   ```
+
+   **Non-empty settles it regardless of what you believe about whose it is or whether that session
+   is alive.** `bash <skill-dir>/preflight.sh at-risk` runs exactly this across every worktree and
+   names the directory holding the work. **A rule with an executable test beside it prevents the
+   mistake; a rule without one only describes it afterwards.**
+
+   **CONTROL, IN THE MINUTES AFTER A DEPLOY, IS THE MOST LIKELY SESSION TO GET THIS WRONG — and
+   the reason is not carelessness.** Reported 2026-08-23 by a coordinator that was *ten seconds*
+   from removing a live station's only copy of its own board row. It had reasoned correctly from a
+   premise that had gone stale: it classified six scratchpads as dead-session leftovers using
+   timestamps it had formed **before it deployed four stations**, and four of those scratchpads
+   had been created in the very minute it raised the fleet. The check is what saved it —
+   `d701f02`, *"lock: FINANCE re-manned a third time"*, unpushed, in the live FINANCE station's
+   throwaway.
+
+   **So the rule with teeth: after you deploy anything, every judgement you formed about who is
+   alive is stale — re-derive it before you classify a single worktree as abandoned.** And the
+   general shape, which outlives worktrees entirely: **an action you took can invalidate a premise
+   you formed before you took it, and nothing will prompt you.** It is *a stale reading of a live
+   source* wearing different clothes — applied to your roster instead of your registry.
 
    **Run it from inside your own worktree.** `git worktree add` works fine from an isolated
    session — measured, twice, by two different stations.

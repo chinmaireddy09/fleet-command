@@ -60,7 +60,15 @@ check_at_risk() {
   for wt in $(git worktree list --porcelain | awk '/^worktree /{print $2}'); do
     local n b
     n=$(git -C "$wt" rev-list --count HEAD --not --remotes 2>/dev/null) || continue
+    # NAME THE WORKTREE, NOT JUST THE BRANCH. A detached worktree's branch is the
+    # literal string "HEAD", so a fleet with six detached scratchpads printed six
+    # rows all labelled HEAD -- and the one question a reader has here is WHICH
+    # DIRECTORY holds the work, because that is the directory they must not remove.
+    # Reported 2026-08-23 by a coordinator ten seconds from deleting a live
+    # station's only copy of its own board row, held in a detached scratchpad.
     b=$(git -C "$wt" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [ "$b" = "HEAD" ] && b="detached"
+    b="$b  $(basename "$(dirname "$wt")")/$(basename "$wt")"
     if [ "${n:-0}" != "0" ]; then
       # `git cherry` marks + for "no equivalent upstream" and - for "already there
       # under a different sha". Without this, six doc commits whose content had
@@ -86,10 +94,10 @@ check_at_risk() {
       ours=$(git -C "$wt" cherry "$up" 2>/dev/null | grep -c '^+' || echo 0)
       dupes=$(git -C "$wt" cherry "$up" 2>/dev/null | grep -c '^-' || echo 0)
       if [ "${ours:-0}" = "0" ]; then
-        printf '  safe     %-34s %s commit(s) exist only here, but ALL content is already on %s\n' "$b" "$n" "$up"
+        printf '  safe     %-46s %s commit(s) exist only here, but ALL content is already on %s\n' "$b" "$n" "$up"
         [ "${dupes:-0}" != "0" ] && printf '           (%s duplicate by content -- stale, not lost)\n' "$dupes"
       else
-        printf '  AT RISK  %-34s %s commit(s) with NO equivalent upstream\n' "$b" "$ours"
+        printf '  AT RISK  %-46s %s commit(s) with NO equivalent upstream\n' "$b" "$ours"
         git -C "$wt" cherry -v "$up" 2>/dev/null | grep '^+' | sed 's/^+ /           /'
         any=1
       fi

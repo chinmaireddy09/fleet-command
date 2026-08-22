@@ -9,6 +9,50 @@ repo as a whole.
 
 ---
 
+## 6.49.0 — 2026-08-23
+
+**A coordinator came ten seconds from deleting a live station's only copy of its own board row,
+and the thing that stopped it was a rule in this skill. This release gives that rule teeth.**
+
+**What nearly happened.** Six detached throwaway worktrees. The coordinator classified them as
+dead-session leftovers, told a station it would clear them, and ran the check first. One held
+`d701f02` — *"lock: FINANCE re-manned a third time"*, unpushed, in the **live** FINANCE station's
+scratchpad. Removing it destroys a station's only copy of its own row while that station is
+mid-write, and a detached HEAD has nothing to recover it by.
+
+**The failure was not carelessness — it was a premise that its own action had invalidated.** It
+judged which scratchpads were dead using timestamps formed **before it deployed four stations**,
+and four of the six had been created in the very minute it raised the fleet. *"My own action
+invalidated my own premise, and nothing prompted me to re-check it."* That is **a stale reading of
+a live source (6.35.0) wearing different clothes — applied to a roster instead of a registry.**
+
+**The rule said do not tidy someone else's throwaway. It did not say how to tell.** Now it carries
+the one command that settles it, beside the warning:
+
+```
+git -C <worktree> log --oneline HEAD --not --remotes    # non-empty = IN FLIGHT, full stop
+```
+
+**Non-empty settles it regardless of what you believe about whose it is or whether that session is
+alive.** *A rule with an executable test beside it prevents the mistake; a rule without one only
+describes it afterwards* — which is the coordinator's own critique of two of the four rules in
+6.46.0, applied here.
+
+**And a real bug the near-miss exposed in the check that was supposed to help.** `preflight at-risk`
+did flag the commit — labelled **`HEAD`**. A detached worktree's branch *is* the literal string
+`HEAD`, so a fleet with six detached scratchpads printed six rows all called `HEAD`, and **the one
+question a reader has at that moment is which directory holds the work**, because that is the
+directory they must not remove. It now prints `detached  <parent>/<worktree>`.
+
+**New standing rule for Control specifically:** after you deploy anything, **every judgement you
+formed about who is alive is stale — re-derive it before classifying a single worktree as
+abandoned.** The trap is specific to the minutes after a deploy, which is exactly when a
+coordinator is most likely to be tidying up.
+
+`test/e2e.sh` gains two regression checks and is at **45**.
+
+---
+
 ## 6.48.0 — 2026-08-23
 
 **A coordinator tested 6.47.0 against a real 68 KB board, thirteen worktrees and live remotes, and
