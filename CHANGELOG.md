@@ -9,6 +9,38 @@ repo as a whole.
 
 ---
 
+## 6.44.0 — 2026-08-23
+
+**`test/e2e.sh` — the whole flow, executed rather than asserted.** 28 checks over the path a new
+adopter actually walks: a fresh repo with nothing set up, a board appearing, a project naming its
+own board and coordinator, a station inside its own worktree, deploy on every host, every input
+guard, and the identity surfaces. Run it against this repo (`bash test/e2e.sh`) or against what is
+installed (`bash test/e2e.sh ~/.claude/skills/mission-control`). Both pass 28/28.
+
+**This is 6.25.0's rule applied to the thing that keeps breaking:** ship the checks as code,
+because more rules were never going to work. 6.33.1 shipped a script that passed `bash -n` and died
+on its first real run — **every check here executes.**
+
+**Two failures the test found while being written, both mine, both worth recording:**
+
+- **A test that hardcoded a live call-sign.** It asserted that taking `CONTROL` is refused. When
+  the fleet that held `CONTROL` shut down, the name was free, so `set-callsign.sh` correctly
+  succeeded — **and renamed the session running the test.** A test whose result depends on who
+  else happens to be running is not a test, and one that mutates live state to prove a point is
+  worse than an untested line. It now derives the clash from whatever is actually running and
+  **skips** when nothing is.
+- **`REPO=$(newrepo)` runs in a subshell, so its `cd` never reached the caller** — and every
+  section after it wrote into whatever repo the test was launched from. It committed the test file
+  into this repository under the message *"board"* before anyone noticed. Nothing was pushed and
+  the `origin/main` pointer was untouched; the commit was reset and the stray worktree pruned. The
+  fix is one `cd`, and the reason it is commented in the file is that it failed silently in exactly
+  the direction that looks like success.
+
+**The test cleans up after itself** — throwaway repos under `$TMPDIR`, removed on exit; it never
+writes to your board, never opens a terminal, and never renames a live session.
+
+---
+
 ## 6.43.0 — 2026-08-23
 
 **Third-party acknowledgement removed at the author's direction, and the repo now says one thing

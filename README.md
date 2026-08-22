@@ -321,6 +321,18 @@ Six steps, and most collisions come from skipping one:
 
 ---
 
+## Testing it
+
+```bash
+bash test/e2e.sh                                    # this repo's copy
+bash test/e2e.sh ~/.claude/skills/mission-control   # what is installed
+```
+
+28 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
+every host, the input guards, the identity surfaces. **Every check executes something**; a syntax
+check is not a smoke test. Throwaway repos under `$TMPDIR`, removed on exit; it never touches your
+board, opens a terminal, or renames a live session.
+
 ## Troubleshooting
 
 Every row here is a real failure that cost somebody time, and the answer is what fixed it.
