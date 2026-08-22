@@ -68,13 +68,53 @@ PY
 # ── who else is live ────────────────────────────────────────────────────────
 # The registry is the truth, not a message's from-name: the from-name is captured
 # when a channel opens and stops resolving the moment the sender renames.
-# On-fleet vs off-fleet is decided by working directory, never by name -- a
-# session in another repo owes this board nothing and must not be broadcast to.
+# On-fleet vs off-fleet is decided by the REPOSITORY -- never by name, and never by a
+# path prefix. A session in another repo owes this board nothing and must not be
+# broadcast to.
+#
+# IT USED TO BE A PATH PREFIX, AND THAT WAS BROKEN FROM INSIDE A WORKTREE. ROOT came
+# from `git rev-parse --show-toplevel`, which for a station is ITS OWN WORKTREE, not
+# the shared checkout -- so a station in .claude/worktrees/backend saw the shared
+# checkout and every sibling worktree as "OFF-FLEET (different repo)". Four of five
+# peers, every one of them its own fleet. Reported 2026-08-23 by the station that
+# caught it, and only by reading the registry cwds by hand.
+#
+# IT FAILED IN THE DANGEROUS DIRECTION: it never mislabels a stranger as fleet, only
+# fleet as stranger -- so the list reads as conservative and correct while a station
+# refuses to broadcast to its own fleet, ignores an all-stations standby, and reports
+# its own peers as strangers. It gets WORSE the more stations you deploy, because only
+# Control, sitting in the shared checkout, ever sees the truth.
+#
+# THE FIX: compare `git rev-parse --git-common-dir`, which is the SAME path from the
+# shared checkout and from every worktree of that repo -- that is what makes two
+# checkouts the same repository. Verified 2026-08-23: identical from both.
 emit_peers() {
   local root="${1:-}"
-  MYPID="${2:-0}" ROOT="$root" python3 - <<'PY'
-import glob,json,os
+  local fleet_id
+  fleet_id=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || fleet_id=""
+  if [ -z "$fleet_id" ]; then
+    fleet_id=$(git rev-parse --git-common-dir 2>/dev/null) || fleet_id=""
+    case "$fleet_id" in ""|/*) ;; *) fleet_id="$(cd "$(dirname "$fleet_id")" 2>/dev/null && pwd)/$(basename "$fleet_id")";; esac
+  fi
+  MYPID="${2:-0}" ROOT="$root" FLEET_ID="$fleet_id" python3 - <<'PY'
+import glob,json,os,subprocess
 me=os.environ.get("MYPID","0"); root=os.environ.get("ROOT","")
+mine=os.path.realpath(os.environ["FLEET_ID"]) if os.environ.get("FLEET_ID") else ""
+
+def fleet_of(cwd):
+    """The repo a directory belongs to -- identical across all that repo's worktrees."""
+    if not cwd or not os.path.isdir(cwd): return None
+    for args in (["rev-parse","--path-format=absolute","--git-common-dir"],
+                 ["rev-parse","--git-common-dir"]):
+        try:
+            r=subprocess.run(["git","-C",cwd]+args,capture_output=True,text=True,timeout=5)
+        except Exception:
+            return None
+        if r.returncode==0 and r.stdout.strip():
+            g=r.stdout.strip()
+            if not os.path.isabs(g): g=os.path.join(cwd,g)
+            return os.path.realpath(g)
+    return None
 rows=[]
 for f in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
     try: d=json.load(open(f))
@@ -88,7 +128,13 @@ print(f"PEERS: {max(0,len(rows)-1)} live besides you")
 for d in sorted(rows,key=lambda x:x.get("startedAt",0)):
     if str(d.get("pid"))==str(me): continue
     cwd=d.get("cwd","")
-    fleet="on-fleet" if root and (cwd==root or cwd.startswith(root+os.sep)) else "OFF-FLEET (different repo -- do not board, do not broadcast)"
+    theirs=fleet_of(cwd)
+    if mine and theirs and theirs==mine:
+        fleet="on-fleet"
+    elif not mine:
+        fleet="fleet UNKNOWN (this session is not in a git repo -- classify by hand)"
+    else:
+        fleet="OFF-FLEET (different repo -- do not board, do not broadcast)"
     src=d.get("nameSource","?")
     named="named" if src!="derived" else "unidentified"
     print(f"  {d.get('name','?'):<16} {d.get('status','?'):<8} {named:<14} {fleet}")

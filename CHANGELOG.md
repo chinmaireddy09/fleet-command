@@ -9,6 +9,37 @@ repo as a whole.
 
 ---
 
+## 6.39.0 — 2026-08-23
+
+**Every station in its own worktree saw its whole fleet as strangers.** The preamble's
+on-fleet/off-fleet split compared a peer's working directory against `ROOT`, and `ROOT` came from
+`git rev-parse --show-toplevel` — which for a station **is its own worktree**, not the shared
+checkout. So a station in `.claude/worktrees/backend` classified the shared checkout *and every
+sibling worktree* as `OFF-FLEET (different repo — do not board, do not broadcast)`. Four of five
+peers, every one of them its own fleet.
+
+**It failed in the dangerous direction, which is why nobody caught it for days.** It never
+mislabels a stranger as fleet — only fleet as stranger. So the list reads as conservative and
+correct while a station **refuses to broadcast to its own fleet, ignores an all-stations standby,
+and reports its own peers as strangers.** And it gets *worse the more stations you deploy*,
+because only Control, sitting in the shared checkout, ever sees the truth. One genuine off-fleet
+session in the same listing made it look entirely plausible.
+
+**Found by the station it was lying to**, which checked the registry `cwd`s by hand rather than
+taking its own preamble at face value, and correctly filed it as a defect in *this* repo rather
+than fixing it from inside the other one.
+
+**The fix: compare `git rev-parse --git-common-dir`.** That path is identical from the shared
+checkout and from every worktree of the same repo — it is what *makes* two checkouts the same
+repository. A path prefix never could be, because worktrees are deliberately not under the
+checkout. Verified 2026-08-23 from a backend worktree: shared checkout and all four siblings
+`on-fleet`, an unrelated repo still `OFF-FLEET`.
+
+A session that is not in a git repo at all now reports `fleet UNKNOWN` rather than silently
+calling everyone a stranger.
+
+---
+
 ## 6.38.0 — 2026-08-22
 
 **Two rules, both from a station refusing an order it was right to refuse.**
