@@ -17,6 +17,14 @@
 > discriminator is the **branch**, never the author. Do not invent per-session git identities;
 > they would misrepresent who actually wrote the code.
 
+> **Coordinator: CONTROL**
+>
+> Replace `CONTROL` with whatever this project calls its coordinating station — `HQ`, `BRIDGE`,
+> `FLEET COMMAND`, `COMMAND DECK`, anything. **This line is the declaration `/mc` reads**, and
+> it wins over every default and every stored preference: a coordinator name is a property of
+> *this fleet*, not of the person or the machine. Delete the line and the coordinator is
+> `CONTROL`. Do not put a name here because you saw one used elsewhere.
+
 `docs/WORK-LOCKS.md` remains the claim board. This file is the *operational* layer underneath
 it: how a session gets an isolated place to work, how it runs tests without colliding, and what
 it must do so its work survives its own death.

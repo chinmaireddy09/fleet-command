@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.32.0
+version: 6.33.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -167,9 +167,16 @@ re-run once you have asked. **That refusal is the feature.** A handle the user d
 one they have to live with in every message thereafter.
 
 **PRECEDENCE, because the preference is not the top of the stack and saying otherwise wastes
-it.** A project's own `MISSION-CONTROL.md` names its stations, and **those win** — that is Step 0
+it.** A project's own `MISSION-CONTROL.md` names its stations, and **those win**. The board
+declares it on one line — `Coordinator: <NAME>` — and **any word works there**: `HQ`, `BRIDGE`,
+`COMMAND DECK`. Until 2026-08-22 the detector only recognised `CONTROL`, `FLEET COMMAND` and
+`FLEETCOM`, so a board that named its coordinator anything else was **silently skipped by the
+very rule that says the board wins** — it fell through to a stored preference the user may never
+have meant to set. A precedence rule enforced by a list of names it already knows is not a
+precedence rule — that is Step 0
 and it does not bend for a stored preference. So the recorded coordinator name applies **only
-where the project has not named one**. Observed 2026-08-18: a user recorded `FLEET COMMAND` and
+where the project has not named one** — **and most of the time nothing should be recorded there
+at all; see the rule directly below on examples.** Observed 2026-08-18: a user recorded `FLEET COMMAND` and
 every station on a project whose board says `CONTROL` correctly kept calling it `CONTROL`, which
 made the stored preference look broken when it was being obeyed exactly as written. **When the
 two disagree, say so out loud rather than silently picking** — *"your default is FLEET COMMAND;
@@ -193,6 +200,25 @@ board listed its real `CONTROL` and an unrelated `FLEETCOM` side by side as if t
 ran `/mc` on this fleet holds the coordinator's post from that moment — see §1. This warning is
 against a session in another repo, or on another post, wearing the name; it is not a reason to
 leave the post empty.
+
+**A NAME THE USER USED ONCE IS AN EXAMPLE, NOT A PREFERENCE — and this file is where that
+mistake becomes permanent.** Measured twice on the same name. `FLEET COMMAND` was said while
+talking about one repo; a session recorded it here as this machine's coordinator, marked
+`confirmedByUser`, and from then on **every project whose board did not name a coordinator
+resolved to it.** One repo's illustration had become a machine-wide default, and the record made
+it look decided. Removed 2026-08-22, on the user's correction: *"fleet command is an example
+which I shared."*
+
+**So before writing anything under `naming`, ask which of these you actually saw:** the user
+*stating how they want their fleets named* — that is a preference, write it down — or the user
+*using a name while discussing one project* — that is an example, and it belongs nowhere but that
+project's own `MISSION-CONTROL.md`. **When you cannot tell, it is an example.** The cost is
+asymmetric: an unrecorded preference costs one moment of deriving `CONTROL`, while a recorded
+example silently renames the coordinator of every other fleet the user owns.
+
+**The same asymmetry killed the inverse case** — see *never take a coordinator's call-sign for
+something that is not the coordinator*, below. Both are one error wearing two coats: **a name
+that belonged to one post, in one repo, escaping into everything.**
 
 **Record a preference the user states; never ask for one.** `~/.claude/mission-control.json`,
 under `naming` — **user-level and never in a repo**, exactly like the spawn preferences and for

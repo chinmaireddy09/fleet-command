@@ -89,9 +89,21 @@ PY
 # Precedence, and it does not bend: the project's MISSION-CONTROL.md names the
 # coordinator; then the user's recorded preference; then CONTROL.
 emit_coordinator() {
-  local root="$1" name=""
-  if [ -f "$root/docs/MISSION-CONTROL.md" ]; then
-    name=$(grep -oiE '^\|?[[:space:]]*\*{0,2}(CONTROL|FLEET COMMAND|FLEETCOM)\*{0,2}' "$root/docs/MISSION-CONTROL.md" 2>/dev/null | head -1 | tr -d '|*' | xargs 2>/dev/null)
+  local root="$1" name="" f="$root/docs/MISSION-CONTROL.md"
+  if [ -f "$f" ]; then
+    # 1. AN EXPLICIT DECLARATION, and it works for ANY word the project chose.
+    #    `Coordinator: HQ` / `**Coordinator:** BRIDGE` / `| Coordinator | COMMAND |`.
+    #    This exists because the name-allowlist below could only ever find names this
+    #    skill already knew, so a board that named its coordinator HQ was silently
+    #    ignored by the very precedence rule that says the board WINS. Corrected
+    #    2026-08-22, after one project's example name spread to every other fleet.
+    name=$(grep -m1 -oiE '^[[:space:]>*|-]*coordinator[[:space:]|*]*[:=|][[:space:]*]*[A-Za-z0-9][A-Za-z0-9 ._/&-]{0,63}' "$f" 2>/dev/null \
+           | sed -E 's/^[[:space:]>*|-]*[Cc][Oo][Oo][Rr][Dd][Ii][Nn][Aa][Tt][Oo][Rr][[:space:]|*]*[:=|][[:space:]*]*//' \
+           | tr -d '*|' | sed -E 's/[[:space:]]+$//')
+    # 2. LEGACY FALLBACK: boards written before a declaration line existed, which
+    #    only mention a conventional name. Kept so those keep working; it is not the
+    #    supported path and it cannot learn a name it has not been told.
+    [ -z "$name" ] && name=$(grep -oiE '^\|?[[:space:]]*\*{0,2}(CONTROL|FLEET COMMAND|FLEETCOM)\*{0,2}' "$f" 2>/dev/null | head -1 | tr -d '|*' | xargs 2>/dev/null)
   fi
   if [ -z "$name" ] && [ -f "$HOME/.claude/mission-control.json" ]; then
     name=$(python3 -c "import json,os;d=json.load(open(os.path.expanduser('~/.claude/mission-control.json')));print(d.get('naming',{}).get('coordinator',''))" 2>/dev/null)

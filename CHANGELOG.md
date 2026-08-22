@@ -9,6 +9,41 @@ repo as a whole.
 
 ---
 
+## 6.33.0 — 2026-08-22
+
+**One project's example name had become the default for every fleet on the machine, and the
+detector that should have overruled it could only recognise three names.** Two bugs, one shape:
+a name that belonged to one post in one repo escaping into everything.
+
+**The user said it plainly:** *"fleet command is an example which I shared, I never meant by only
+fleetcommand should have the header."*
+
+**What had gone wrong.** `FLEET COMMAND` was said while discussing one repo. A session recorded
+it in `~/.claude/mission-control.json` as the machine's coordinator preference and stamped it
+`confirmedByUser`, and from then on **every project whose board did not name a coordinator
+resolved to it.** The record made a guess look like a decision. It has been removed, and the file
+now carries why, so the next session does not re-derive it.
+
+**And the board could not overrule it, because the detector was an allowlist.**
+`emit_coordinator` matched `CONTROL|FLEET COMMAND|FLEETCOM` and nothing else — so a project whose
+board named its coordinator `HQ`, `BRIDGE` or `COMMAND DECK` was **silently skipped by the very
+precedence rule that says the board wins**, and fell through to the stored preference. *A
+precedence rule enforced by a list of names it already knows is not a precedence rule.* Boards now
+declare it on one line — `Coordinator: <NAME>` — and any word works; the old allowlist stays only
+as a fallback for boards written before the line existed.
+
+**The rule that generalises both:** *a name the user used once is an example, not a preference.*
+Before writing anything under `naming`, decide which you saw — the user **stating how they want
+their fleets named**, or the user **using a name while discussing one project**. **When you cannot
+tell, it is an example.** The cost is asymmetric: an unrecorded preference costs one moment of
+deriving `CONTROL`; a recorded example renames the coordinator of every other fleet they own.
+
+**This is the same error as *never take a coordinator's call-sign for a session that is not the
+coordinator*** — already in this skill since 6.26.0, and violated again here in the other
+direction. One name, one post, one repo. It does not travel.
+
+---
+
 ## 6.32.0 — 2026-08-22
 
 **Identify assigns its own call-sign now. `Identify as: ____` was a station not on post.**
