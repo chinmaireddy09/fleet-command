@@ -22,15 +22,21 @@ set -uo pipefail
 SESSIONS="$HOME/.claude/sessions"
 
 # ── who am I ────────────────────────────────────────────────────────────────
-# A session cannot see itself in the fleet listing -- but the registry is on
-# disk, keyed by pid, and this process is a descendant of its own claude. Walk
-# up until a pid has a registry file. That answers NAME locally, with no radio
-# round-trip, and it answers it for hand-started sessions too, which reading
-# your own --name flag does not.
+# THE REGISTRY IS THE ONLY SURFACE THAT IS LIVE. It is on disk, keyed by pid, and
+# this process is a descendant of its own claude -- so walk up until a pid has a
+# registry file. That answers NAME locally with no radio round-trip, works for
+# hand-started sessions (reading your own --name flag does not), and is correct the
+# instant set-callsign.sh returns.
 #
-# It does NOT answer [ref]. Verified 2026-08-19: the bracketed ref appears in no
-# registry field and is not sessionId, nor its md5/sha1/sha256 prefix. That half
-# still needs a peer -- and only when a bare call-sign matches two rows.
+# The [ref] is in no registry field -- verified 2026-08-19, and it is not sessionId
+# nor its md5/sha1/sha256 prefix. But it is NOT unreadable: ListAgents prints a
+# self-line, "This session is <name> [ref]", and measured 2026-08-22 across a
+# four-station fleet THE REF THERE IS CORRECT WHILE THE NAME BESIDE IT IS STALE --
+# a start-time snapshot that keeps asserting the pre-rename handle. So:
+#   your NAME -> here (live)          your [ref] -> the ListAgents self-line
+#   NEVER your name off the self-line, and never a peer's name off a message header.
+# A peer read-back is corroboration, not retrieval. It is worth one call when a bare
+# call-sign matches two rows; it is not a blocker, and it used to be treated as one.
 find_me() {
   local p=$$ i
   for i in 1 2 3 4 5 6 7 8; do
@@ -51,7 +57,8 @@ print(f"ME_PID: {pid}")
 print(f"ME_NAME: {d.get('name','?')}")
 print(f"ME_NAMESOURCE: {d.get('nameSource','?')}   # 'derived' = generated handle, you have NOT taken a call-sign yet")
 print(f"ME_CWD: {d.get('cwd','?')}")
-print("ME_REF: unreadable-from-inside   # ask a peer, and only if a bare call-sign is ambiguous")
+print("ME_REF: run ListAgents -- your own self-line carries it, and that ref is CORRECT")
+print("ME_SELFLINE_NAME: DO NOT USE   # the name on that self-line is a start-time snapshot: false after any rename")
 PY
 }
 

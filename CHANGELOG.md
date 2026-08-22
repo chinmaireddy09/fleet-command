@@ -9,6 +9,47 @@ repo as a whole.
 
 ---
 
+## 6.34.0 — 2026-08-22
+
+**A four-station fleet measured every identity surface at once, and the skill had one of them
+backwards.** This entry is that run's findings, generalised.
+
+**"Nothing is failing to sync."** The registry on disk is correct the instant `set-callsign.sh`
+returns. What goes stale is three *caches* filled before the rename and never recomputed:
+
+| surface | correct after a rename? | when it reads the name |
+|---|---|---|
+| **session registry on disk** | ✅ live | when `set-callsign.sh` writes it |
+| **`ListAgents` → peer rows** | ✅ live | re-read every call |
+| `ListAgents` → **your own self-line** | **name stale · `[ref]` correct** | name snapshotted at session start |
+| `@` header on an open channel | ❌ stale | once, when that socket opened |
+| terminal tab title | per launch argv | every status change |
+
+**The correction: this skill said the manifest never lists you, so the `[ref]` was the half that
+needed a peer. Backwards.** The manifest *does* list you, on a self-line — and its **ref is right
+while its name is the stale part**. A station read `[a84930]` for itself correctly while that same
+line showed its pre-rename handle, and a peer confirmed `[a84930]` independently.
+
+**So the radio round-trip for identity is gone.** Your **name** comes from the registry
+(`mc-init.sh me`, live, works for hand-started sessions); your **`[ref]`** comes from your own
+self-line. Both local. A peer read-back is now **corroboration, not retrieval** — worth one call
+when a bare call-sign matches two rows, never a blocker. In the measured run two stations sat
+blocked on exactly this, and both were right not to trust the self-line and wrong to think the
+answer was on the radio.
+
+**The self-line does not merely go stale — it asserts something false**, *"this session is
+`<old-handle>`"*, while peers address the new name. Never read your own name off it.
+
+`mc-init.sh me` now says all of this in its own output: `ME_REF` points at the self-line instead
+of claiming the ref is unreadable, and a new `ME_SELFLINE_NAME: DO NOT USE` line marks the trap
+at the exact place a station would otherwise walk into it.
+
+**Unchanged and still true:** the `@` header on an already-open channel never re-resolves, and
+replying to a from-name bounces. Both stations hit that bounce in the run, which is the documented
+behaviour working, not a regression.
+
+---
+
 ## 6.33.1 — 2026-08-22
 
 **`bash -n` passed and the script died on its first real run.** 6.33.0's rewritten

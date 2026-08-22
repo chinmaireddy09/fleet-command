@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.33.1
+version: 6.34.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -493,10 +493,11 @@ The binding is a tool call, so make it one:
    way: write that, and move on.
 
    **This is why the call-sign is taken first.** A session cannot look its own address up —
-   `ListAgents` never shows you yourself — so a station that reaches this step unnamed has to
-   stop and **ask a peer or Control** *"what address does this message arrive from?"*, which
-   costs a radio round-trip and has produced rows written with the name pending. Taking the
-   call-sign first removes the question instead of answering it.
+   `ListAgents` shows you a self-line whose **name is a start-time snapshot** — false after any
+   rename — so a station that reaches this step unnamed used to stop and **ask a peer** *"what
+   address does this message arrive from?"*, costing a round-trip and producing rows written with
+   the name pending. Taking the call-sign first removes the question; `mc-init.sh me` answers it
+   locally in the cases that remain. **Neither of those is a radio call.**
 
    **Never invent it, and never write the row with the name pending.** Both produce a row that
    fails at its one job. If step 1 did not print an address, go back and make it — do not write
@@ -857,9 +858,12 @@ stale and the ref still finds its station. **Match on the ref, address by the cu
 A stale `@` after a successful rename also reads exactly like a failed rename to the human
 watching — say which it is before they ask.
 
-**Verify by asking a peer, because a session never sees itself in the fleet manifest.** That is not a
-quirk to work around; it is why the rename matters. You cannot read your own address, so the
-name you present is the only thing your peers have.
+**Verify locally first, and ask a peer only to corroborate.** `mc-init.sh me` reads your live
+name off the registry and your `ListAgents` self-line carries your correct `[ref]` — so "what am
+I called now?" is answerable without a radio call. **What you must not do is read your own name
+off the self-line**, which is a start-time snapshot and says something false after any rename.
+The reason the rename matters is unchanged: the name you present is the only thing your peers
+have.
 
 **Say plainly what it is: unsupported.** The registry is Claude Code's own state and a version
 bump can change the schema underneath it. **The supported path is `claude --name <CALLSIGN>` at
@@ -1282,23 +1286,47 @@ Nothing there says which one is Frontend. **Names can even repeat** — when the
 Naming by call-sign makes repeats far less likely, because two stations must not share a
 call-sign in the first place.
 
-#### The bootstrap trap: a session cannot see itself
+#### Reading your own identity — five surfaces, and three of them are caches
 
-**The fleet manifest never lists the session calling it.** So a station that came up unnamed cannot
-read its own address **from that tool**, and identify's step 5 — *write your `ListAgents` name onto
-the row* — looks unsatisfiable alone.
+**Nothing here fails to "sync". The source of truth is already correct the instant
+`set-callsign.sh` returns** — what goes stale is three caches that were filled before the rename
+and are never recomputed. Measured 2026-08-22 on 2.1.239 by a four-station fleet, each station
+reading every surface at once:
 
-**It is not, and this was the expensive half of the trap.** The tool cannot show you yourself, but
-**the session registry can** — it is on disk, keyed by pid, and your shell is a descendant of your
-own `claude` process. `mc-init.sh` walks up to it and prints `ME_NAME` and `ME_NAMESOURCE`, which
-answers the name **locally, for hand-started sessions too**, and answers it *after*
-`set-callsign.sh` rather than from a launch flag. Verified 2026-08-19 on an unnamed session: it
-read back its own generated handle with no peer and no radio traffic.
+| surface | correct after a rename? | when it reads the name |
+|---|---|---|
+| **session registry on disk** | ✅ **live** | the moment `set-callsign.sh` writes it |
+| **`ListAgents` → peer rows** | ✅ **live** | re-read on every call |
+| `ListAgents` → **your own self-line** | **name stale · `[ref]` correct** | name snapshotted at session start |
+| `@` header on an already-open channel | ❌ stale | once, when that socket opened |
+| terminal tab title | per launch argv | every status change |
 
-**What the registry does NOT hold is the `[ref]`.** Verified the same day: the bracketed ref
-appears in no registry field, and it is not `sessionId` nor its md5, sha1 or sha256 prefix. **That
-half still needs a peer** — and you only need it when a bare call-sign matches two rows. So the
-round-trip that used to be mandatory is now the exception.
+**So a session answers BOTH halves of its own identity locally, and the radio round-trip that
+used to be mandatory is not needed at all:**
+
+- **your name** → the registry. `bash <skill-dir>/mc-init.sh me` prints `ME_NAME`, and it is live
+  **after** `set-callsign.sh`, not a launch flag — so it works for hand-started sessions too.
+- **your `[ref]`** → **your own self-line in `ListAgents`.** It is correct even while the name
+  beside it is wrong.
+
+**THIS REVERSES WHAT THIS SECTION USED TO SAY, and the old version cost real time.** It read *"the
+fleet manifest never lists the session calling it"*, so the `[ref]` was the half that needed a
+peer. **Backwards.** The manifest does list you, on a self-line — *"This session is `<name>`
+`[ref]` — the name other sessions use to message it"* — and measured 2026-08-22, **its ref is
+right and its name is the stale part.** A station read `[a84930]` for itself correctly while that
+same line showed its pre-rename handle, and a peer independently confirmed `[a84930]`. The claim
+that the registry has no ref stands; the conclusion drawn from it did not.
+
+**Do not trust the self-line's NAME for anything.** It does not merely go stale, it states
+something false: *"this session is `<old-handle>`"* while peers are addressing the new one. Two
+stations independently refused to write their own address onto the board because of it — and they
+were right not to trust it, but the answer was one command away in the registry, not a round-trip
+away on the radio.
+
+**A peer read-back is now corroboration, not retrieval.** It is cheap and it is worth one call
+when a bare call-sign matches two rows, or when a row has burned somebody before. **It is not a
+blocker**, and a station that has read its registry and its self-line already holds everything the
+row needs.
 
 This is not theoretical. On 2026-08-17 three stations in a row hit it within fifteen minutes,
 and each one correctly refused to guess — one explicitly retracted a plan to write the row
@@ -1310,13 +1338,14 @@ readable in one command.** A station spawned `--name FRONTEND` reported *"I came
 on an address it already had — **check your own arguments before saying you are unnamed.** The
 answer is local, free and needs no peer. `references/field-notes.md` §4.
 
-**What this does NOT give you is the `[ref]`.** That appears in neither the process arguments
-nor the scratchpad path — both checked — so a peer is still the only source for the bracketed
-part, and you only need it when a bare call-sign matches two rows.
+**The `[ref]` is not in the process arguments or the scratchpad path either** — both checked —
+but it does not need to be: **your `ListAgents` self-line carries it**, correct, in the same line
+whose name you must ignore. Read it there.
 
-**`--name` narrows the trap; it does not close it.** A named station can *reasonably assume* its
-call-sign is its address — but **it cannot confirm the flag took**, because the one tool that
-would show it is the one tool that never shows it itself. Three sessions hit this in a single
+**`--name` narrows the trap, and the registry closes it.** A named station used to have to
+*assume* the flag took, on the reasoning that the one tool that would show it never shows you
+yourself. That reasoning is retired: `mc-init.sh me` reads `ME_NAME` and `ME_NAMESOURCE` straight
+off the registry, so "did my name take?" is a local question with a local answer. Three sessions hit this in a single
 hour on 2026-08-17, and each was right to ask rather than assume: a row carrying an address that
 does not resolve is exactly the lie the board exists to prevent, and this repo has already been
 burned by one (`acme-shop-1b`).
@@ -1528,11 +1557,13 @@ mechanism, and habit is not something a warning beats.
   **The absent-Control half of that hole now closes at its source:** whoever runs `/mc` comes on
   watch as Control (§1), so a fleet stops being coordinator-less the moment anybody asks for the
   board. The escalation to the user is for the case where nobody has.
-- **Answer with the sender's address, including the `[ref]`.** A session cannot see itself in
-  `ListAgents`, so an unnamed station genuinely does not know what address its own messages
-  arrive from and cannot write its own board row. Whoever takes first contact reads it off their
-  own list and sends it back. Withholding it is not caution; it is the one fact only the
-  receiver has.
+- **Answer with the sender's address, including the `[ref]`** — it costs one line and it settles
+  the question from outside. **It is corroboration now, not rescue.** A station can read its own
+  live name off the registry (`mc-init.sh me`) and its own correct `[ref]` off its `ListAgents`
+  self-line, so first contact is no longer the only way it learns who it is. What your reply
+  still adds is **independent confirmation**, which matters precisely because the sender's own
+  self-line shows a stale name and it is right not to trust that. Send it anyway; withholding it
+  is not caution.
 
 **Naming blocks claiming, not talking.** An unidentified session may ask, answer, audit the
 board and raise a mayday — that traffic is why it is talking to you at all. What it may **not**
