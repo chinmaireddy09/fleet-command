@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.31.0
+version: 6.31.1
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -365,15 +365,16 @@ took two stations interrogating each other to notice.
 
 The binding is a tool call, so make it one:
 
-1. **Take your call-sign — first, before you touch the board.**
+1. **Take your call-sign — first, before you write anything to the board.**
 
    ```bash
    bash <skill-dir>/set-callsign.sh <CALLSIGN> [HANDLE]
    ```
 
-   **This is a step, not a suggestion, and its position in the list is the point.** The call-sign
-   was handed to you in the command that started this — you do not need the board to know it, so
-   there is nothing to wait for. **Everything below writes your address down**: step 5 puts it on
+   **This is a step, not a suggestion, and its position in the list is the point.** By the time
+   this list starts you have a call-sign — it came in the command, or the user picked one off the
+   listing — so there is nothing left to wait for. (Reading the board to *render* that listing is
+   fine and happens earlier; what must not happen before this step is a **write**.) **Everything below writes your address down**: step 5 puts it on
    the row that peers resolve you through. Take the call-sign afterwards and you have changed the
    address out from under a row you already pushed — **a row that advertises an address nobody
    answers to**, which fails exactly like the row with no address at all, only more quietly.

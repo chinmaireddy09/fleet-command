@@ -9,6 +9,15 @@ repo as a whole.
 
 ---
 
+## 6.31.1 — 2026-08-22
+
+**"Before you touch the board" was not what 6.31.0 meant.** Identify can be invoked bare, in
+which case the session reads the board to render the listing the user picks a call-sign off —
+so a station that had done exactly the right thing would read step 1 and think it had already
+broken it. The constraint is on **writes**, not reads, and the step now says so.
+
+---
+
 ## 6.31.0 — 2026-08-22
 
 **Identify took the call-sign at step 6 and wrote the address onto the board at step 4.** Those
