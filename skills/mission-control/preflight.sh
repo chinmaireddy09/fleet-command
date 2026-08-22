@@ -91,14 +91,49 @@ check_at_risk() {
         fi
       fi
       [ -z "$up" ] && up="HEAD"   # no remote anywhere: nothing to be at risk against
-      ours=$(git -C "$wt" cherry "$up" 2>/dev/null | grep -c '^+' || echo 0)
-      dupes=$(git -C "$wt" cherry "$up" 2>/dev/null | grep -c '^-' || echo 0)
+      # WHAT IS PRINTED MUST HAVE THE SAME BASIS AS THE GATE ABOVE, AND UNTIL
+      # 2026-08-23 IT DID NOT. `n` is content across ALL remotes -- correct, and the
+      # thing the header two lines up promises. `ours` was `git cherry "$up"`, which
+      # is reachability against ONE ref, so every commit merged in from the base
+      # branch and not yet pushed on THIS branch was marked +. The correct number was
+      # computed, used only as an entry gate, and then thrown away in favour of the
+      # wrong one. Reported and reproduced by a coordinator: 7 commits reported at
+      # risk, all seven confirmed on origin/main, truth was 1.
+      #
+      # It failed in the dangerous direction -- INFLATING risk -- and this repo had
+      # already had one false at-risk alarm. A tool that cries wolf about lost work is
+      # one a station stops reading on the night something really is lost. It also
+      # contradicted the hand-run command this skill tells stations to trust:
+      # `git log HEAD --not --remotes` returned 1 while this printed 7.
+      #
+      # So: the LIST is the --not --remotes set. `cherry` is kept for the one thing it
+      # is actually good at -- spotting a commit whose CONTENT already landed under a
+      # different sha, which --not --remotes cannot see -- and is used only to move
+      # commits OUT of the at-risk list, never to put them in.
+      local dup_shas at_risk_list dupe_n
+      dup_shas=$(git -C "$wt" cherry "$up" 2>/dev/null | awk '/^-/{print $2}')
+      at_risk_list=""; ours=0; dupe_n=0
+      while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        local sha="${line%% *}"
+        if [ -n "$dup_shas" ] && printf '%s\n' "$dup_shas" | grep -q "^$sha$"; then
+          dupe_n=$((dupe_n+1))
+        else
+          at_risk_list="$at_risk_list$line
+"
+          ours=$((ours+1))
+        fi
+      done <<EOF
+$(git -C "$wt" log --format='%H %s' HEAD --not --remotes 2>/dev/null)
+EOF
+      dupes=$dupe_n
       if [ "${ours:-0}" = "0" ]; then
-        printf '  safe     %-46s %s commit(s) exist only here, but ALL content is already on %s\n' "$b" "$n" "$up"
+        printf '  safe     %-46s %s commit(s) exist only here, but ALL content is already on a remote\n' "$b" "$n"
         [ "${dupes:-0}" != "0" ] && printf '           (%s duplicate by content -- stale, not lost)\n' "$dupes"
       else
-        printf '  AT RISK  %-46s %s commit(s) with NO equivalent upstream\n' "$b" "$ours"
-        git -C "$wt" cherry -v "$up" 2>/dev/null | grep '^+' | sed 's/^+ /           /'
+        printf '  AT RISK  %-46s %s commit(s) on no remote, by content\n' "$b" "$ours"
+        printf '%s' "$at_risk_list" | sed 's/^/           /'
+        [ "${dupes:-0}" != "0" ] && printf '           (%s more exist only here but are duplicates by content -- stale, not lost)\n' "$dupes"
         any=1
       fi
     fi

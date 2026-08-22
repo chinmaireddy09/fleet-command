@@ -9,6 +9,48 @@ repo as a whole.
 
 ---
 
+## 6.50.0 — 2026-08-23
+
+**`at-risk` computed the right number, used it only as a gate, and then printed the wrong one.**
+Reported with the mechanism and reproduced here from scratch: a lane that had merged the base
+branch in without pushing reported **7 commits at risk, every one of them sitting on
+`origin/main`.** The truth was 1 — the merge commit.
+
+**The two numbers had different bases and only one was ever printed:**
+
+```
+n    = rev-list --count HEAD --not --remotes   -> 1   content, ALL remotes   (gate only)
+ours = git cherry "$up" | grep -c '^+'         -> 7   reachability, ONE ref  (printed)
+```
+
+Commits merged in from the base branch are not reachable from *this branch's* upstream, so
+`cherry` marked every one of them `+`. **The header two lines above the output disclaims exactly
+this error** — *"`--not --remotes`, i.e. content. NOT `rev-list --count origin/main..HEAD`, which
+counts reachability and reports danger for work already upstream"* — and then the AT RISK line
+did it anyway.
+
+**It failed in the dangerous direction: it inflates risk.** This repo had already had one false
+at-risk alarm, six doc commits reported as a day's exposure when the content was upstream. **A
+tool that cries wolf about lost work is one a station stops reading on the night something really
+is lost.**
+
+**Worse, it contradicted the instrument this skill had just told everyone to trust.** 6.49.0 put
+`git log --oneline HEAD --not --remotes` beside the stray-worktree warning as *the* executable
+test. A reader running it by hand got **1** while `preflight at-risk` said **7** — two instruments
+in one skill disagreeing, with the hand-run one correct.
+
+**The fix follows the stated contract:** the list is now the `--not --remotes` set directly.
+`cherry` is kept for the one thing it is genuinely good at — spotting a commit whose *content*
+already landed under a different sha, which `--not --remotes` cannot see — and is used **only to
+move commits OUT of the at-risk list, never to put them in.**
+
+**Both shapes are now regression-tested**, because the second is the reason `cherry` was there and
+a naive fix would have deleted it: a lane with the base merged in (expect 1, the merge) and a
+commit whose patch already landed upstream under another sha (expect *safe · duplicate by
+content*). `test/e2e.sh` is at **49**.
+
+---
+
 ## 6.49.0 — 2026-08-23
 
 **A coordinator came ten seconds from deleting a live station's only copy of its own board row,

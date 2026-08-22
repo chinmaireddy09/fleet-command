@@ -159,6 +159,33 @@ chk "the worktree is named, not just 'HEAD'"            "$O" "scratch-flip"
 git -C "$REPO" worktree remove --force "$WT" 2>/dev/null; cd "$REPO"
 
 echo
+echo "── 6bc. at-risk counts CONTENT, not reachability ──────────────────"
+# Two shapes that used to be reported wrongly, both with a real remote.
+mkrepo(){ local d="$WORK/$1"; mkdir -p "$d/up.git"; git init -q --bare -b main "$d/up.git"
+  git clone -q "$d/up.git" "$d/w" 2>/dev/null; cd "$d/w"
+  git config user.email t@e; git config user.name t
+  echo base > f.txt; git add -A; git commit -qm base; git push -q -u origin main; }
+
+# (a) base branch merged into a lane, nothing pushed: only the merge is at risk.
+mkrepo mergecase
+git checkout -qb lane; echo l > l.txt; git add -A; git commit -qm lane; git push -q -u origin lane
+git checkout -q main; for i in 1 2 3 4 5; do echo "m$i" >> f.txt; git add -A; git commit -qm "main $i"; done
+git push -q origin main; git checkout -q lane; git merge -q --no-edit main -m "merge main into lane" 2>/dev/null
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "merged-in base commits are NOT called at risk" "$O" "1 commit(s) on no remote"
+case "$O" in *"main 3"*) no "merged-in base commits are not listed" "listed 'main 3'";; *) ok "merged-in base commits are not listed";; esac
+
+# (b) content already upstream under a different sha: safe, not at risk.
+mkrepo dupcase
+git checkout -qb lane2; echo d > d.txt; git add -A; git commit -qm "docs: finding"; git push -q -u origin lane2
+S=$(git rev-parse HEAD); git checkout -q main; git cherry-pick "$S" >/dev/null 2>&1; git push -q origin main
+git checkout -q lane2; git commit -q --amend --no-edit --date="2026-01-01T00:00:00"
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "content already upstream reads safe"      "$O" "ALL content is already on a remote"
+chk "and is named a duplicate, not a loss"     "$O" "duplicate by content"
+cd "$REPO"
+
+echo
 echo "── 6c. detached HEAD and worktree wording ─────────────────────────"
 git worktree add -q --detach "$REPO/.claude/worktrees/det" HEAD 2>/dev/null
 O=$(cd "$REPO/.claude/worktrees/det" && bash "$D/mc-init.sh" 2>&1)
