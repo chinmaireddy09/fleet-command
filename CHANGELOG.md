@@ -9,6 +9,37 @@ repo as a whole.
 
 ---
 
+## 6.31.0 — 2026-08-22
+
+**Identify took the call-sign at step 6 and wrote the address onto the board at step 4.** Those
+two facts were three lines apart in the same list for months, and in that order they cannot both
+be right. A hand-started station read its derived address (`acme-shop-4d`), pushed it onto the
+row peers resolve it through, and *then* ran `set-callsign.sh` — which changed the address out
+from under the row it had just published. **The row was stale the moment it landed**, and it
+fails the same way as a row with no address at all, only more quietly: it renders as manned, and
+every peer that resolves it bounces.
+
+**The call-sign is now step 1, before the board is touched at all.** Nothing was waiting on
+anything — the call-sign arrives in the command that starts identify, so there was never a reason
+to take it last. Step 5 then writes an address the station already holds.
+
+**It also deletes a radio round-trip that the old order made unavoidable.** A session cannot look
+its own address up — `ListAgents` never shows you yourself — so a station reaching the row-write
+unnamed had to stop and ask a peer *"what address does this message arrive from?"*. That question
+was answered by reordering rather than by answering it faster.
+
+**"Always" meant fixing the order, not adding another instruction saying always.** The old text
+already read *"this is a step, not a suggestion — run it now"* and *"do not skip it because you
+were started with `--name`"*. It was emphatic and it was in the wrong place, and emphasis does
+not fix sequence. The rule that shipped in 6.25.0 — ship the checks as code, because more rules
+were never going to work — applies to ordering too.
+
+The long tab-surface material that used to sit inside step 6 is now the reference subsection
+*Your two identity surfaces*, unchanged in substance, so the numbered list reads as six actions
+instead of one action and a hundred and seventy lines of digression.
+
+---
+
 ## 6.30.0 — 2026-08-22
 
 **The tab title was never a lost cause; `--name` had been holding it all along and this skill

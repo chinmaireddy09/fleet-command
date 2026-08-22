@@ -127,7 +127,7 @@ it, so four stations do not each carry procedure they will never run:
 | `references/countermeasures.md` | something has already gone wrong | anyone, at the time |
 | `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost | anyone, rarely |
 | `preflight.sh` | **before a gate, a standdown, a baseline diff, or addressing a peer** — the four checks that were got wrong by hand | anyone |
-| `set-callsign.sh` | **step 6 of identify — every station runs it, always.** Makes the call-sign the address peers see | every station |
+| `set-callsign.sh` | **step 1 of identify — every station runs it, always, before the board.** Makes the call-sign the address peers see | every station |
 | `label-tab.sh` | called by the above — sets the tab title, and reports whether this session's launch lets it hold | every station |
 | `spawn-station.sh` | at deploy — opens the tab in *your* window and verifies a session really started | Control |
 

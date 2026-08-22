@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.30.0
+version: 6.31.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -274,7 +274,7 @@ whichever you prefer on the radio.
 So the order is **bind, then report**, and the binding is two steps, not a project:
 
 1. **Take the call-sign** — `bash <skill-dir>/set-callsign.sh <COORDINATOR>`.
-2. **Write the row** — the same board push every station makes at identify step 5. **If the
+2. **Write the row** — the same board push every station makes at identify steps 5–6. **If the
    project has no board yet there is no row to write**; Step 0 covers offering to create one, and
    the row follows the board rather than blocking the call-sign.
 
@@ -365,12 +365,38 @@ took two stations interrogating each other to notice.
 
 The binding is a tool call, so make it one:
 
-1. **Read the board**, find the row for the call-sign given.
-2. **Take the workspace path from that row** — the board already carries it. Do not ask the
+1. **Take your call-sign — first, before you touch the board.**
+
+   ```bash
+   bash <skill-dir>/set-callsign.sh <CALLSIGN> [HANDLE]
+   ```
+
+   **This is a step, not a suggestion, and its position in the list is the point.** The call-sign
+   was handed to you in the command that started this — you do not need the board to know it, so
+   there is nothing to wait for. **Everything below writes your address down**: step 5 puts it on
+   the row that peers resolve you through. Take the call-sign afterwards and you have changed the
+   address out from under a row you already pushed — **a row that advertises an address nobody
+   answers to**, which fails exactly like the row with no address at all, only more quietly.
+   That ordering was wrong here until 2026-08-22.
+
+   **Do not skip it because you were started with `--name`** — the script sees the name already
+   matches and exits saying so, which costs nothing. Skipping it is how a hand-started station
+   spends its whole life as `acme-shop-4d`.
+
+   **`HANDLE` is optional and defaults to the call-sign.** Pass it when the user wants a
+   different address — or when the call-sign has a space, in which case the script refuses and
+   tells you to ask rather than inventing one.
+
+   **Read what it prints before moving on.** It reports the address it took and a
+   `persists: YES/NO` line for the tab. Those are two different surfaces with two different
+   answers — see *Your two identity surfaces* below, and report them separately.
+
+2. **Read the board**, find the row for the call-sign given.
+3. **Take the workspace path from that row** — the board already carries it. Do not ask the
    user for a path; if the row has none, that is the bug, fix the row.
-3. **Move in, if you are not already there.** Compare your working directory to the row's
+4. **Move in, if you are not already there.** Compare your working directory to the row's
    workspace:
-   - **already there** → skip the move entirely and go to step 4. This is the normal case when
+   - **already there** → skip the move entirely and go to step 5. This is the normal case when
      `deploy` spawned you, because it starts you inside the lane.
    - **somewhere else** → **`EnterWorktree({path: "<workspace from the row>"})`**. The session
      moves *itself*. No `cd`, no restart, no second window.
@@ -378,19 +404,26 @@ The binding is a tool call, so make it one:
    **Make this check, don't assume either way.** A session reached by `deploy` and a session
    started by hand both run `identify`, and calling `EnterWorktree` from inside the target is a
    different situation from calling it from outside.
-4. **Write your fleet-manifest address onto the row** and flip it from reserved to on post, then
+5. **Write your fleet-manifest address onto the row** and flip it from reserved to on post, then
    push. Until that address is on the board, no other station can call you — which is exactly
    why a board full of 🚧 rows can still leave everyone unable to find anyone.
 
-   **If `deploy` spawned you, you already know it: it is your call-sign**, because you were
-   started `--name <CALLSIGN>`. Write it and move on.
+   **You already know it, whichever way you came up — step 1 is what guarantees that.** If
+   `deploy` spawned you it is your call-sign, because you were started `--name <CALLSIGN>`. If
+   you came up by hand, `set-callsign.sh` just took the handle it printed back to you. Either
+   way: write that, and move on.
 
-   **If you came up by hand and unnamed, you cannot look it up** — `ListAgents` never shows you
-   yourself. **Ask a peer or Control** — *"what address does this message arrive from?"* — and
-   write back what they read out. **Never invent it, and never write the row with the name
-   pending.** Both produce a row that fails at its one job.
+   **This is why the call-sign is taken first.** A session cannot look its own address up —
+   `ListAgents` never shows you yourself — so a station that reaches this step unnamed has to
+   stop and **ask a peer or Control** *"what address does this message arrive from?"*, which
+   costs a radio round-trip and has produced rows written with the name pending. Taking the
+   call-sign first removes the question instead of answering it.
 
-5. **The row's commit must sit directly on current `origin/main`, and must be pushed to `main`.**
+   **Never invent it, and never write the row with the name pending.** Both produce a row that
+   fails at its one job. If step 1 did not print an address, go back and make it — do not write
+   this row on a guess.
+
+6. **The row's commit must sit directly on current `origin/main`, and must be pushed to `main`.**
    Two separate requirements, and the old flow got the second one wrong: a row pushed to a lane
    ref updates a board nobody reads. The first matters because `HEAD:main` pushes *the whole
    ancestry underneath the commit* — which is how feature code has reached `main` by accident
@@ -447,181 +480,177 @@ The binding is a tool call, so make it one:
    `git merge-base --is-ancestor <lane> origin/main` is TRUE, **and** the lane has zero commits
    of its own. The throwaway worktree needs neither check, which is the whole reason it exists.
 
-6. **Take your call-sign on both surfaces. This is a step, not a suggestion — run it now:**
+#### Your two identity surfaces — and which one your launch already decided
 
-   ```bash
-   bash <skill-dir>/set-callsign.sh <CALLSIGN> [HANDLE]
-   ```
+**Which surfaces you get depends on how this session was LAUNCHED, and that is not something
+you can change from inside it.** Measured 2026-08-18 and revised 2026-08-22:
 
-   **Which surfaces you get depends on how this session was LAUNCHED, and that is not something
-   you can change from inside it.** Measured 2026-08-18 and revised 2026-08-22:
+| | `set-callsign.sh` | `/rename` |
+|---|---|---|
+| **`ListAgents`** — the address peers resolve | ✅ | ✅ |
+| **`@` header on a channel already open** | ✗ — captured at open, never re-resolved | ✗ — same |
+| **Terminal tab title**, station launched by `/mc deploy` (`--name`) | **✅ already held** — before this script runs | ✅ |
+| **Terminal tab title**, session started as plain `claude` | ✗ — overwritten at the next status change | **✅ sticks** |
+| `formerNames` provenance | ✅ kept | **✗ wiped**, `nameSource` cleared too |
+| Who can run it | **the station itself** | only a human, in that tab |
 
-   | | `set-callsign.sh` | `/rename` |
-   |---|---|---|
-   | **`ListAgents`** — the address peers resolve | ✅ | ✅ |
-   | **`@` header on a channel already open** | ✗ — captured at open, never re-resolved | ✗ — same |
-   | **Terminal tab title**, station launched by `/mc deploy` (`--name`) | **✅ already held** — before this script runs | ✅ |
-   | **Terminal tab title**, session started as plain `claude` | ✗ — overwritten at the next status change | **✅ sticks** |
-   | `formerNames` provenance | ✅ kept | **✗ wiped**, `nameSource` cleared too |
-   | Who can run it | **the station itself** | only a human, in that tab |
+**The tab row split in two on 2026-08-22, and `--name` turned out to be doing far more than
+this skill credited it with.** Claude Code writes the tab title itself, once per status change.
+Measured on 2.1.239 by capturing the pty across one real turn, three launches of the same
+session:
 
-   **The tab row split in two on 2026-08-22, and `--name` turned out to be doing far more than
-   this skill credited it with.** Claude Code writes the tab title itself, once per status change.
-   Measured on 2.1.239 by capturing the pty across one real turn, three launches of the same
-   session:
+| launched as | title writes in one turn | what the tab ends up reading |
+|---|---|---|
+| `claude` | 7 | `✳ Claude Code` → **`✳ <turn summary>`** |
+| `claude --name TESTSTATION` | 5 | **`✳ TESTSTATION`** — every single write |
+| `CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 claude` | 0 | whatever `label-tab.sh` set |
 
-   | launched as | title writes in one turn | what the tab ends up reading |
-   |---|---|---|
-   | `claude` | 7 | `✳ Claude Code` → **`✳ <turn summary>`** |
-   | `claude --name TESTSTATION` | 5 | **`✳ TESTSTATION`** — every single write |
-   | `CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 claude` | 0 | whatever `label-tab.sh` set |
+**That middle row is the answer, and it needs nothing from the station.** With `--name`, Claude
+Code's own writes carry the call-sign and **the turn summary never displaces it** — so a
+station `deploy` spawned has had a correct tab since the moment it launched. It is also plain
+`ESC]0;`, not AppleScript, so it holds in iTerm2, Ghostty and tmux where `label-tab.sh` cannot
+reach. **The previous note here called `--name`'s effect on the title unverified. It is now
+verified, and it is the mechanism.**
 
-   **That middle row is the answer, and it needs nothing from the station.** With `--name`, Claude
-   Code's own writes carry the call-sign and **the turn summary never displaces it** — so a
-   station `deploy` spawned has had a correct tab since the moment it launched. It is also plain
-   `ESC]0;`, not AppleScript, so it holds in iTerm2, Ghostty and tmux where `label-tab.sh` cannot
-   reach. **The previous note here called `--name`'s effect on the title unverified. It is now
-   verified, and it is the mechanism.**
+**Which is why you must not "fix" a tab by disabling title writes.** Setting
+`CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1` does stop the overwriting — zero writes — but it
+switches off the durable, portable mechanism and leaves a Terminal.app-only custom title in
+its place. It is the right lever only for someone who wants the bare call-sign with no status
+glyph, and it is their choice to make in their own settings, not the skill's.
 
-   **Which is why you must not "fix" a tab by disabling title writes.** Setting
-   `CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1` does stop the overwriting — zero writes — but it
-   switches off the durable, portable mechanism and leaves a Terminal.app-only custom title in
-   its place. It is the right lever only for someone who wants the bare call-sign with no status
-   glyph, and it is their choice to make in their own settings, not the skill's.
+**A session already running as plain `claude` can do neither** — argv and env are fixed at
+exec. There the old trade-off stands and you must say which you are choosing: the tab title is
+what a human reads all day, and against that `/rename` erases the record that this session was
+once `acme-shop-47`. **Take the tab.** The `[ref]` survives every rename and is the real
+anchor, and the tab is the surface where a human puts a prompt in the wrong window.
 
-   **A session already running as plain `claude` can do neither** — argv and env are fixed at
-   exec. There the old trade-off stands and you must say which you are choosing: the tab title is
-   what a human reads all day, and against that `/rename` erases the record that this session was
-   once `acme-shop-47`. **Take the tab.** The `[ref]` survives every rename and is the real
-   anchor, and the tab is the surface where a human puts a prompt in the wrong window.
+**Do not guess which case you are in — `label-tab.sh` reads this session's own argv and env
+and tells you**, printing `persists: YES`, `persists: YES (as <handle>)`, or `persists: NO`.
+`set-callsign.sh` passes that verdict straight through rather than restating it. Report what
+it said, not what you hoped.
 
-   **Do not guess which case you are in — `label-tab.sh` reads this session's own argv and env
-   and tells you**, printing `persists: YES`, `persists: YES (as <handle>)`, or `persists: NO`.
-   `set-callsign.sh` passes that verdict straight through rather than restating it. Report what
-   it said, not what you hoped.
+**Two rows are still the ones people expect to work and do not.** A renamed station keeps
+arriving under its old handle on every channel that was already open. **Only
+`claude --name <CALLSIGN>` at launch gets a station named before any channel exists** — the
+other half of why `deploy` passes it, and why a hand-started session stays hard to identify no
+matter what it runs afterwards.
 
-   **Two rows are still the ones people expect to work and do not.** A renamed station keeps
-   arriving under its old handle on every channel that was already open. **Only
-   `claude --name <CALLSIGN>` at launch gets a station named before any channel exists** — the
-   other half of why `deploy` passes it, and why a hand-started session stays hard to identify no
-   matter what it runs afterwards.
+**And the loss is smaller than it looks, for a reason worth generalising past this one
+field.** `formerNames` was never the durable record. The station that lost it had already
+written the rename into the repo — its commit body reads *"took the call-sign with
+`set-callsign.sh` (`acme-shop-47` → `CHANNELS`)"*, and its progress-log entry says it again —
+so a peer reconciling a stale board row reads `git log`, not a registry. **Anything living
+only in harness state is one command from gone.** That is the standing rule doing its job on
+a field nobody expected to lose: **a finding that is not in the repo is not a finding.**
 
-   **And the loss is smaller than it looks, for a reason worth generalising past this one
-   field.** `formerNames` was never the durable record. The station that lost it had already
-   written the rename into the repo — its commit body reads *"took the call-sign with
-   `set-callsign.sh` (`acme-shop-47` → `CHANNELS`)"*, and its progress-log entry says it again —
-   so a peer reconciling a stale board row reads `git log`, not a registry. **Anything living
-   only in harness state is one command from gone.** That is the standing rule doing its job on
-   a field nobody expected to lose: **a finding that is not in the repo is not a finding.**
+**There is also `/color` to tint the session.** Claude Code suggests both itself when it notices several sessions running. They are
+official where the script is unsupported internals — but **a session cannot type into its own
+TUI**, so only the human can run them. That is the whole division of labour: the script is
+what a station can do for itself, `/rename` is what you can do for it, and they reach the same
+field. **On a plain `claude` session `/color` is worth more than the tab title** — there the
+title is overwritten every turn and a colour is not. On a station `deploy` spawned with
+`--name` the title already carries the call-sign, so the two are complementary rather than a
+consolation prize.
 
-   **There is also `/color` to tint the session.** Claude Code suggests both itself when it notices several sessions running. They are
-   official where the script is unsupported internals — but **a session cannot type into its own
-   TUI**, so only the human can run them. That is the whole division of labour: the script is
-   what a station can do for itself, `/rename` is what you can do for it, and they reach the same
-   field. **On a plain `claude` session `/color` is worth more than the tab title** — there the
-   title is overwritten every turn and a colour is not. On a station `deploy` spawned with
-   `--name` the title already carries the call-sign, so the two are complementary rather than a
-   consolation prize.
+**`HANDLE` is optional and defaults to the call-sign.** Pass it when the user wants a
+different address — or when the call-sign has a space, in which case the script refuses and
+tells you to ask rather than inventing one.
 
-   **`HANDLE` is optional and defaults to the call-sign.** Pass it when the user wants a
-   different address — or when the call-sign has a space, in which case the script refuses and
-   tells you to ask rather than inventing one.
+**Do not skip it because you were started with `--name`** — the script sees the name already
+matches and exits saying so, which costs nothing. Skipping it is how a hand-started station
+spends its whole life as `acme-shop-4d`.
 
-   **Do not skip it because you were started with `--name`** — the script sees the name already
-   matches and exits saying so, which costs nothing. Skipping it is how a hand-started station
-   spends its whole life as `acme-shop-4d`.
+It sets two things: the **address peers see** (durable) and the **terminal tab title**
+(durable on a station `deploy` launched; lapsing on a hand-started one — see below). On a
+machine with no Terminal.app it does the first and says the second was skipped; that is a
+pass, not a failure.
 
-   It sets two things: the **address peers see** (durable) and the **terminal tab title**
-   (durable on a station `deploy` launched; lapsing on a hand-started one — see below). On a
-   machine with no Terminal.app it does the first and says the second was skipped; that is a
-   pass, not a failure.
+**Why the tab half matters:** the most expensive mistake a human makes
+with a fleet is typing the right prompt into the wrong window — and every tab in a repo looks
+identical, because they all show the same directory and the same rotating status text.
 
-   **Why the tab half matters:** the most expensive mistake a human makes
-   with a fleet is typing the right prompt into the wrong window — and every tab in a repo looks
-   identical, because they all show the same directory and the same rotating status text.
+**Find your own tab by its tty. Never by `front window`** — that is whichever window has
+focus, which for any station but the one the human is looking at is *somebody else's tab*, and
+mislabelling another station's window is worse than not labelling your own.
 
-   **Find your own tab by its tty. Never by `front window`** — that is whichever window has
-   focus, which for any station but the one the human is looking at is *somebody else's tab*, and
-   mislabelling another station's window is worse than not labelling your own.
+The Bash tool has no tty of its own (`tty` returns *not a tty*), but the `claude` process
+above it does — walk up the parents until one has a real tty.
 
-   The Bash tool has no tty of its own (`tty` returns *not a tty*), but the `claude` process
-   above it does — walk up the parents until one has a real tty.
+**The script ships with this skill — do not paste it inline.** A worktree-isolated session
+refuses a pasted multi-line block (`$$`, loops and heredocs all trip the static-verification
+guard; see the shape rule above). Running a file is one plain command:
 
-   **The script ships with this skill — do not paste it inline.** A worktree-isolated session
-   refuses a pasted multi-line block (`$$`, loops and heredocs all trip the static-verification
-   guard; see the shape rule above). Running a file is one plain command:
+```bash
+bash <skill-dir>/label-tab.sh INTEGRATIONS
+```
 
-   ```bash
-   bash <skill-dir>/label-tab.sh INTEGRATIONS
-   ```
+It finds its own tab by tty, aborts loudly if the tty walk yields nothing, and reads the title
+back so a silent no-op cannot pass as success. Prints `<tty> -> INTEGRATIONS`, or `NO-MATCH`.
 
-   It finds its own tab by tty, aborts loudly if the tty walk yields nothing, and reads the title
-   back so a silent no-op cannot pass as success. Prints `<tty> -> INTEGRATIONS`, or `NO-MATCH`.
+**Verified 2026-08-17**, both halves. The tty walk resolved `/dev/ttys000` through
+`zsh → claude → login`, and the tab matched on it regardless of which window was frontmost.
+Terminal.app's `custom title` **overrides** the title Claude Code writes: the window went
+from `acme-shop — ✳ Initiate mission control — caffeinate • claude` to
+`acme-shop — CONTROL — node ◂ claude`. The tab bar shows just the call-sign.
 
-   **Verified 2026-08-17**, both halves. The tty walk resolved `/dev/ttys000` through
-   `zsh → claude → login`, and the tab matched on it regardless of which window was frontmost.
-   Terminal.app's `custom title` **overrides** the title Claude Code writes: the window went
-   from `acme-shop — ✳ Initiate mission control — caffeinate • claude` to
-   `acme-shop — CONTROL — node ◂ claude`. The tab bar shows just the call-sign.
+**Whether it holds is decided at launch, and this note has been wrong in both directions.**
+The 2026-08-17 note read *"survives its constant status updates"* — measured inside one turn
+only. Re-measured 2026-08-18 across turn boundaries, it did not hold: Claude Code takes the
+title back with its own glyph and summary every time the session's status changes. Measured a
+third time 2026-08-22, at the level of the individual writes, and the earlier notes had been
+arguing about the wrong thing: **what Claude Code writes there depends on how it was
+launched.** Plain `claude` writes `✳ Claude Code` and then the turn summary — seven writes in
+one turn, and our label is under all of them. `claude --name FOO` writes `<glyph> FOO` every
+single time and the summary never appears. Same overwriting, opposite outcome.
 
-   **Whether it holds is decided at launch, and this note has been wrong in both directions.**
-   The 2026-08-17 note read *"survives its constant status updates"* — measured inside one turn
-   only. Re-measured 2026-08-18 across turn boundaries, it did not hold: Claude Code takes the
-   title back with its own glyph and summary every time the session's status changes. Measured a
-   third time 2026-08-22, at the level of the individual writes, and the earlier notes had been
-   arguing about the wrong thing: **what Claude Code writes there depends on how it was
-   launched.** Plain `claude` writes `✳ Claude Code` and then the turn summary — seven writes in
-   one turn, and our label is under all of them. `claude --name FOO` writes `<glyph> FOO` every
-   single time and the summary never appears. Same overwriting, opposite outcome.
+**So on a station `deploy` spawned, the tab was never actually broken** — `--name` had been
+holding it since launch, and this skill had been calling that unverified. On a plain `claude`
+session nothing this script does survives, because the overwriting is not a bug to out-race.
 
-   **So on a station `deploy` spawned, the tab was never actually broken** — `--name` had been
-   holding it since launch, and this skill had been calling that unverified. On a plain `claude`
-   session nothing this script does survives, because the overwriting is not a bug to out-race.
+**`label-tab.sh` tells you which case you are in** — it reads this session's own argv and env
+and prints `persists: YES`, `persists: YES (as <handle>)`, or `persists: NO`. On a `persists:
+NO` session, treat the label as a convenience that lapses and put nothing load-bearing on it.
+**Never report a tab as labelled without that line agreeing.**
 
-   **`label-tab.sh` tells you which case you are in** — it reads this session's own argv and env
-   and prints `persists: YES`, `persists: YES (as <handle>)`, or `persists: NO`. On a `persists:
-   NO` session, treat the label as a convenience that lapses and put nothing load-bearing on it.
-   **Never report a tab as labelled without that line agreeing.**
+**A "you are already there" result can be a false success.** `EnterWorktree` refusing with
+*already the current working directory* may mean an earlier `cd` moved the shell rather than
+that the session is bound to the worktree — **it reads as a harmless no-op and is not one.**
+Compare before moving, and check what actually changed rather than trusting the refusal. This
+step has silently failed three times on one board.
 
-   **A "you are already there" result can be a false success.** `EnterWorktree` refusing with
-   *already the current working directory* may mean an earlier `cd` moved the shell rather than
-   that the session is bound to the worktree — **it reads as a harmless no-op and is not one.**
-   Compare before moving, and check what actually changed rather than trusting the refusal. This
-   step has silently failed three times on one board.
+**This works on a session that is ALREADY RUNNING** — no restart, no lost state. **But the
+tab title is Claude Code's field and it takes it back.** Measured 2026-08-18: the label holds
+while you work, and Claude Code overwrites it with its own status glyph and summary at every
+status change — which is every turn boundary. Re-running wins it back until the next one.
+**For the address peers actually see, use `set-callsign.sh` instead — that one is durable.**
 
-   **This works on a session that is ALREADY RUNNING** — no restart, no lost state. **But the
-   tab title is Claude Code's field and it takes it back.** Measured 2026-08-18: the label holds
-   while you work, and Claude Code overwrites it with its own status glyph and summary at every
-   status change — which is every turn boundary. Re-running wins it back until the next one.
-   **For the address peers actually see, use `set-callsign.sh` instead — that one is durable.**
+| Terminal | How |
+|---|---|
+| **macOS Terminal.app** | the `osascript` above — re-verified 2026-08-17, holds while the session works |
+| **iTerm2** | `tell current session of current window to set name to "<CALLSIGN>"` — **still untested**, nobody has run it |
+| **Anything else** | `printf '\033]0;%s\007' "<CALLSIGN>"` — works widely, but Claude Code writes that same `ESC]0;` field at every status change and will overwrite it. On a `--name` session it overwrites with the call-sign anyway, so there you need nothing here |
 
-   | Terminal | How |
-   |---|---|
-   | **macOS Terminal.app** | the `osascript` above — re-verified 2026-08-17, holds while the session works |
-   | **iTerm2** | `tell current session of current window to set name to "<CALLSIGN>"` — **still untested**, nobody has run it |
-   | **Anything else** | `printf '\033]0;%s\007' "<CALLSIGN>"` — works widely, but Claude Code writes that same `ESC]0;` field at every status change and will overwrite it. On a `--name` session it overwrites with the call-sign anyway, so there you need nothing here |
+Do this at identify and **do it again if you ever change call-sign.** A tab pinned to the
+wrong call-sign is worse than an unpinned one.
 
-   Do this at identify and **do it again if you ever change call-sign.** A tab pinned to the
-   wrong call-sign is worse than an unpinned one.
+**Then make it readable, which is a Terminal setting the script cannot reach.** Terminal
+builds a title out of parts — `<working directory> — <custom title> — <process> — <size>` —
+and `label-tab.sh` sets only the custom title. Seen on 2026-08-17: a correctly pinned station
+read `fleet-command — FRONTEND — caffeinate • claude --name FRONTEND /mc identify FRONTEND —
+269×58`. The call-sign was there and was the least visible thing in the line.
 
-   **Then make it readable, which is a Terminal setting the script cannot reach.** Terminal
-   builds a title out of parts — `<working directory> — <custom title> — <process> — <size>` —
-   and `label-tab.sh` sets only the custom title. Seen on 2026-08-17: a correctly pinned station
-   read `fleet-command — FRONTEND — caffeinate • claude --name FRONTEND /mc identify FRONTEND —
-   269×58`. The call-sign was there and was the least visible thing in the line.
+**Tell the user once:** *Terminal → Settings → Profiles → Window → Title*, and untick
+*Working directory*, *Shell command name*, *Active process name*, *Active process argument*,
+*TTY name* and *Window size*. The tab then reads `FRONTEND` and nothing else.
 
-   **Tell the user once:** *Terminal → Settings → Profiles → Window → Title*, and untick
-   *Working directory*, *Shell command name*, *Active process name*, *Active process argument*,
-   *TTY name* and *Window size*. The tab then reads `FRONTEND` and nothing else.
+**Setting the tab's custom title covers both places** — the tab in the tab bar, and the
+window title bar while that tab is selected. One call, both. The tab is the one that matters
+more, because choosing between tabs is when a prompt goes to the wrong station.
 
-   **Setting the tab's custom title covers both places** — the tab in the tab bar, and the
-   window title bar while that tab is selected. One call, both. The tab is the one that matters
-   more, because choosing between tabs is when a prompt goes to the wrong station.
-
-   **What it showed, and what it did not:** the tty walk works and the title holds while the
-   session runs — but **Claude Code writes that same field**, so *"overrides Claude Code"* is
-   more than was measured. **If a tab ever shows the wrong call-sign, run the script again**
-   rather than trusting it to have stuck.
+**What it showed, and what it did not:** the tty walk works and the title holds while the
+session runs — but **Claude Code writes that same field**, so *"overrides Claude Code"* is
+more than was measured. **If a tab ever shows the wrong call-sign, run the script again**
+rather than trusting it to have stuck.
 
 **A call-sign with no address on its row is reserved, not manned.** Say so in that state
 and never render it as working — a row that claims a holder it does not have makes free work
@@ -714,7 +743,7 @@ surfaces — **and they are not equally reliable, so do not report them as one r
    here is retired.** On a plain `claude` session, the same writes read `✳ Claude Code` and then
    the turn summary, so the label is gone the moment the turn ends and re-running only wins it
    back until the next one. There, **`/rename <CALLSIGN>` typed by the human is the only thing
-   that holds** (before and after, 2026-08-18, the table at step 6).
+   that holds** (before and after, 2026-08-18, the table in *Your two identity surfaces*).
 
 **Report those surfaces separately, and say which tab case you are in.** *"The call-sign is live
 as the address peers resolve; channels already open will keep showing my old handle; the tab
@@ -1116,7 +1145,7 @@ one of the two anybody has actually seen.
 tabs, a prompt meant for Frontend lands in Backend — and by the time anyone notices, Backend has
 done work nobody wanted, in a lane that does not own it. `@callsign` puts the target in the text
 instead of in whichever window had focus. **`@` makes misdirection recoverable. Nothing makes it
-unlikely for free** — on a plain `claude` session the tab label from identify step 6 lapses at the
+unlikely for free** — on a plain `claude` session the tab label from identify step 1 lapses at the
 next turn boundary, and an earlier note here called it *pinned*, which it is not. What persists
 there is `/rename` and `/color`, and **both need the human to type them**; a station cannot type
 into its own TUI. **On a station `deploy` spawned it is not free but it is already paid** —
@@ -1174,7 +1203,7 @@ call-sign in the first place.
 #### The bootstrap trap: a session cannot see itself
 
 **The fleet manifest never lists the session calling it.** So a station that came up unnamed cannot
-read its own address **from that tool**, and identify's step 4 — *write your `ListAgents` name onto
+read its own address **from that tool**, and identify's step 5 — *write your `ListAgents` name onto
 the row* — looks unsatisfiable alone.
 
 **It is not, and this was the expensive half of the trap.** The tool cannot show you yourself, but
@@ -1496,7 +1525,7 @@ everything a station needs on post. The rest loads only when the command in hand
 | `references/sweeps.md` | a change crosses areas several stations own | whoever runs the sweep |
 | `references/countermeasures.md` | something has already gone wrong | anyone, at the time |
 | `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost — the incidents, not the procedure | anyone, rarely |
-| `set-callsign.sh` | **step 6 of identify — every station runs it, always.** Makes the call-sign the address peers resolve | every station |
+| `set-callsign.sh` | **step 1 of identify — every station runs it, always, before the board.** Makes the call-sign the address peers resolve | every station |
 | `label-tab.sh` | called by the above — sets the tab title, and reads this session's own argv/env to report whether it will hold (`persists: YES/NO`) | every station |
 | `spawn-station.sh` | at deploy — opens the station's tab in **your own** window and verifies a session actually started in it | Control |
 
