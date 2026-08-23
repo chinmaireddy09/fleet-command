@@ -516,6 +516,30 @@ CFGJ
 fi
 
 echo
+echo "── 7c. the stack check belongs to the project, not to one stack ───"
+# Its defaults were ONE project's services -- db:5432, redis:6379, minio:9000 -- hardcoded into
+# a tool meant for anybody, and it died outright on any project without Docker. A health check
+# that fails because you are not containerised reads as a broken stack.
+NOPATH="$WORK/nopath"; mkdir -p "$NOPATH"
+O=$(PATH="$NOPATH:/usr/bin:/bin" bash "$D/preflight.sh" stack 2>&1); RC=$?
+chk "no docker is not a failure"            "$O" "does not appear to use containers"
+[ $RC -eq 0 ] && ok "and it exits clean (0)" || no "and it exits clean (0)" "exit $RC"
+chk "it still teaches the rule it exists for" "$O" "A SOCKET IS"
+cd "$REPO"                                   # a git repo with no compose file
+O=$(bash "$D/preflight.sh" stack 2>&1); RC=$?
+chk "no compose file is not a failure"      "$O" "declares no compose file"
+[ $RC -eq 0 ] && ok "that exits clean too"  || no "that exits clean too" "exit $RC"
+# COUNT ONLY CODE, NOT THE COMMENT THAT EXPLAINS THE REMOVAL. First version of this check
+# grepped the whole file and counted the service names inside the note saying why they are
+# gone -- the exact inverted check this repo catalogued hours earlier: a count cannot tell
+# live code from a comment documenting its own removal.
+HARDCODED=$(grep -v '^[[:space:]]*#' "$D/preflight.sh" | grep -c 'minio:9000\|redis:6379\|db:5432')
+[ "$HARDCODED" = "0" ] && ok "no project's own services are hardcoded" \
+  || no "no project's own services are hardcoded" "$HARDCODED in executable lines"
+[ "$(grep -v '^[[:space:]]*#' "$D/preflight.sh" | grep -c MC_STACK_TARGETS)" -ge 1 ] \
+  && ok "targets are overridable by env" || no "targets are overridable by env" "no MC_STACK_TARGETS in code"
+
+echo
 echo "── 8. the other three skills: two roots, not one ──────────────────"
 # THE ONLY AUTOMATED COVERAGE work-lock, status-and-backlog and progress-and-log have.
 # Everything else in them is prose. This is the part that is CODE, and it is where the

@@ -17,8 +17,29 @@ ok()  { echo "  ok   $*"; }
 bad() { echo "  FAIL $*"; FAILED=1; }
 FAILED=0
 
+# WHICH SERVICES THIS PROJECT ACTUALLY HAS IS THE PROJECT'S TO SAY, NOT THIS SCRIPT'S.
+# The defaults below were one project's stack -- db:5432, redis:6379, minio:9000 -- hardcoded
+# into a tool meant for anybody, so every other project got a health check for services it does
+# not run and never will. Set MC_STACK_TARGETS, or pass them as arguments:
+#   MC_STACK_TARGETS="postgres:5432 rabbit:5672" preflight.sh stack
+#   preflight.sh stack api:8080 cache:11211
+# With neither, the services are read from `docker compose ps` itself -- what is actually
+# declared here -- and the check probes those rather than a list somebody else needed.
 check_stack() {
-  command -v docker >/dev/null || die "no docker binary"
+  # NOT EVERY PROJECT IS CONTAINERISED, and a check that dies on that is a check that reads as
+  # a broken stack. Say plainly that there is nothing of this kind to inspect, and exit clean:
+  # "no shared services" is a valid, healthy answer, not a failure.
+  if ! command -v docker >/dev/null; then
+    echo "stack: no docker binary on PATH -- this project does not appear to use containers."
+    echo "       Nothing to check. If it has shared services of another kind, check them by hand"
+    echo "       and remember the rule this exists for: a STATUS COLUMN IS A CLAIM, A SOCKET IS"
+    echo "       EVIDENCE. Probe the port; do not read a dashboard."
+    return 0
+  fi
+  if [ ! -f docker-compose.yml ] && [ ! -f docker-compose.yaml ] && [ ! -f compose.yml ] && [ ! -f compose.yaml ]; then
+    echo "stack: docker is installed but this repository declares no compose file -- nothing to check."
+    return 0
+  fi
   docker info >/dev/null 2>&1 || die "docker daemon unreachable -- the socket is absent, not sick. 'open -a Docker' on macOS"
   echo "docker daemon: $(docker info --format '{{.ServerVersion}}')"
 
@@ -35,7 +56,24 @@ check_stack() {
   probe_from=$(docker compose ps --services --filter status=running 2>/dev/null | head -1)
   [ -z "$probe_from" ] && die "nothing running to probe from"
   echo "reachability, probed from inside the network (not read off a column):"
-  local targets=("$@"); [ ${#targets[@]} -eq 0 ] && targets=(db:5432 redis:6379 minio:9000)
+  # Arguments win; then the environment; then THIS project's own declared services. Never a
+  # hardcoded list -- see the note on check_stack above.
+  local targets=("$@")
+  if [ ${#targets[@]} -eq 0 ] && [ -n "${MC_STACK_TARGETS:-}" ]; then
+    read -r -a targets <<< "$MC_STACK_TARGETS"
+  fi
+  if [ ${#targets[@]} -eq 0 ]; then
+    local svc
+    while read -r svc; do
+      [ -z "$svc" ] && continue
+      local port
+      port=$(docker compose port "$svc" 2>/dev/null | head -1 | sed -E 's/.*:([0-9]+)$/\1/')
+      [ -n "$port" ] && targets+=("$svc:$port")
+    done < <(docker compose ps --services 2>/dev/null)
+  fi
+  if [ ${#targets[@]} -eq 0 ]; then
+    echo "  (no service ports discovered -- pass them: preflight.sh stack <host:port> ...)"
+  fi
   for target in "${targets[@]}"; do
     local host=${target%%:*} port=${target##*:}
     if docker compose exec -T "$probe_from" sh -lc "timeout 4 bash -c '</dev/tcp/$host/$port'" >/dev/null 2>&1; then

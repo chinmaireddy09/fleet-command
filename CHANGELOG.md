@@ -9,6 +9,46 @@ repo as a whole.
 
 ---
 
+## 6.68.0 — 2026-08-23
+
+**One project's stack was baked into a tool meant for anybody.** `preflight.sh stack` probed
+`db:5432`, `redis:6379` and `minio:9000` by default — the author's own services — so every other
+project got a health check for things it does not run and never will. Worse, it **died outright**
+on any project without Docker: `FAIL: no docker binary`. **A check that fails because you are not
+containerised reads as a broken stack**, which is the opposite of what it is for.
+
+Now: **arguments win, then `MC_STACK_TARGETS`, then this project's own declared compose
+services** — read from `docker compose ps`, never a list somebody else needed. No Docker, or no
+compose file, is reported as *"nothing of this kind to check"* and **exits 0**, because *no shared
+services* is a valid healthy answer. It still states the rule it exists for on the way out — **a
+status column is a claim, a socket is evidence** — so a project checking by hand gets the reason,
+not just a shrug.
+
+**The go/no-go recipe presented one stack as the procedure.** Docker Compose, a database per
+station, `npx vitest`. The *principles* are universal — the files under test and any mutable state
+must be private to the station — and the recipe was one way of achieving them. Now the two rules
+come first as a table, the container form is labelled as **one worked example**, and the
+non-containerised form is given: run from inside your own worktree, which makes the files private
+for free, and isolate state with whatever your stack has. **A worktree already isolates the files;
+the state is the half people forget.** With no shared mutable state there is nothing to isolate but
+the files — *do not invent a container to satisfy a table.*
+
+Two smaller ones from the same sweep: the standing order now says *never stop a shared service
+others are using*, with `docker compose down` as the usual way that happens rather than the only
+one; and a narrative line reading *"three of today's four"* now reads *"three of one fleet's
+four"*, because this file is read by people who were not there.
+
+**And the test written to enforce this fell into the trap catalogued the same day.** It ran
+`grep -c 'minio:9000\|redis:6379'` over the whole file and counted the hits inside the comment
+*explaining why those defaults are gone* — **a count cannot tell live code from a comment
+documenting its own removal.** It now greps executable lines only. The rule was three releases
+old and still caught its own author.
+
+`test/e2e.sh` 122 → **129**, covering both degradation paths and asserting no project's services
+are hardcoded.
+
+---
+
 ## 6.67.0 — 2026-08-23
 
 **Three identity checks ran on the author's machine and silently vanished everywhere else.** They

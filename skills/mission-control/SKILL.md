@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.67.0
+version: 6.68.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -39,7 +39,8 @@ wrong term.
 **Only run when asked** — `/mission-control` or `/mc`. Never on the bare words "control",
 "status", "go", or "abort" in ordinary conversation.
 
-**Never destroy another station's work.** No `docker compose down`. No `git stash pop`/`drop`
+**Never destroy another station's work.** Never stop a shared service others are using
+(`docker compose down` is the usual way this happens). No `git stash pop`/`drop`
 on a stash you did not create *and verify*. No `git add -A`. No `git checkout --`. No
 force-push. Never push a commit you did not write.
 
@@ -1368,7 +1369,8 @@ silently, and the failure it produces — filing a risk that was resolved while 
 is worse than the traffic you saved. See *Coming back* under radio silence.
 
 **And the biggest saving is structural: do not deploy a station that cannot work right now.**
-Three of today's four had nothing to gate because Docker was down — they still cost check-ins,
+Three of one fleet's four had nothing to gate because the shared services were down (Docker, in
+that case) — they still cost check-ins,
 radio checks, board rows and coordination. **Station count should track gateable work, not
 ambition.** Nothing caps how many stations may exist, and that is exactly why the discipline
 has to come from the work: every station added is another row read, another broadcast delivered
@@ -2353,20 +2355,35 @@ and say so out loud when rigour and the ask diverge.**
 
 ## Go / no-go — `/mission-control go`
 
-Run the tests **on this station's own database**, so no other station waits.
+**Two things must be private to the station, whatever your stack is:**
+
+| What | Why | If it is shared |
+|---|---|---|
+| **the files under test** | another station switching branches changes them mid-run | your gate measures a tree that no longer exists |
+| **any mutable state the tests write** — a database, a cache, a temp directory, a port | two runs collide | both results are noise, and the failures look real |
+
+**Take the actual command from this project's own rules (Step 0).** The shapes below are
+illustrations of the two rules above, not a stack this skill assumes you have.
+
+*Containerised, with a database — one worked example:*
 
 ```bash
 ROOT=$(git rev-parse --show-toplevel); STATION=<name>
 WT="$ROOT/.claude/worktrees/$STATION"
 docker compose run --rm --entrypoint "" \
-  -v "$WT":/app \
-  -e DB_NAME=<db_prefix>_$STATION \
+  -v "$WT":/app \                              # this station's OWN files
+  -e DB_NAME=<db_prefix>_$STATION \            # this station's OWN database
   <test_service> bash -lc "<install cmd> && <test cmd>" > /tmp/tests-$STATION.txt 2>&1
 ```
 
-Both flags matter. `-v` means this station tests **its own files**, so another station
-switching branches cannot change them mid-run. `-e DB_NAME` gives it **its own database**. Use
-both, or stations collide. Take the exact service and commands from the project's rules.
+*No containers — the same two rules, and usually simpler:* run the suite **from inside the
+station's own worktree**, which makes the files private for free, and give it its own state
+through whatever your stack uses — `PGDATABASE`, `--test-tmpdir`, a per-station port, a scratch
+directory. **A worktree already isolates the files; the state is the half people forget.**
+
+**If the project genuinely has no shared mutable state, there is nothing to isolate but the
+files, and running in your own worktree is the whole procedure.** Do not invent a container to
+satisfy a table.
 
 **Before starting:** services healthy; nobody else running tests (ask if unsure); **nobody
 edits code while a run is going.**
@@ -2515,8 +2532,9 @@ that is standing order 10 wearing a different hat, and gates are where it does t
 **Require a positive assertion: the `N passed` count.** Not a zero exit code, not an empty
 failure list, not a clean name diff. **All three have agreed a lane was green while not one test executed** — the exit code belonged
 to `tail`, a startup error emits no FAIL lines, and the name diff therefore returned `0 new,
-0 fixed`. **Capture the status of the command you care about immediately** — `npx vitest run >
-log 2>&1; RC=$?` before anything else touches `$?` — **then read the count.** A gate with no
+0 fixed`. **Capture the status of the command you care about immediately** — `<test cmd> > log 2>&1; RC=$?`
+before anything else touches `$?` (measured with `npx vitest run`, and true of every runner that
+has an exit code) — **then read the count.** A gate with no
 test count is not a gate result, whatever colour it reports. `references/field-notes.md` §2.
 
 **Reading it.** If the project keeps a list of already-known failures, compare the **names**,
