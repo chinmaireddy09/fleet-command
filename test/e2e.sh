@@ -180,14 +180,33 @@ chk "print path yields a paste-able launch line" \
     "$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --print 2>&1)" \
     "claude --name 'BACKEND' '/mc identify BACKEND'"
 
-# THE ANTI-PUPPETRY ASSERTION. Not a behaviour test -- a source test, and deliberately
-# so: every field failure this rewrite answers came from synthesising a keypress, and
-# the cheapest way for that to come back is somebody restoring the tab recipe. Comments
-# and printed prose may say the words; no executable line may.
-SRC=$(grep -vE '^\s*#' "$D/spawn-station.sh" | grep -vE '^\s*echo|^\s*cat <<|^[A-Z ]+·' || true)
+# THE ANTI-PUPPETRY ASSERTION, AND ITS BOUNDARY. A source test on purpose: every field
+# failure this rewrite answers came from SYNTHESISING A KEYPRESS, and the cheapest way
+# for that to return is somebody restoring the old tab recipe.
+#
+# The invariant is "no synthesised keystroke", NOT "never touch System Events" -- and the
+# difference is load-bearing now that tab mode exists. A CHORD is what failed: `keystroke
+# "t" using command down` can lose its modifier, and the bare `t` then reaches the shell
+# (`tcd /path`, 2026-08-17). Clicking a NAMED MENU ITEM sends no chord, cannot half-fire,
+# and is addressed to Terminal's own menu bar rather than to whatever holds focus.
+#
+# So: keystroke synthesis is banned outright; a named menu click is allowed and is
+# asserted to be the only System Events call present. Widening this to ban System Events
+# entirely would have been easier to write and would have banned the safe thing along
+# with the dangerous one.
+SRC=$(grep -vE '^\s*#|^\s*--' "$D/spawn-station.sh" | grep -vE '^\s*echo|^\s*cat <<|^[A-Z ]+·' || true)
 case "$SRC" in
-  *"keystroke"*|*"System Events"*) no "no keystroke is ever synthesised" "an executable line still synthesises keys" ;;
+  *"keystroke"*|*"key code"*|*"key down"*) no "no keystroke is ever synthesised" "an executable line still synthesises keys" ;;
   *) ok "no keystroke is ever synthesised" ;;
+esac
+# ...and if System Events is used at all, it may only be to click a named menu item.
+case "$SRC" in
+  *"System Events"*)
+    case "$SRC" in
+      *"click target"*|*"click menu item"*) ok "System Events is used only to click a named menu item" ;;
+      *) no "System Events is used only to click a named menu item" "System Events used for something other than a menu click" ;;
+    esac ;;
+  *) ok "System Events is used only to click a named menu item" ;;
 esac
 
 O=$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
@@ -263,6 +282,59 @@ O=$(MC_CONFIG="$CFGD/bad.json" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEN
 chk "an unreadable config is a preference nobody expressed" "$O" "started as a background agent"
 O=$(MC_CONFIG="$CFGD/nothing-here.json" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
 chk "a missing config is not an error"     "$O" "started as a background agent"
+
+echo "── 5f. tab mode, and the setting that selects it ──────────────────"
+# tab mode is the one recipe that touches the UI, so its BOUNDARY is what gets pinned:
+# a named menu click, never a chord, and a fallback whenever it cannot finish.
+SRC=$(cat "$D/spawn-station.sh")
+case "$SRC" in
+  *'is "New Tab"'*) ok "the New Tab item is addressed BY NAME" ;;
+  *) no "the New Tab item is addressed BY NAME" "not found" ;;
+esac
+# Index 1 of the Shell menu is "New Window". The first version of tab mode used it and
+# clicked "New Window with Profile" -- producing precisely the window tab mode exists to
+# avoid, while reporting success. Caught 2026-08-24 by reading back WHICH item was
+# clicked rather than trusting that a click had happened.
+case "$SRC" in
+  *'menu 1 of menu item 1 of menu 1 of menu bar item "Shell"'*)
+    no "it does not click Shell menu item 1 (that is New Window)" "index-1 path is back" ;;
+  *) ok "it does not click Shell menu item 1 (that is New Window)" ;;
+esac
+# The command must go to the tab proven new, never to "selected tab" -- the reference
+# that let three launch commands interleave into Control's own prompt.
+case "$SRC" in
+  *"do script \"__CMD__\" in theTab"*) ok "the command targets the tab found by tty diff" ;;
+  *) no "the command targets the tab found by tty diff" "not found" ;;
+esac
+# Comments are STRIPPED for this one. The prose above the recipe explains at length what
+# `selected tab of window id N` did wrong, so a test that greps the raw file finds the
+# warning and reports it as the defect -- which it did on first run. The rule is about
+# executable lines, so the check has to look at executable lines.
+CODE=$(grep -vE '^\s*#|^\s*--' "$D/spawn-station.sh" || true)
+case "$CODE" in
+  *"selected tab of window id"*) no "selected tab is never written to again" "selected tab reference is back" ;;
+  *) ok "selected tab is never written to again" ;;
+esac
+# Missing Accessibility must degrade, not fail: the grant is real and not everyone has it.
+case "$SRC" in
+  *"NOACCESS"*) ok "a missing Accessibility grant falls back rather than failing" ;;
+  *) no "a missing Accessibility grant falls back rather than failing" "no NOACCESS branch" ;;
+esac
+
+# The mode can be selected from Claude Code's own settings.json via env.
+O=$(MC_CONFIG=/nonexistent MC_SPAWN_MODE=print bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)
+chk "MC_SPAWN_MODE selects the mode"        "$O" "open a terminal and paste this"
+O=$(MC_CONFIG=/nonexistent MC_SPAWN_MODE=print bash "$D/spawn-station.sh" B "$REPO" B --background --deploy 2>&1)
+chk "an explicit flag still beats the env"  "$O" "started as a background agent"
+# A junk value must be reported, not silently treated as a choice.
+O=$(MC_CONFIG=/nonexistent MC_SPAWN_MODE=sideways bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)
+chk "a junk MC_SPAWN_MODE is reported"      "$O" "is not one of tab|window|background|print"
+chk "and it falls back to the default"      "$O" "started as a background agent"
+# The recorded preference file must accept tab too, or the two surfaces disagree.
+PT="$WORK/tabpref.json"
+MC_CONFIG="$PT" bash "$D/spawn-pref.sh" set tab >/dev/null 2>&1
+chk "tab is a recordable preference"        "$(MC_CONFIG="$PT" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: tab"
+chk "and mc-config offers it"               "$(MC_CONFIG="$PT" bash "$D/mc-config.sh" keys 2>&1)" "background | window | tab"
 
 echo "── 5c. the scope rule: automation only under an explicit deploy ───"
 # The spawn automation exists for ONE job -- open a station and get it identified -- and

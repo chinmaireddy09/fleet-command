@@ -62,7 +62,7 @@ def one_of(*opts):
 CALLSIGN=(lambda v: bool(re.fullmatch(r"[A-Za-z0-9 ._/&-]{1,64}", v)),
           "letters, digits, spaces and . _ / & - only")
 SPEC={
- "spawn.mode":           (one_of("background","window")[0], "background | window",
+ "spawn.mode":           (one_of("background","window","tab")[0], "background | window | tab",
                           "nobody has been asked yet -- the next deploy asks and records it"),
  "spawn.launchCommand":  (lambda v: bool(re.fullmatch(r"[A-Za-z0-9._/-]{1,64}", v)),
                           "a bare binary name, e.g. claude",

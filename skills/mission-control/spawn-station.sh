@@ -65,7 +65,8 @@ MODE=""; ARGS=""; DEPLOY=""
 for a in "$@"; do
   case "$a" in
     --print)      MODE="print" ;;
-    --window|--tab) MODE="window" ;;
+    --window)     MODE="window" ;;
+    --tab)        MODE="tab" ;;
     --background|--bg) MODE="background" ;;
     # The authorisation, stated at the call site. See THE RULE above.
     --deploy)     DEPLOY=1 ;;
@@ -139,7 +140,7 @@ try: d=json.load(open(sys.argv[1]))
 except Exception: sys.exit(0)
 s=d.get("spawn") or {}
 m=s.get("mode")
-if m in ("background","window","print"): print('CFG_MODE=%s'%m)
+if m in ("background","window","tab","print"): print('CFG_MODE=%s'%m)
 lc=s.get("launchCommand")
 # A launch command out of a config file reaches a command line. Bare binary only --
 # the same allowlist reasoning as the call-sign, applied to the other free-form input.
@@ -149,10 +150,22 @@ PY
 fi
 [ -n "$LAUNCH" ] || LAUNCH="claude"
 # Precedence: explicit flag > recorded preference > background.
+# MC_SPAWN_MODE comes from Claude Code's own settings:
+#     ~/.claude/settings.json  ->  { "env": { "MC_SPAWN_MODE": "tab" } }
+# `env` is injected into every Claude Code session, so a plain shell script can read it
+# and the user changes it wherever they already change Claude settings. That is why it
+# outranks this skill's own file: one place to look beats two that can disagree.
+ENV_MODE=""
+case "${MC_SPAWN_MODE:-}" in
+  tab|window|background|print) ENV_MODE="$MC_SPAWN_MODE" ;;
+  "") ;;
+  *) echo "NOTE: MC_SPAWN_MODE=\"$MC_SPAWN_MODE\" is not one of tab|window|background|print — ignoring it." >&2 ;;
+esac
+
 UNRECORDED=""
 if [ -z "$MODE" ]; then
-  MODE="${CFG_MODE:-background}"
-  [ -n "$CFG_MODE" ] || UNRECORDED=1
+  MODE="${ENV_MODE:-${CFG_MODE:-background}}"
+  [ -n "$ENV_MODE" ] || [ -n "$CFG_MODE" ] || UNRECORDED=1
 fi
 
 
@@ -393,6 +406,189 @@ fi
 #    Say WINDOW, plainly: a window when someone pictured a tab is not a silent detail.
 if [ "$(uname -s)" = "Darwin" ] && [ "${TERM_PROGRAM:-}" = "Apple_Terminal" ] && command -v osascript >/dev/null 2>&1; then
   as_lit() { local v="$1"; v=${v//\\/\\\\}; v=${v//\"/\\\"}; printf '%s' "$v"; }
+  # ---- TAB MODE ---------------------------------------------------------------
+  # Terminal.app publishes no scriptable new-tab (measured four ways, 2026-08-24), so a
+  # native tab can only come from Terminal's own MENU. That is UI automation and it is
+  # named as such -- but it is NOT the Cmd-T path that corrupted three deploys, and the
+  # difference is exactly the two things that went wrong there:
+  #
+  #   THE MODIFIER RACE IS GONE. keystroke "t" using command down synthesises a CHORD,
+  #   and a chord can lose its modifier -- that is how a bare t reached the shell and a
+  #   station ran `tcd /path`. Clicking a menu item by name sends no chord at all.
+  #
+  #   THE "WHICH TAB" RACE IS GONE, and this is the one that did the damage. The old code
+  #   wrote to `selected tab of window id N`, a reference resolved against a tab Cmd-T may
+  #   not have finished creating -- which is how three launch commands ended up
+  #   interleaved in Control's own prompt. This snapshots every tty BEFORE the click and
+  #   waits for a tty that was not there before. The command goes to the tab we can PROVE
+  #   is new, or it goes nowhere.
+  #
+  # What remains, said plainly rather than buried: this needs the Accessibility grant, and
+  # the tab is born in whatever Terminal window is frontmost. We raise our own window
+  # first through Terminal's real API, so that is normally ours -- but a human switching
+  # windows mid-deploy can still land the tab elsewhere. Thanks to the tty diff that
+  # yields a correct station in an unexpected window, never a corrupted one. Every failure
+  # falls through to the window recipe; nothing is left half done.
+  if [ "$MODE" = "tab" ]; then
+    p=$$; MYTTY=""
+    while [ "$p" -gt 1 ]; do
+      t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
+      if [ -n "$t" ] && [ "$t" != "??" ]; then MYTTY="/dev/$t"; break; fi
+      p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+    done
+    TAB_SRC=$(cat <<'ASEOF'
+on allTtys()
+  set acc to {}
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        try
+          set end of acc to (tty of t) as text
+        end try
+      end repeat
+    end repeat
+  end tell
+  return acc
+end allTtys
+
+on isIn(v, lst)
+  repeat with x in lst
+    if (x as text) is v then return true
+  end repeat
+  return false
+end isIn
+
+on tabWithTty(theTty)
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        try
+          if ((tty of t) as text) is theTty then return t
+        end try
+      end repeat
+    end repeat
+  end tell
+  return missing value
+end tabWithTty
+
+set myWin to 0
+tell application "Terminal"
+  repeat with w in windows
+    repeat with t in tabs of w
+      try
+        if ((tty of t) as text) is "__MYTTY__" then set myWin to (id of w)
+      end try
+    end repeat
+  end repeat
+end tell
+
+set beforeList to my allTtys()
+
+tell application "Terminal" to activate
+if myWin is not 0 then
+  try
+    tell application "Terminal" to set frontmost of window id myWin to true
+  end try
+end if
+delay 0.4
+
+-- Terminal own menu item. Located by name where possible and by position otherwise:
+-- the visible name carries the default profile and is localised, while item 1 of that
+-- submenu is the Cmd-T equivalent on every machine.
+try
+  tell application "System Events"
+    tell process "Terminal"
+      set shellMenu to menu 1 of menu bar item "Shell" of menu bar 1
+      -- "New Tab" IS ADDRESSED BY NAME, and the first version of this did not do that.
+      -- It used `menu item 1`, which is "New Window" -- the Shell menu lists New Window
+      -- above New Tab -- and then matched "Profile" inside THAT submenu, so it clicked
+      -- "New Window with Profile" and produced exactly the window tab mode exists to
+      -- avoid. Caught 2026-08-24 by reading back which item was clicked instead of
+      -- assuming the click did what it was for.
+      set tabItem to missing value
+      repeat with mi in menu items of shellMenu
+        try
+          if (name of mi) is "New Tab" then
+            set tabItem to mi
+            exit repeat
+          end if
+        end try
+      end repeat
+      if tabItem is missing value then return "NOTAB: no \"New Tab\" item in the Shell menu"
+      set sub to menu 1 of tabItem
+      set target to missing value
+      repeat with mi in menu items of sub
+        try
+          if (name of mi) contains "Profile" then
+            set target to mi
+            exit repeat
+          end if
+        end try
+      end repeat
+      if target is missing value then set target to menu item 1 of sub
+      click target
+    end tell
+  end tell
+on error errMsg number errNum
+  return "NOACCESS: " & errNum & " " & errMsg
+end try
+
+-- Wait for a tty that was not there before. THIS is what makes the new tab identifiable.
+set newTty to ""
+repeat 50 times
+  delay 0.1
+  repeat with c in (my allTtys())
+    if not (my isIn((c as text), beforeList)) then
+      set newTty to (c as text)
+      exit repeat
+    end if
+  end repeat
+  if newTty is not "" then exit repeat
+end repeat
+if newTty is "" then return "NOTAB: the menu item was clicked but no new tty appeared"
+
+set theTab to my tabWithTty(newTty)
+if theTab is missing value then return "NOTAB: the new tty vanished before it could be used"
+
+tell application "Terminal" to do script "__CMD__" in theTab
+
+delay 4
+set procs to ""
+try
+  tell application "Terminal" to set procs to (processes of theTab) as string
+end try
+if procs contains "claude" then
+  return "TABOK " & newTty
+else
+  return "FAILED: no claude process in the new tab (tty " & newTty & ")"
+end if
+ASEOF
+)
+    TAB_SRC=${TAB_SRC//__MYTTY__/$(as_lit "${MYTTY:-/dev/null}")}
+    TAB_SRC=${TAB_SRC//__CMD__/$(as_lit "$CMD")}
+    OUT=$(printf '%s' "$TAB_SRC" | osascript - 2>&1)
+    case "$OUT" in
+      TABOK*)
+        echo "TERMINAL TAB OPENED - $CALLSIGN - ${OUT#TABOK }"
+        echo "  Created through the Shell > New Tab menu item, and the command was written to"
+        echo "  the tab identified by a NEW tty. Never to selected tab, which is the reference"
+        echo "  that corrupted three deploys on 2026-08-23."
+        echo "NOT YET A STATION. Verify by the manifest or the board."
+        exit 0 ;;
+      NOACCESS*)
+        echo "TAB MODE NEEDS THE ACCESSIBILITY GRANT - falling back to a window."
+        echo "  $OUT"
+        echo "  System Settings > Privacy and Security > Accessibility > enable Terminal."
+        echo "  Terminal.app publishes no scriptable new-tab, so a tab can only come from its"
+        echo "  own menu, and clicking a menu is what that grant covers. Background mode needs"
+        echo "  no grant at all." ;;
+      NOTAB*|FAILED*)
+        echo "TAB MODE DID NOT COMPLETE - falling back to a window."
+        echo "  $OUT" ;;
+    esac
+  fi
+
+
   # Fed on STDIN rather than with -e, and that is not a style choice: the escaping
   # regression test captures what reaches osascript by reading its stdin. A recipe that
   # passes the script as an argv string is invisible to that instrument, so the test

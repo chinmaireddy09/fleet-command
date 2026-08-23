@@ -20,6 +20,10 @@
 # THE TWO MODES:
 #   background  no window at all. `claude --bg`. Works identically on every OS and in
 #               every IDE terminal, because no terminal is involved. THE DEFAULT.
+#   tab         a new TAB in the current terminal window. On Terminal.app this is the one
+#               mode that needs the Accessibility grant: Terminal publishes no scriptable
+#               new-tab, so the tab comes from its own Shell > New Tab menu item. No
+#               keystroke is synthesised, and it falls back to a window if it cannot.
 #   window      a visible window/tab, opened through the terminal's OWN published API
 #               (iTerm2 `create tab`, Terminal.app `do script`, tmux `new-window`,
 #               kitty, WezTerm, Windows Terminal). Never a synthesised keystroke.
@@ -31,8 +35,8 @@ command -v python3 >/dev/null || { echo "SPAWN: unset   # python3 not found"; ex
 
 case "$ACTION" in
   read|reset) ;;
-  set) case "${2:-}" in background|window) ;; *) echo "usage: spawn-pref.sh set <background|window>" >&2; exit 2;; esac ;;
-  *) echo "usage: spawn-pref.sh [read|set <background|window>|reset]" >&2; exit 2 ;;
+  set) case "${2:-}" in background|window|tab) ;; *) echo "usage: spawn-pref.sh set <background|window|tab>" >&2; exit 2;; esac ;;
+  *) echo "usage: spawn-pref.sh [read|set <background|window|tab>|reset]" >&2; exit 2 ;;
 esac
 
 ACTION="$ACTION" MODE="${2:-}" CFG="$CFG" python3 <<'PY'
@@ -57,7 +61,7 @@ spawn = d.get("spawn") if isinstance(d.get("spawn"), dict) else {}
 
 if action == "read":
     m = spawn.get("mode")
-    if m in ("background", "window"):
+    if m in ("background", "window", "tab"):
         print(f"SPAWN: {m}   # recorded {spawn.get('date','?')}")
     else:
         # UNSET IS NOT background. They mean the same thing to a deploy that has to run

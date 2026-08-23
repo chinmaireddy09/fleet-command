@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.80.0
+version: 6.81.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a visible window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1261,6 +1261,39 @@ this file has hand-written prose in it that a careless write destroys.
 like `spawn.placement` from before 6.78.0. They are harmless where they sit, but a dead key that
 looks like live configuration is a question waiting to be asked, so it is labelled rather than
 silently ignored.
+
+**Three modes, and the choice lives in Claude Code's own settings.** `~/.claude/settings.json`:
+
+```json
+{ "env": { "MC_SPAWN_MODE": "tab" } }
+```
+
+`env` is injected into every session, so a shell script can read it and the user changes it
+where they already change Claude settings. It outranks `~/.claude/mission-control.json` —
+one place to look beats two that can disagree — and an explicit flag outranks both.
+
+| mode | what happens | needs |
+|---|---|---|
+| `background` | **the default.** No terminal at all. Works in every IDE and CLI | nothing |
+| `tab` | a new **tab** in the current Terminal window, already in its worktree and identified | Accessibility, on Terminal.app only |
+| `window` | a separate visible window | nothing on Terminal.app; a published API elsewhere |
+
+**`tab` is the one mode that touches the UI, and it says so.** Terminal.app publishes no
+scriptable new-tab (measured four ways), so the tab comes from Terminal's own **Shell → New
+Tab** menu item. That needs the Accessibility grant. It is **not** the ⌘T path that corrupted
+three deploys, and two specific things make it different:
+
+- **No chord.** `keystroke "t" using command down` can lose its modifier — that is how a bare
+  `t` reached the shell and a station ran `tcd /path`. A named menu click has no modifier.
+- **No "selected tab".** Every tty is snapshotted before the click; the command is written to
+  the tab carrying a tty that was **not there before**. The old code wrote to `selected tab of
+  window id N`, resolved against a tab ⌘T might not have finished creating — which is how three
+  launch commands interleaved into Control's own prompt.
+
+Verified 2026-08-24 end to end: accessibility window count unchanged before and after (so it
+joined as a tab, not a window), a live `claude` process confirmed in that exact tty, and the
+station registered as an addressable peer. **Any failure — no grant, no new tty, no process —
+falls back to a window and says which happened.**
 
 **Window mode is fully automated too, and never puppetry.** It uses each terminal's own published
 API — iTerm2 `create tab`, Terminal.app `do script`, `tmux new-window`, kitty, WezTerm, Windows
