@@ -173,6 +173,36 @@ mid-deploy breaks nothing.
 
 **macOS Terminal.app gives you a WINDOW, and you must say so.** Terminal.app publishes no
 scriptable new-tab; a tab requires the ⌘T keypress, which is the puppetry this rewrite removed.
+
+**Measured 2026-08-24, four ways, because "no scriptable new-tab" is the kind of claim people
+re-litigate.** Do not spend the hour again:
+
+| Attempt | Result |
+|---|---|
+| `make new tab at end of tabs of window 1` | `AppleEvent handler failed (-10000)` |
+| `make new tab` | `Can't make or move that element into that container (-10024)` |
+| `do script "…" in window 1` | ran in `tab 1 of window id 1166` — the **existing** tab, not a new one |
+| `open -a Terminal <file>.command` | a new window |
+| Terminal's own dictionary | `<element type="tab" access="r">` — tabs are **read-only** |
+
+**Native window tabbing does not rescue it either.** `AppleWindowTabbingMode=always` was set and
+`do script` still produced a standalone window. If somebody wants tabs in Terminal.app, the
+honest options are: **Window → Merge All Windows** by hand after a deploy, **tmux** (real tabs,
+fully scriptable, but its own status bar rather than native tabs), or **iTerm2** (which does
+publish `create tab`, and whose recipe is above).
+
+**And be careful which instrument you check any of this with.** Terminal's AppleScript CANNOT SEE
+native tabs: three tabs in one window report as three windows of one tab each — identical to
+three separate windows. Counting `windows` or `tabs of window` therefore cannot answer "did it
+tab?" at all. **System Events can**: a native tab group is one accessibility window. Measured
+2026-08-24 — Terminal reported `4` windows where System Events reported `2`. `test/check-native-tabs.sh`
+runs that measurement. This is the same blindness that cost four probes and a wrong conclusion on
+2026-08-17; it is very easy to walk back into.
+
+**Nothing here should ever close a terminal window.** `close window` shuts an entire TAB GROUP,
+and `history of selected tab` matches on whichever tab is selected — so a marker string in an
+unrelated session's scrollback can select a window full of live stations for closing. No script
+in this skill closes a terminal.
 `do script` is Terminal's own API and creates a window atomically. **A window when somebody
 pictured a tab is not a silent detail** — say which one they got. It also needs only the
 *Automation* grant, never *Accessibility*, because nothing is sending keystrokes any more.

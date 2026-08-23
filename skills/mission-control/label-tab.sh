@@ -124,4 +124,21 @@ else
   echo "          The human types  /rename $CALLSIGN  in this tab (measured to hold), or the"
   echo "          session is relaunched with  claude --name <HANDLE>  as /mc deploy does."
   echo "          Do NOT report this tab as labelled until one of those is true."
+  echo
+  echo "          AND /rename DOES NOT FIX THE @ HEADER. Two surfaces, two mechanisms, and"
+  echo "          offering one repair for both is how somebody concludes they have fixed an"
+  echo "          identity that is still wrong on every message they send:"
+  echo "            tab title  — rewritten at each status change. /rename holds it. FIXABLE HERE."
+  echo "            @ header   — the name this process cached AT STARTUP. There is one socket"
+  echo "                         per pid and no per-channel handshake, so nothing a running"
+  echo "                         session does can change what its messages are stamped with."
+  echo "                         Measured 2026-08-22: a channel opened AFTER a rename still"
+  echo "                         carried the pre-rename name. NOT FIXABLE HERE — only relaunch."
+  echo
+  echo "          So if the @ header is what is wrong, the answer is the LAUNCH, not a command:"
+  echo "            claude --name $CALLSIGN"
+  echo "          That is what /mc deploy does for stations, and it is why a deployed station"
+  echo "          has a correct header and a hand-started one does not."
+  echo "          Until then the protocol already carries the truth: every transmission opens"
+  echo "          \"CALLSIGN TO CALLSIGN\" — the body is the identity, the envelope is not."
 fi

@@ -98,6 +98,19 @@ chmod +x "$STUB/claude"
 export PATH="$STUB:$PATH"
 export STUB_CLAUDE_REG="$WORK/claude.registry"; : > "$STUB_CLAUDE_REG"
 
+# THE TESTER'S OWN PREFERENCES ARE NOT PART OF THE FIXTURE. spawn-station.sh reads
+# ~/.claude/mission-control.json for spawn.mode, so without this the suite's results
+# depend on what the person running it happens to have chosen -- and 6.79.0's own tests
+# went red on a machine whose real config said `window`, reporting a dozen failures in
+# background mode that had nothing to do with the code under test.
+#
+# That is the SAME defect this file's header already describes for the session registry:
+# "one that merely reads live state is flaky in a quieter way". It was fixed there by
+# building a fixture instead of borrowing one, and this is the same fix for the other
+# live file. MC_CONFIG points at a path that does not exist -- the state of a machine
+# nobody has been asked on -- and any test wanting a real config sets MC_CONFIG itself.
+export MC_CONFIG="$WORK/no-such-preferences.json"
+
 newrepo(){ local r; r=$(mktemp -d "$WORK/repo.XXXXXX"); cd "$r"
   git init -q; git config user.email t@example.com; git config user.name t
   mkdir -p docs; echo init > README.md; git add -A; git commit -qm init
