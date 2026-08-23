@@ -9,6 +9,33 @@ repo as a whole.
 
 ---
 
+## 6.65.0 — 2026-08-23
+
+**The first-run tour demonstrated a board anti-pattern, in the one step where somebody is learning
+what a row is.** Found by running it — its author took the tour on a real repo and watched step 2
+append a *second* `CONTROL` row beside the first, one reading *on watch* and one *trying the tour*.
+
+**A claim is a cell you update, not a line you add.** The board is one row per live station —
+who · what · where · status — and the task cell is the part that moves. The call-sign, address,
+branch and workspace are facts about *the station*; the task and status are facts about *what it is
+doing right now*. Step 2 now updates the existing row and says so in capitals, because the wrong
+version is the intuitive one.
+
+**Two rows for one call-sign is not a harmless duplicate — it is a shape that reads as
+meaningful.** It cost a coordinator real time earlier the same day: a duplicate turned out to be a
+live row beside a **retired provenance record**, and an outside reader advised merging them with
+line numbers and a rationale, which would have destroyed the thing the second row was kept for.
+**A tour that teaches "claiming means adding a line" teaches people to produce exactly that.**
+
+*Nothing found this but running it.* The suite covers the flag, the trigger and the config safety;
+the walkthrough is prose the model follows, and the only way to see it demonstrate the wrong thing
+was to watch it do so — which is the limit this changelog stated when the tour shipped, arriving
+one release later.
+
+Suite unchanged at **119**.
+
+---
+
 ## 6.64.0 — 2026-08-23
 
 **A first run that shows up once.** Typing `/mc` for the first time on a machine now offers a

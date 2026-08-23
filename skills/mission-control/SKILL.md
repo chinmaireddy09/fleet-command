@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.64.0
+version: 6.65.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2041,9 +2041,20 @@ is whether it touched their project without asking.
   Nothing is hidden and nothing is stored anywhere else.**
 
 **2/4 — Claim something.** Have them run `/mc checkin trying the tour`, or offer to run it for
-them. Then **show them the row you just wrote** — the actual line in the actual file. Point at
-their call-sign in it. The claim is the whole idea; a row they have seen with their own name on it
-is worth more than a paragraph explaining claims.
+them.
+
+**UPDATE THE TASK CELL ON THEIR EXISTING ROW. DO NOT ADD A SECOND ROW.** One row per live
+station — a row is *who · what · where · status*, and the task cell is the part that changes. A
+first draft of this tour appended a second `CONTROL` row beside the first, and **that is a board
+anti-pattern being demonstrated in the one step where somebody is learning what a row is.** Two
+rows for one call-sign is exactly the shape that cost a coordinator real time on 2026-08-23: it
+turned out to be a live row beside a retired provenance record, and an outside reader advised
+merging them, which would have destroyed the thing the second row was kept for. **A tour that
+teaches "claiming means adding a line" has taught them to produce that.**
+
+Then **show them the line you just changed** — the actual row in the actual file, before and
+after. Point at their call-sign in it, and at the cell that moved. The claim is the whole idea; a
+row they have seen with their own name on it is worth more than a paragraph explaining claims.
 
 **3/4 — A second session.** **Describe it, offer it, and do not do it unprompted.** Opening a
 terminal window on somebody's first run is a lot, and it is the one step with a side effect they
