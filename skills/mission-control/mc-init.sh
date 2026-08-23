@@ -281,6 +281,7 @@ emit_coordinator() {
 }
 
 # ── main ────────────────────────────────────────────────────────────────────
+HERE_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ "${1:-}" = "me" ]; then emit_me; exit 0; fi
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -346,6 +347,16 @@ if [ -n "$FETCH_REMOTE" ]; then
        #       POSSIBLY STALE remote-tracking refs. Fix the fetch before trusting them."
 fi
 [ -n "$FETCH_NOTE" ] && echo "FETCH: failed$FETCH_NOTE"
+
+# Has this person ever been walked through this? Read-only here -- the flag is only ever
+# WRITTEN by the walkthrough itself, at the point it finishes or is refused. Emitted from
+# the one command every /mc already runs, so the first run needs no new hook and the
+# skill keeps its promise to run only when invoked.
+if [ -f "$HERE_DIR/tour-state.sh" ]; then
+  bash "$HERE_DIR/tour-state.sh" read 2>/dev/null || echo "TOUR: unknown   # tour-state.sh failed"
+else
+  echo "TOUR: unknown   # tour-state.sh not found beside mc-init.sh"
+fi
 
 # The board is measured AT THE REF YOU WILL WRITE. Measured 2026-08-19: two
 # stations independently reported a 289 KB unreadable board while origin/main

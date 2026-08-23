@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.63.0
+version: 6.64.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2002,7 +2002,80 @@ is what makes four sessions cost more than one doing the same work rather than t
 | `/mission-control go` | **Go / no-go** — run the tests, say plainly if it's safe |
 | `/mission-control alert <who> <what>` | **Alert a person** — reach a human collaborator by email, either to say *I am holding this* or to ask them to **take or help with** something nobody owns. GitHub sends the mail; `SendMessage` cannot and never could |
 | `/mission-control recover` | **Find lost work** — sweep for anything a dead station left |
+| `/mission-control tour` | **Replay the first run** — the 2-minute walkthrough, whenever you want it. Appears once on its own; this is how you get it back |
 | `/mission-control secure <station>` | **Stand down** — save the work, free the workspace, **take the row off the board and retire the call-sign** |
+
+---
+
+## Step 0a — first run: walk them through it once
+
+`mc-init.sh` prints a `TOUR:` line. **If it says `taken`, or anything other than `not taken`, skip
+this section entirely and never mention it.** If it says `not taken`, offer the walkthrough before
+doing anything else — including before the board report they asked for.
+
+**Offer it. Do not start it.**
+
+> First time here — want a 2-minute walkthrough? I'll do each step with you on this repo, and
+> ask before touching anything. Or say **skip** and I'll just show you the board.
+
+- **skip / not now / no** → run `tour-state.sh decline` and go straight to the board. **Never
+  offer again.** Someone who said no once should not be asked at every `/mc` — a first-run
+  prompt that keeps returning is not a tour, it is a nag.
+- **They stop replying, or change the subject midway** → record **nothing**. An abandoned tour is
+  not a refused one, and it will be offered again next time. Only a finished or a refused
+  walkthrough is settled.
+
+### The four steps
+
+Run them in order, narrating what you are doing and why. **Confirm before every write, naming the
+exact file and repo.** This is somebody's first minute with the tool and the impression that lasts
+is whether it touched their project without asking.
+
+**1/4 — Your board.** Run Step 1's discovery. Then:
+- **A board already exists** → **do not create anything.** Show them the real one, say where it
+  lives and how many rows it holds. *"You already have one — that's it, at `docs/WORK-LOCKS.md`."*
+  A tour that creates a second board beside a real one has taught them the exact thing this skill
+  exists to prevent.
+- **No board** → say what you would create and where, and ask. On yes, create it and say the one
+  thing that matters: **it is an ordinary file in their repo, committed and pushed like any other.
+  Nothing is hidden and nothing is stored anywhere else.**
+
+**2/4 — Claim something.** Have them run `/mc checkin trying the tour`, or offer to run it for
+them. Then **show them the row you just wrote** — the actual line in the actual file. Point at
+their call-sign in it. The claim is the whole idea; a row they have seen with their own name on it
+is worth more than a paragraph explaining claims.
+
+**3/4 — A second session.** **Describe it, offer it, and do not do it unprompted.** Opening a
+terminal window on somebody's first run is a lot, and it is the one step with a side effect they
+did not ask for.
+
+> `/mc deploy BACKEND` opens a second Claude session in its own tab, with its own copy of the
+> repo, already on the board. That's the point of the whole thing — two sessions that can see
+> what the other holds. Want me to open one now, or leave it for later?
+
+Only on an explicit yes. **On no, that is not a failed tour** — say the command and move on.
+
+**4/4 — Let it go.** Release the claim from 2/4, so they end where they started and have seen a
+full cycle: `/mc checkin` put a row on, this takes it off. Then tell them the two words worth
+knowing:
+
+- **`standdown`** — how a station ends its own watch: push, report, wait to be acknowledged, exit.
+- **`/mc`** on its own — the board, any time.
+
+**Do not end a first run by telling somebody to stand down.** They have just arrived. Standdown is
+how you *leave*, and putting it at the end of a tour reads as "and now close everything" — which
+is the opposite of what a first run should leave them with.
+
+### Finishing
+
+Run `tour-state.sh complete`. Then say plainly what just happened to their machine:
+
+> That won't appear again — I've noted it in `~/.claude/mission-control.json`, which lives with
+> your settings, not in this repo. `/mc tour` replays it any time.
+
+**Say where the flag went.** A tool that silently remembers something about a person is a tool
+they have to guess about later. One sentence removes the guessing, and it is the same sentence
+that tells them their teammates will still get their own first run.
 
 ---
 

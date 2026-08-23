@@ -28,6 +28,18 @@ themselves.
 
 ---
 
+## First run
+
+The first time you type `/mc` on a machine, it offers a two-minute walkthrough — it creates or
+finds your board, puts one real claim on it, shows you the row with your name in it, and takes it
+back off. **It asks before touching anything, and if you already have a board it will not create a
+second one.**
+
+Say **skip** and it goes straight to the board and never asks again. Take it and it never asks
+again either. The flag lives in `~/.claude/mission-control.json`, with your settings — **not in
+your repo**, so a teammate cloning your project still gets their own first run. `/mc tour` replays
+it whenever you want.
+
 ## Quick start
 
 1. **Install** — two `cp` commands, below. Thirty seconds.
@@ -341,7 +353,7 @@ bash test/e2e.sh                                    # this repo's copy
 bash test/e2e.sh ~/.claude/skills/mission-control   # what is installed
 ```
 
-108 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
+119 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
 every host, the input guards, renaming against a registry the test owns, the identity surfaces.
 **Every check executes something**; a syntax check is not a smoke test. Throwaway repos under
 `$TMPDIR`, removed on exit; it never touches your board, opens a terminal, relabels a tab, or

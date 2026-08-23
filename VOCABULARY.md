@@ -194,6 +194,30 @@ the only copy of a finding live in a GitHub issue.
 
 ---
 
+## The command verbs — the words you actually type
+
+The table in `SKILL.md` says what each command *does*. These are here because they are the words
+that turn up in a **transcript**, where nobody has the table open — and because three pairs of them
+are genuinely confusable.
+
+| Verb | What it means | Not to be confused with |
+|---|---|---|
+| **check in** | tell Control what you are **about to start**, before you start. The claim, not the report | *standdown*, which is the other end |
+| **standdown** | a station **ending its own watch**: push, report, **wait to be acknowledged**, then exit. The acknowledgement is part of it — leaving before it is not a standdown. Done rows are **archived**, never deleted | *secure* — standdown is reflexive, you do it to yourself |
+| **secure `<station>`** | what **Control does to** a station: save the work, free the workspace, take the row off the board, retire the call-sign | *standdown* — this one is issued, not chosen |
+| **board clear** | re-render the board from the ref, showing only live stations. **Archives done rows and never deletes a live one** | wiping the board. *"Clear the board"* never means that here |
+| **sitrep** | ask every live station where it is — **and correct the board where the answers disagree with it** | a status report. A sitrep that changes nothing was a conversation |
+| **silence / speak** | go heads-down and come back. Control holds non-urgent calls meanwhile. **Mayday still reaches you** | being unreachable. Silence is about interruptions, never safety |
+| **state** | set what the **whole fleet** is doing — *normal*, *sweep running*, *mayday* — so nobody has to infer it | a station's own status, which is its row |
+| **depends `<what>`** | who else touches this, and what must land before I start | a build-system dependency |
+| **recover** | sweep for work a **dead** station left behind | *countermeasures*, which is for a live mistake |
+| **countermeasures** | something went wrong: **announce it, then repair without deleting** | recover. This one is about a mistake, not a death |
+| **go / no-go** | run the tests and say plainly whether it is safe | permission to start. It is a statement about the tests |
+| **alert `<who>`** | reach a **human** by email — GitHub sends it. Messaging cannot and never could | calling a station, which is a machine |
+| **deploy `<station>`** | initiate the post **and man it** — open the session, identify it, verify it landed | ⚠️ **shipping to production.** Say *"ship to production"* for that, and never a bare *"deploy"* |
+
+---
+
 ## Words about where things live, and how a check can lie
 
 These are recent, and every one of them is here because getting it wrong cost something real.

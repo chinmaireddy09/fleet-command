@@ -453,6 +453,53 @@ chk "an unmatched tty is reported, not faked"   "$O" "NO-MATCH"
 [ $RC -eq 1 ] && ok "no matching tab is an error (exit 1)" || no "no matching tab is an error" "exit $RC"
 
 echo
+echo "── 7b. the first-run tour appears once, and only once ─────────────"
+# The flag lives in the USER'S OWN preferences file, so every check here runs under a
+# fake $HOME. A test that can write to ~/.claude/mission-control.json is a test that can
+# silently switch off somebody's first run -- or worse, truncate a hand-written config.
+TS="$D/tour-state.sh"
+if [ ! -f "$TS" ]; then
+  sk "first-run tour — tour-state.sh not present"
+else
+  TT="$WORK/tourhome"; mkdir -p "$TT/.claude"
+  REALCFG="$HOME/.claude/mission-control.json"
+  REALSUM=$(shasum -a 256 "$REALCFG" 2>/dev/null | cut -d' ' -f1)
+
+  chk "a fresh machine is offered the tour"  "$(HOME="$TT" bash "$TS" read)"     "not taken"
+  chk "completing it is recorded"            "$(HOME="$TT" bash "$TS" complete)" "completed"
+  chk "and it never offers again"            "$(HOME="$TT" bash "$TS" read)"     "TOUR: taken"
+  chk "reset puts it back"                   "$(HOME="$TT" bash "$TS" reset)"    "reset"
+  chk "declining is ALSO terminal"           "$(HOME="$TT" bash "$TS" decline; HOME="$TT" bash "$TS" read)" "TOUR: taken"
+
+  # A config is somebody's own file. The flag must be the ONLY thing that changes.
+  HOME="$TT" bash "$TS" reset >/dev/null
+  cat > "$TT/.claude/mission-control.json" <<'CFGJ'
+{ "_comment": "hand written, do not lose me", "spawn": { "terminal": "Apple_Terminal" } }
+CFGJ
+  HOME="$TT" bash "$TS" complete >/dev/null
+  O=$(python3 -c "import json;d=json.load(open('$TT/.claude/mission-control.json'));print(d.get('_comment',''),d.get('spawn',{}).get('terminal',''),'tour' in d)")
+  chk "existing preferences survive the write" "$O" "hand written, do not lose me Apple_Terminal True"
+
+  # An unparseable config is a file with something in it. Re-offering a tour is a smaller
+  # harm than truncating somebody's settings.
+  printf 'not json {{{' > "$TT/.claude/mission-control.json"
+  chk "an unreadable config is not overwritten" "$(HOME="$TT" bash "$TS" complete)" "could not be parsed"
+  chk "and its bytes are left alone"            "$(cat "$TT/.claude/mission-control.json")" "not json {{{"
+
+  # mc-init must SURFACE the flag -- the tour has no other trigger.
+  cd "$REPO"
+  rm -f "$TT/.claude/mission-control.json"
+  chk "mc-init surfaces the tour state"  "$(HOME="$TT" bash "$D/mc-init.sh" 2>&1)" "TOUR: not taken"
+  HOME="$TT" bash "$TS" complete >/dev/null
+  chk "and reports it taken once it is"  "$(HOME="$TT" bash "$D/mc-init.sh" 2>&1)" "TOUR: taken"
+
+  # THE POINT OF THE FAKE HOME.
+  NOWSUM=$(shasum -a 256 "$REALCFG" 2>/dev/null | cut -d' ' -f1)
+  [ "$REALSUM" = "$NOWSUM" ] && ok "the tester's own preferences were never touched" \
+    || no "the tester's own preferences were never touched" "$REALSUM -> $NOWSUM"
+fi
+
+echo
 echo "── 8. the other three skills: two roots, not one ──────────────────"
 # THE ONLY AUTOMATED COVERAGE work-lock, status-and-backlog and progress-and-log have.
 # Everything else in them is prose. This is the part that is CODE, and it is where the

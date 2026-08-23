@@ -9,6 +9,62 @@ repo as a whole.
 
 ---
 
+## 6.64.0 — 2026-08-23
+
+**A first run that shows up once.** Typing `/mc` for the first time on a machine now offers a
+two-minute walkthrough: find or create the board, put one real claim on it, look at the row with
+your own call-sign in it, take it back off. **It teaches by doing** — a row somebody has seen with
+their name on it is worth more than a paragraph explaining claims.
+
+**No new hook, and the skill keeps its promise to run only when invoked.** `mc-init.sh` already
+runs on every `/mc`, so it emits one read-only `TOUR:` line and the walkthrough rides the entry
+point that already exists.
+
+**Three outcomes, not two.** Completing it is terminal and declining it is *equally* terminal —
+**a first-run prompt that keeps returning is not a tour, it is a nag.** Abandoning it midway
+records nothing and it is offered again, because an abandoned tour is not a refused one. `/mc tour`
+replays it regardless. A `version` field lets a future rewrite re-offer once without anyone
+hand-editing a config.
+
+**The flag is per-machine, not per-repo**, in `~/.claude/mission-control.json` — the file whose own
+comment says a clone must never carry someone else's terminal choice. The walkthrough teaches *the
+tool*, not the project: you should not retake it in every checkout, and **a teammate cloning your
+repo still gets their own first run.** The skill is told to say out loud where the flag went,
+because a tool that silently remembers something about a person is one they have to guess about
+later.
+
+**It asks before every write, and never creates a second board.** If the repo already has one it
+shows them the real one and moves on — *a tour that creates a board beside a real one has taught
+them the exact thing this skill exists to prevent.* The deploy step describes and offers rather
+than doing: opening a terminal window is the one step with a side effect nobody asked for.
+
+**And it does not end by telling a new arrival to stand down.** The draft's last step was
+`/mc standdown`, which is how a station *leaves* — push, report, wait to be acknowledged, exit.
+Ending a first run with it reads as *"and now close everything."* It ends by releasing the claim
+instead, so they finish where they started having seen a full cycle. **Caught because someone read
+the mockup and asked what the word meant** — which is also why `VOCABULARY.md` now carries the
+command verbs.
+
+`tour-state.sh` owns the flag rather than the model editing JSON inline: read-modify-write, one key
+touched, atomic replace. **An unparseable config is never overwritten** — re-offering a tour is a
+smaller harm than truncating somebody's settings — and every hand-written key survives.
+
+**`VOCABULARY.md` gains the thirteen command verbs**, with the three confusable pairs called out:
+`standdown` (reflexive — you end your own watch) against `secure` (issued — Control ends it for
+you); `board clear` (archives, never wipes) against what it sounds like; `deploy a station`
+against shipping to production. The file called itself *the legend* while carrying the concepts and
+none of the words people actually type.
+
+**An honest limit:** the walkthrough is prose the model follows, so `tour-state.sh` and the trigger
+are tested but *the walkthrough's own behaviour is not* — same caveat as `progress-and-log`
+prompting for honesty without enforcing it. Eleven checks cover the flag, the trigger and the
+config safety, all under a fake `$HOME`; the suite asserts the tester's own preferences file is
+byte-identical afterwards.
+
+`test/e2e.sh` 108 → **119**.
+
+---
+
 ## 6.63.0 — 2026-08-23
 
 **Three of the four skills had no automated coverage at all, and today's worst regression lived in
