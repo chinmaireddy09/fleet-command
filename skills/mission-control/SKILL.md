@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.65.0
+version: 6.66.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1022,8 +1022,8 @@ bounce.** Measured 2026-08-23, twice, from both ends. A reply sent to a renamed 
 `from-name` failed with:
 
 ```
-No agent named 'ecom-nexus-oss-a1' is reachable. Did you mean:
-ecom-nexus-oss-99, ecom-nexus-oss-6f, ecom-nexus-oss-c9?
+No agent named 'acme-shop-a1' is reachable. Did you mean:
+acme-shop-99, acme-shop-6f, acme-shop-c9?
 ```
 
 **All three suggestions were wrong, and the correct target was not among them.** The suggester
@@ -2070,12 +2070,19 @@ Only on an explicit yes. **On no, that is not a failed tour** — say the comman
 full cycle: `/mc checkin` put a row on, this takes it off. Then tell them the two words worth
 knowing:
 
-- **`standdown`** — how a station ends its own watch: push, report, wait to be acknowledged, exit.
+- **`secure <station>`** — take the row off the board and retire the call-sign. **This is the word
+  for what you just did in front of them**, so it is the one that will stick.
 - **`/mc`** on its own — the board, any time.
 
-**Do not end a first run by telling somebody to stand down.** They have just arrived. Standdown is
-how you *leave*, and putting it at the end of a tour reads as "and now close everything" — which
-is the opposite of what a first run should leave them with.
+**Name `secure`, not `standdown`.** They are near neighbours and the difference is exactly the one
+a new arrival should learn first: **`secure` retires a POST** — the row comes off, the call-sign
+is free, and the fleet carries on without it. **`standdown` is a SESSION ending its own watch** —
+push, report, wait to be acknowledged, exit.
+
+Step 4 released a claim. That is `secure`, and it is the honest label for what they watched.
+`standdown` would be the wrong word twice over: it describes something that did not happen, and
+**it tells somebody who has just arrived how to leave** — a first run that ends on *"and now close
+everything"* has taught the exit before the job.
 
 ### Finishing
 

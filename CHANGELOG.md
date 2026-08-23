@@ -9,6 +9,30 @@ repo as a whole.
 
 ---
 
+## 6.66.0 — 2026-08-23
+
+**The tour's closing named the wrong verb, and a real project's name had leaked into the skill.**
+Both found by asking whether this is fit to hand to somebody else, which is a different question
+from whether the tests pass.
+
+**Step 4 said `standdown`; it should say `secure`.** The step *releases a claim* — the row comes
+off the board and the call-sign is free — and that is `secure`. `standdown` is a **session** ending
+its own watch: push, report, wait to be acknowledged, exit. Naming it there was wrong twice over:
+it described something that did not happen, and **it tells somebody who has just arrived how to
+leave.** The two are near neighbours and the difference is exactly the one a new arrival should
+learn first — `secure` retires a POST, `standdown` ends a SESSION — so the tour now names `secure`
+and says why.
+
+**A real project's session handles were sitting in the bounce example** — a verbatim
+*"did you mean"* list captured from a live fleet, carrying that repository's name into a skill
+meant for anyone. It was also inconsistent with the skill's own convention: every other example
+uses `acme-shop`. Generalised. **An example carrying a real name is a leak in anything shared, and
+this file is written to be handed to strangers.**
+
+Suite unchanged at **119**.
+
+---
+
 ## 6.65.0 — 2026-08-23
 
 **The first-run tour demonstrated a board anti-pattern, in the one step where somebody is learning
