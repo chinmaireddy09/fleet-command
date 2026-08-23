@@ -339,8 +339,34 @@ echo "REPO: $REPO_NAME"
 #     both being wrong in the same way, because one of them looks trustworthy.
 FETCH_REMOTE=$(git -C "$ROOT" remote 2>/dev/null | grep -qx origin && echo origin \
                || git -C "$ROOT" remote 2>/dev/null | head -1)
+# ── THE FETCH IS THE WHOLE COST OF THIS SCRIPT, so it is skipped when it cannot help ──
+# MEASURED 2026-08-24: mc-init.sh runs in ~1.4s and `git fetch` is ~1.12s of it -- a
+# network round trip paid on EVERY /mc, including the several a session makes in a row
+# while nothing upstream has moved. The other ~0.3s is all the local git and the registry.
+#
+# So: if the remote-tracking refs were refreshed within the last MC_FETCH_TTL seconds
+# (default 60), skip the fetch and SAY SO on the same line the failure case uses. The
+# freshness window is the only thing being traded, and it is stated rather than assumed --
+# this script's own comment above says a silent failed fetch is worse than a loud one
+# "because one of them looks trustworthy", and a silent SKIP would be the same defect
+# wearing better clothes.
+#
+# MC_FETCH_TTL=0 forces a fetch. Use it when you have just been told something landed.
+GIT_COMMON=$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || echo "")
+case "$GIT_COMMON" in ""|/*) ;; *) GIT_COMMON="$ROOT/$GIT_COMMON" ;; esac
+FETCH_TTL="${MC_FETCH_TTL:-60}"
+FETCH_AGE=""
+if [ -n "$GIT_COMMON" ] && [ -f "$GIT_COMMON/FETCH_HEAD" ]; then
+  _mt=$(stat -f %m "$GIT_COMMON/FETCH_HEAD" 2>/dev/null || stat -c %Y "$GIT_COMMON/FETCH_HEAD" 2>/dev/null || echo "")
+  if [ -n "$_mt" ]; then
+    _age=$(( $(date +%s) - _mt ))
+    [ "$_age" -ge 0 ] && FETCH_AGE="$_age"
+  fi
+fi
 FETCH_NOTE=""
-if [ -n "$FETCH_REMOTE" ]; then
+if [ -n "$FETCH_AGE" ] && [ "$FETCH_TTL" -gt 0 ] 2>/dev/null && [ "$FETCH_AGE" -lt "$FETCH_TTL" ]; then
+  echo "FETCH: skipped   # remote refs are ${FETCH_AGE}s old, inside the ${FETCH_TTL}s window. MC_FETCH_TTL=0 forces one."
+elif [ -n "$FETCH_REMOTE" ]; then
   git -C "$ROOT" fetch -q "$FETCH_REMOTE" 2>/dev/null \
     || FETCH_NOTE="   # FETCH FAILED against '$FETCH_REMOTE' -- every number below that names a remote ref
        #       (BASE_HEAD, AHEAD, BEHIND, the board measured at the ref) was computed from

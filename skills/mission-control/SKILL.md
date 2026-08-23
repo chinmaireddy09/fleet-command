@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.85.0
+version: 6.86.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a visible window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1266,6 +1266,26 @@ So, in one turn, with no intermediate "would you like to change it?":
 2. **`AskUserQuestion` immediately**, with the valid values as options (`mc-config.sh keys` lists
    them per key) and **the value in force marked `(current)`** so the picker shows state as well
    as choices — that is half of what makes `/model` feel like a setting rather than a prompt.
+**ASK ABOUT SPAWN MODE AND NOTHING ELSE.** No "anything else while the picker is open?" —
+that is a second question nobody requested, and of the settings it was offering, **three are
+ones this skill tells you not to touch**:
+
+| Key | Why it is not in the picker |
+|---|---|
+| `naming.coordinator` | *An example is not a preference.* A name used once about one repo was recorded here and silently renamed the coordinator of **every other fleet** — the failure documented at length under *The call-sign is the user's word*. A menu is the most efficient possible way to cause it again |
+| `spawn.permissionMode` | *Deploy never spawns a session with widened permissions.* Offering it as a menu item invites the act the rest of this file argues against |
+| `naming.stationStyle` | invented jargon — `long-callsign-short-handle` is precisely the kind of term *Speak plainly* forbids |
+| `spawn.launchCommand` | only matters if the CLI is installed under another name. Near-zero users |
+| `tour` | `/mc tour` already replays it |
+
+**They stay reachable by name** — `mc-config.sh set <key> <value>`, and `show` lists all of
+them — for the rare person who genuinely needs one. **Reachable is not the same as offered.**
+A picker is a recommendation; anything in it reads as a thing you are expected to set.
+
+**And use plain words, never key names.** *"How should stations appear?"*, not
+*"set spawn.mode"*. This skill's own first rule is *if a term needs explaining, it is the wrong
+term* — a picker naming `naming.stationStyle` at somebody has already failed that test.
+
 3. **Then ask once vs always** — *just the next deploy*, or *set as my default*. Two short
    questions beat one compound one, and the second is the difference between trying a mode and
    living with it.

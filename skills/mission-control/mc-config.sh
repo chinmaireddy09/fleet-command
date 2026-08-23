@@ -124,6 +124,7 @@ if d is None:
 
 if action=="show":
     print(f"MISSION CONTROL PREFERENCES  ·  {cfg}")
+    print("  (only the first is offered in the picker; the rest are rarely worth setting)")
     print()
     # ONE SCREEN MUST TELL THE WHOLE TRUTH. spawn.mode can also be set from Claude Code's
     # own settings.json as env.MC_SPAWN_MODE, and that value OUTRANKS this file. Showing

@@ -420,6 +420,28 @@ case "$(MC_CONFIG="$FR" bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)" i
   *) ok "so no later deploy asks again" ;;
 esac
 
+echo "── 5j. the preamble does not pay for the network twice ────────────"
+# MEASURED 2026-08-24: mc-init.sh was 1.4s and `git fetch` was 1.12s of it -- a network
+# round trip on EVERY /mc, including several in a row while nothing upstream moved.
+# The window is a trade, so it must be VISIBLE: this script already argues that a silent
+# failed fetch is worse than a loud one "because one of them looks trustworthy", and a
+# silent skip is that same defect.
+FR2=$(newrepo); cd "$FR2"
+touch "$(git rev-parse --git-common-dir)/FETCH_HEAD"
+O=$(bash "$D/mc-init.sh" 2>&1)
+chk "a fresh fetch is skipped, and said so"  "$O" "FETCH: skipped"
+chk "it names the age and the window"        "$O" "inside the"
+chk "and how to force one"                   "$O" "MC_FETCH_TTL=0"
+# TTL 0 must never skip, whatever the timestamps say.
+case "$(MC_FETCH_TTL=0 bash "$D/mc-init.sh" 2>&1)" in
+  *"FETCH: skipped"*) no "MC_FETCH_TTL=0 always fetches" "skipped anyway" ;;
+  *) ok "MC_FETCH_TTL=0 always fetches" ;;
+esac
+# The skip must not disturb anything the preamble reports.
+chk "the board is still measured"            "$O" "BOARD:"
+chk "and the base ref still resolves"        "$O" "BASE_REF:"
+cd "$REPO"
+
 echo "── 5c. the scope rule: automation only under an explicit deploy ───"
 # The spawn automation exists for ONE job -- open a station and get it identified -- and
 # is triggered by ONE thing. The rule is enforced by a required flag rather than by a
