@@ -453,5 +453,63 @@ chk "an unmatched tty is reported, not faked"   "$O" "NO-MATCH"
 [ $RC -eq 1 ] && ok "no matching tab is an error (exit 1)" || no "no matching tab is an error" "exit $RC"
 
 echo
+echo "── 8. the other three skills: two roots, not one ──────────────────"
+# THE ONLY AUTOMATED COVERAGE work-lock, status-and-backlog and progress-and-log have.
+# Everything else in them is prose. This is the part that is CODE, and it is where the
+# worst regression of 2026-08-23 lived: a fix that pointed the write root at the main
+# repo, so a station in a lane would have edited the SHARED checkout instead of its own,
+# and bootstrapped files outside the branch they belong to. Three skills, same shape.
+#
+# The rule being pinned: `--git-common-dir` for what is REMEMBERED once,
+# `--show-toplevel` for anything WRITTEN or committed. One variable cannot be both.
+#
+# Blocks are EXTRACTED FROM THE SKILL FILES, never retyped -- a test that retypes the
+# code under test is testing the typist.
+SKROOT=$(cd "$D/../.." && pwd)
+extract_roots(){ sed -n '/^\(PROJECT_\)\{0,1\}ROOT=/,/^esac/p' "$1"; }   # \? and \$( are not portable BSD BRE
+
+# one repo, one linked worktree, a bare repo and a non-git dir
+# Resolve RT to its REAL path. On macOS $TMPDIR is a symlink (/var -> /private/var), and
+# the blocks under test normalise with `cd`+`pwd` while a raw "$WORK/roots" does not -- so
+# comparing them fails on six correct results. Same class as everything else caught today:
+# the instrument disagreed with itself, not with the code.
+RT="$WORK/roots"; mkdir -p "$RT"; RT=$(cd "$RT" && pwd -P)
+( cd "$RT" && git init -q proj 2>/dev/null )
+( cd "$RT/proj" && git config user.email t@e.com && git config user.name t \
+  && echo a > f && git add -A && git commit -qm i && mkdir -p sub \
+  && git worktree add -q "$RT/proj/wt" -b lane ) >/dev/null 2>&1
+git init -q --bare "$RT/bare.git" >/dev/null 2>&1; mkdir -p "$RT/plain"
+
+for SK in work-lock status-and-backlog progress-and-log; do
+  F="$SKROOT/skills/$SK/SKILL.md"
+  if [ ! -f "$F" ]; then sk "$SK — skill not found beside the one under test"; continue; fi
+  BLK=$(extract_roots "$F")
+  if [ -z "$BLK" ]; then no "$SK exposes a root-resolution block" "no block matched"; continue; fi
+
+  roots_at(){ ( cd "$1" 2>/dev/null || exit 1; eval "$BLK" >/dev/null 2>&1
+                printf '%s|%s' "${PROJECT_ROOT:-$ROOT}" "$SHARED_ROOT" ); }
+  MAIN=$(roots_at "$RT/proj");  MAIN_W=${MAIN%%|*};  MAIN_S=${MAIN##*|}
+  WT=$(roots_at "$RT/proj/wt"); WT_W=${WT%%|*};      WT_S=${WT##*|}
+  SUB=$(roots_at "$RT/proj/sub")
+  BARE=$(roots_at "$RT/bare.git"); BARE_W=${BARE%%|*}
+
+  # THE ACCEPTANCE PAIR. Same remembered root from both places, different write root
+  # inside the worktree. That pair IS the bug; either half alone passes on a broken build.
+  [ "$WT_S" = "$MAIN_S" ] && ok "$SK: worktree and main repo share one remembered root" \
+    || no "$SK: worktree and main repo share one remembered root" "$WT_S vs $MAIN_S"
+  [ "$WT_W" != "$MAIN_W" ] && ok "$SK: a worktree still writes to its OWN checkout" \
+    || no "$SK: a worktree still writes to its OWN checkout" "both $WT_W"
+  # the write root must be the worktree itself, not merely different
+  [ "$WT_W" = "$RT/proj/wt" ] && ok "$SK: the write root is the worktree, exactly" \
+    || no "$SK: the write root is the worktree, exactly" "$WT_W"
+  # a subdirectory resolves like its repo
+  [ "${SUB%%|*}" = "$MAIN_W" ] && ok "$SK: a subdirectory resolves to its repo" \
+    || no "$SK: a subdirectory resolves to its repo" "${SUB%%|*}"
+  # dirname on a bare repo escapes it unless guarded
+  [ "$BARE_W" = "$RT/bare.git" ] && ok "$SK: a bare repo is not escaped" \
+    || no "$SK: a bare repo is not escaped" "$BARE_W"
+done
+
+echo
 printf '── %d passed · %d failed · %d skipped ─────────────────────────────\n' $PASS $FAIL $SKIP
 [ $FAIL -eq 0 ]

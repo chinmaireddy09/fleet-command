@@ -194,5 +194,21 @@ the only copy of a finding live in a GitHub issue.
 
 ---
 
+## Words about where things live, and how a check can lie
+
+These are recent, and every one of them is here because getting it wrong cost something real.
+
+| Word | What it actually is |
+|---|---|
+| **write root** | the checkout you are standing in — `git rev-parse --show-toplevel`. **Everything that is edited, staged, committed or pushed resolves through it.** Inside a worktree it is *that worktree*, and it must stay that way: a station edits its own copy on its own branch. Point this at the shared checkout and one session writes into another's working tree |
+| **shared root** | the repository itself — the parent of `git rev-parse --git-common-dir`, and **the same path from the shared checkout and from every worktree.** For things that should be *remembered once* across a fleet: a saved mapping, a "does this already exist somewhere I cannot see?" check. **Never for writes** |
+| **the two-roots rule** | `--git-common-dir` for what is **remembered** once; `--show-toplevel` for anything **written or committed**. One variable cannot be both, and inside a worktree the difference is not cosmetic. Collapsing them fixes *"the setting dies with the worktree"* and introduces *"the edit lands in someone else's checkout"* |
+| **work at risk** | content that exists **here and nowhere else** — measured with `--not --remotes`, across *all* remotes, never `origin/main..HEAD`. That second form counts **reachability**, so it reports danger for work already safely upstream. Untracked scratch is *not* automatically at risk; a tracked modification is |
+| **a prunable worktree** | one whose directory is gone but whose `HEAD` ref git still records. **The highest-risk place work can sit**, not the lowest: that ref may be the only thing pinning a commit, and `git worktree prune` — the obvious tidy-up — deletes it. Check for another branch or tag before calling anything a sole pin |
+| **a false green** | a check whose every observable reports success while the thing it secured is gone. `git rebase --skip` is the type specimen: *"Successfully rebased"*, exit 0, clean tree, in-sync branch, correct-looking board — and your commit reachable from **zero** branches. **The tool itself reports the false pass**, so the board corroborates the wrong conclusion |
+| **an inverted check** | one that returns the *opposite* of the truth, so acting on it does the harm you were checking for. `pgrep -x Terminal` calling a running Terminal absent; `grep -c` counting the comment that documents a removal as proof it never happened; a checksum published without naming its algorithm, verifying four correct files as four mismatches. **Read the context, never the count. Name the algorithm** |
+
+---
+
 *Fleet Command by Chinmai Reddy (@chinmaireddy09), under the*
 *Fleet Command License 1.1. https://github.com/chinmaireddy09/fleet-command*

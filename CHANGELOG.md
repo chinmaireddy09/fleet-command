@@ -9,6 +9,44 @@ repo as a whole.
 
 ---
 
+## 6.63.0 — 2026-08-23
+
+**Three of the four skills had no automated coverage at all, and today's worst regression lived in
+exactly the part of them that is code.** `test/e2e.sh` covered `mission-control` and nothing else.
+`work-lock`, `status-and-backlog` and `progress-and-log` are prose — but each contains the shell
+that decides **which checkout gets edited**, and that is where the two-roots bug and its
+over-correction both lived. Every fix to them shipped today was verified by exactly one manual
+field run.
+
+Now covered, and **the blocks are extracted from each `SKILL.md` rather than retyped** — a test
+that retypes the code under test is testing the typist. Each is run against five layouts: a repo, a
+linked worktree, a subdirectory, a bare repo, and a non-git directory.
+
+**The acceptance pair is the assertion that matters:** a worktree and its main repo must resolve to
+the **same remembered root** while keeping **different write roots**. Either half alone passes on a
+broken build — which is not a guess, it is measured. Replaying the regression that actually shipped
+(write root collapsed into the shared root), *"a worktree still writes to its own checkout"*
+**passed**, because `--git-common-dir` returns a relative `.git` from the main repo and an absolute
+path from a worktree, so the two roots differed for the wrong reason. The check that caught it was
+the stricter one — *the write root is the worktree, **exactly***. **A pair test that only compares
+two values to each other can be satisfied by two wrong values.**
+
+Both bugs replayed and both go red: the original per-worktree mapping fails the shared-root
+assertion; the over-correction fails three checks including the exact-path one.
+
+**And a test defect found in the same pass, of the class this file keeps cataloguing:** the new
+checks failed six times on six correct results, because macOS symlinks `$TMPDIR`
+(`/var` → `/private/var`) and the blocks under test normalise with `cd`+`pwd` while the expected
+value did not. **The instrument disagreed with itself, not with the code.** Resolved with `pwd -P`.
+
+`VOCABULARY.md` gains the words this work made load-bearing — *write root*, *shared root*, the
+*two-roots rule*, *work at risk*, *a prunable worktree*, *a false green*, *an inverted check* —
+each with the reason it exists rather than a definition alone.
+
+`test/e2e.sh` 93 → **108**, and for the first time it covers all four skills.
+
+---
+
 ## 6.62.0 — 2026-08-23
 
 **A checksum published without naming its algorithm verified four correct files as four

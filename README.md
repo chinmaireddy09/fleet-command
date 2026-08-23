@@ -341,12 +341,18 @@ bash test/e2e.sh                                    # this repo's copy
 bash test/e2e.sh ~/.claude/skills/mission-control   # what is installed
 ```
 
-93 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
+108 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
 every host, the input guards, renaming against a registry the test owns, the identity surfaces.
 **Every check executes something**; a syntax check is not a smoke test. Throwaway repos under
 `$TMPDIR`, removed on exit; it never touches your board, opens a terminal, relabels a tab, or
 renames a live session — the rename checks build their own session registry under a fake `$HOME`,
 and `osascript` is stubbed suite-wide so no tab is ever addressed.
+
+**All four skills are covered.** `mission-control`'s scripts are exercised end to end; the other
+three are prose, but the shell they *do* contain — the write-root / shared-root resolution that
+decides which checkout gets edited — is extracted from each `SKILL.md` and run against a repo, a
+linked worktree, a subdirectory, a bare repo and a non-git directory. **The blocks are read from
+the files, never retyped**: a test that retypes the code under test is testing the typist.
 
 ## Troubleshooting
 
