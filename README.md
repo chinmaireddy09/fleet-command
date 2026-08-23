@@ -256,7 +256,8 @@ where you want your stations.
 any of it in place — the same idea as Claude Code's own `/config`:
 
 ```
-/mc config                                   # what's set, and what each default does
+/mc-config                                   # opens a picker, the way /model does
+/mc config                                   # same thing, if you prefer the sub-command
 bash <skill>/mc-config.sh set spawn.mode window
 bash <skill>/mc-config.sh unset spawn.mode   # go back to being asked
 ```

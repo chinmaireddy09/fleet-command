@@ -117,6 +117,26 @@ if d is None:
 if action=="show":
     print(f"MISSION CONTROL PREFERENCES  ·  {cfg}")
     print()
+    # ONE SCREEN MUST TELL THE WHOLE TRUTH. spawn.mode can also be set from Claude Code's
+    # own settings.json as env.MC_SPAWN_MODE, and that value OUTRANKS this file. Showing
+    # only the file would render a value that is not the one in force -- a config screen
+    # that is confidently wrong is worse than one that omits the setting, because the
+    # reader has no reason to look further. Reported by the user 2026-08-24, asking why
+    # the setting was not in Claude's own /config: the honest answer is that /config
+    # renders a fixed schema and cannot be extended, so THIS is the screen, and it has to
+    # carry both sources.
+    envmode = os.environ.get("MC_SPAWN_MODE", "")
+    if envmode:
+        filemode = (d.get("spawn") or {}).get("mode")
+        if envmode == filemode:
+            print(f"  IN FORCE: spawn.mode = {envmode}   (settings.json env, agreeing with this file)")
+        elif filemode:
+            print(f"  ⚠ IN FORCE: spawn.mode = {envmode}   — from ~/.claude/settings.json env.MC_SPAWN_MODE,")
+            print(f"    which OVERRIDES the {filemode!r} recorded below. Change the env entry, or clear it")
+            print( "    to let this file decide again.")
+        else:
+            print(f"  IN FORCE: spawn.mode = {envmode}   (settings.json env.MC_SPAWN_MODE; nothing recorded here)")
+        print()
     width=max(len(k) for k in SPEC)
     for k,(_,desc,dflt) in SPEC.items():
         if k=="tour":

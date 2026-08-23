@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.81.0
+version: 6.82.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a visible window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1251,11 +1251,32 @@ bash <skill-dir>/mc-config.sh unset spawn.mode         # back to being asked
 answers it differently from one who knows it takes a second to change — so tell them, in the
 same breath, that `/mc config` exists. *"Recorded. `/mc config` changes it any time."*
 
-On `/mc config`: run `mc-config.sh show`, put the table in front of them, and if they want a
-change, offer the valid values with `AskUserQuestion` (`mc-config.sh keys` lists each key's
-options) and then `set`. **Never hand-edit the JSON** — the scripts do read-modify-write with an
-atomic replace and refuse to touch a file they cannot parse; an inline edit does neither, and
-this file has hand-written prose in it that a careless write destroys.
+**`/mc config` OPENS A PICKER. It does not print a table and wait.** Claude Code's own `/model`
+sets the expectation: you type it, a list appears, you arrow to one and press enter. A skill
+cannot add a row to `/config` — that UI renders a fixed schema and is not extensible — but it can
+put the same shape of choice in front of someone with `AskUserQuestion`, and that is what this
+command is.
+
+So, in one turn, with no intermediate "would you like to change it?":
+
+1. `mc-config.sh show` — read the current values, **including the `IN FORCE` line**, which is the
+   one that reflects an `env.MC_SPAWN_MODE` override from `~/.claude/settings.json`.
+2. **`AskUserQuestion` immediately**, with the valid values as options (`mc-config.sh keys` lists
+   them per key) and **the value in force marked `(current)`** so the picker shows state as well
+   as choices — that is half of what makes `/model` feel like a setting rather than a prompt.
+3. Write the answer with `mc-config.sh set`, and say in one line what changed and what it means.
+
+**Asking "do you want to change anything?" first is the failure mode.** It is a question whose
+answer is already implied by having typed `/mc config`, and it turns a one-keystroke setting into
+a conversation — the same defect §1 names for *do not ask whether to take Control*.
+
+**Never hand-edit the JSON** — the scripts do read-modify-write with an atomic replace and refuse
+to touch a file they cannot parse; an inline edit does neither, and this file has hand-written
+prose in it that a careless write destroys.
+
+**When `env.MC_SPAWN_MODE` is set, say so in the picker's own wording.** That value outranks the
+file, so writing the file alone would leave the user having chosen something that does not take
+effect — a picker that silently fails to apply is worse than no picker.
 
 `show` also names any **stale keys** — things an older version wrote that nothing reads today,
 like `spawn.placement` from before 6.78.0. They are harmless where they sit, but a dead key that
@@ -2075,7 +2096,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 | `/mission-control` | **Board** — who holds what, what's next, what needs attention — **and this session comes on watch as Control** while it reports, unless it already holds a post or a live one holds the coordinator's. **→ read `references/control-playbook.md` FIRST; the report's shape lives there** |
 | `/mission-control identify [call-sign]` | **Identify** — take a call-sign (**self-assigned if you omit one**), **move yourself into its workspace**, and go on the board |
 | `/mission-control board clear` | **Fresh board view** — re-render from `origin/main` showing only live stations, open items and the most urgent thing. **Archives done rows; never deletes a live one.** "Clear the board" defaults to this, never to wiping claims |
-| `/mission-control config` | **Preferences** — show every setting on this machine, and change any of them in place. Same idea as Claude Code's own `/config`: `spawn.mode` (background or a visible window), the launch command, the coordinator's name, the tour flag. **Changing a preference must never require making the tool forget you answered** |
+| `/mc-config` *(or `/mission-control config`)* | **Preferences — opens a picker**, the way `/model` does: the current value is marked and you choose a new one in one keystroke. Shows every setting on this machine and changes any of them in place. Same idea as Claude Code's own `/config`: `spawn.mode` (background or a visible window), the launch command, the coordinator's name, the tour flag. **Changing a preference must never require making the tool forget you answered** |
 | `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
 | `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |
 | `/mission-control state <normal\|sweep running\|mayday>` | **Fleet state** — set what the whole fleet is doing, so nobody has to infer it |

@@ -111,6 +111,22 @@ export STUB_CLAUDE_REG="$WORK/claude.registry"; : > "$STUB_CLAUDE_REG"
 # nobody has been asked on -- and any test wanting a real config sets MC_CONFIG itself.
 export MC_CONFIG="$WORK/no-such-preferences.json"
 
+# AND THE SAME FOR THE ENV OVERRIDE, WHICH IS THE SECOND DOOR INTO THE SAME ROOM.
+# spawn.mode can also come from env.MC_SPAWN_MODE in ~/.claude/settings.json, which
+# Claude Code injects into every session -- including the one running this suite. Pinning
+# only MC_CONFIG left that door open, and on a machine set to `tab` the suite inherited it
+# and drove Terminal's Shell > New Tab MENU FOR REAL, once per deploy test, while
+# reporting eighteen unrelated failures in background mode.
+#
+# That is worse than the MC_CONFIG version of this bug: it does not merely read live user
+# state, it ACTS on the user's UI from inside a test run. The suite's header promises it
+# never opens a terminal.
+#
+# The lesson generalises past both variables: EVERY input the code reads from the
+# environment is a fixture the suite has to own. When spawn-station.sh gained a second
+# source of truth, the suite gained a second thing to pin, and nothing prompted that.
+export MC_SPAWN_MODE=""
+
 newrepo(){ local r; r=$(mktemp -d "$WORK/repo.XXXXXX"); cd "$r"
   git init -q; git config user.email t@example.com; git config user.name t
   mkdir -p docs; echo init > README.md; git add -A; git commit -qm init
