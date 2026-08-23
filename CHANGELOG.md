@@ -9,6 +9,46 @@ repo as a whole.
 
 ---
 
+## 6.69.0 — 2026-08-23
+
+**`VOCABULARY.md` taught the eight words it exists to say were removed.** A table headed *Words
+replaced, and why* listed every invented term beside its plain replacement — `LOS`, `DEBRIS`,
+`RANGE`, `TRAJECTORY` and four more — in a document whose first line is **if a word needs a
+glossary, it is the wrong word.**
+
+**Nobody outside this project ever used those words.** The table was a migration aid for a
+migration only this repository lived through, and to a new reader its only measurable effect was
+to teach eight pieces of vocabulary they would otherwise never have met. **A legend that
+circulates the jargon it threw out has undone its own point.** Reported by a reader who hit the
+table and asked what the words were — which is the table working exactly backwards.
+
+Removed, with the reasoning kept in its place, because the reasoning is the part that transfers:
+**when you catch yourself writing a glossary row for a word you invented, delete the word instead
+of documenting it.** The replacements need no translation column, and that is the whole reason
+they won.
+
+**Two more of the same shape, from the same read:**
+
+- The intro named the four terms while announcing they had been retired. It now says the retired
+  words are deliberately not listed, and does not list them. *Naming them is how they get
+  learned.*
+- `SKILL.md`'s plain-speech rule illustrated bad jargon with *"the frontend session went LOS"* —
+  teaching the abbreviation in the sentence telling you not to use it. Now: *never an invented
+  abbreviation a listener has to decode.*
+
+**And a definition had become a war story.** The `sweep` entry carried a specific file count, a
+date, and the number of stations involved in one incident. A legend defines; the incidents belong
+in `CHANGELOG.md` and `references/field-notes.md`, which is where that one already is. The rule
+survives — **the test is ownership, not size** — without the anecdote a reader was not present
+for.
+
+*The pattern across all four: this file was written by people who lived the history, for readers
+who did not.*
+
+Suite unchanged at **129** — documentation only.
+
+---
+
 ## 6.68.0 — 2026-08-23
 
 **One project's stack was baked into a tool meant for anybody.** `preflight.sh stack` probed

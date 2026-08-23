@@ -4,10 +4,13 @@ Every word Mission Control uses, what it actually is underneath, and the plain s
 say instead of jargon.
 
 **The rule this list is built on: if a word needs a glossary, it is the wrong word.** An
-earlier version of this skill invented nine aviation terms — `LOS`, `RANGE`, `TRAJECTORY`,
-`DEBRIS` — and every one of them had to be explained. They were replaced with words people
-already knew. Only the ones anyone recognises from any space film survived: **mission
-control**, **go / no-go**, **abort**, **countdown**, **checklist**.
+earlier version of this skill invented nine aviation-sounding terms, and every one of them had
+to be explained before it could be used. They were replaced with words people already knew.
+Only the ones anyone recognises from any space film survived: **mission control**,
+**go / no-go**, **abort**, **countdown**, **checklist**.
+
+*The retired words are deliberately not listed here.* Naming them is how they get learned, and
+a legend that teaches the vocabulary it threw out has undone its own point.
 
 If you extend this skill, hold new words to the same test:
 
@@ -43,7 +46,7 @@ If you extend this skill, hold new words to the same test:
 | **sitrep** | asking every live station where it actually is, what it holds and what is blocking it — then **fixing the board where the answers disagree with it.** A sitrep that ends without correcting a stale row was just a conversation |
 | **radio silence** | a station saying *don't interrupt me* — mid-gate, mid-edit. Control holds non-urgent calls and answers from the board where it can. **Mayday always breaks through**; silence is about interruptions, never safety |
 | **fleet state** | one line on the board saying what **everyone** is doing: *normal*, *sweep running*, *mayday*. **Named, never numbered** — a DEFCON-style scale gets read backwards by half the people who read it, and a state acted on confidently in the wrong direction is worse than no state at all |
-| **sweep** | one change that has to be made across areas **owned by more than one station** — a colour token, a renamed field, a library upgrade. **The test is ownership, not size.** A 438-file mechanical change living entirely inside one station's own lane is *not* a sweep, however sweeping it feels — it is ordinary lane work, and announcing it as a sweep freezes a fleet that has no stake in it. Observed 2026-08-17: a frontend-only job was called "the 438 logical sweep" by two stations, and no second station owned a line of it |
+| **sweep** | one change that has to be made across areas **owned by more than one station** — a colour token, a renamed field, a library upgrade. **The test is ownership, not size.** A large mechanical change living entirely inside one station's own lane is *not* a sweep, however sweeping it feels — it is ordinary lane work, and announcing it as one freezes a fleet that has no stake in it |
 | **deploy a station** | initiate the post **and man it**: create the workspace, open a session, have it identify, and verify it landed on the board. Nobody types a path. **⚠️ Not the software meaning** — shipping code to production is a different thing. Where both could be meant, say *"ship to production"* for one and *"deploy a station"* for the other, and never a bare "deploy" |
 | **initiate** | **start something** — a station, a task, a sweep, a gate run. The plain word for beginning, and it replaced *cut*, which read equally as *create* and as *delete* — fatal in a skill where rows genuinely get deleted. *"Initiating the FRONTEND post"* cannot be misread; *"cutting the FRONTEND row"* could mean either |
 | **initiate a post** | the first half of a deploy, on its own — workspace, branch and board row, with **nobody in it**. The row reads *reserved*, never *on post*, until a session identifies as it |
@@ -83,18 +86,23 @@ canonical copy — if these two ever disagree, that one wins.**
 **Mayday is for real damage only** — main broken, data being lost, a sweep abandoned
 half-finished. Use it once for something that isn't, and nobody moves the next time.
 
-## Words replaced, and why
+## Words that were replaced
 
-| Never say | Say instead |
-|---|---|
-| `LOS` / loss of signal | **we lost contact** |
-| `DEBRIS` | **what it left behind** |
-| `RANGE` | **shared equipment** |
-| `TRAJECTORY` | **branch** |
-| `PAD` | **workspace** |
-| `FLIGHT MANIFEST` | **the board** |
-| `COMMS LOOP` | **comms** |
-| `FLIGHT` | **a session** |
+**A table used to sit here listing the invented terms beside their plain replacements. Removing
+it is the rule being applied to itself.**
+
+Nobody outside this project ever used those words. To a new reader the table taught eight pieces
+of vocabulary they would otherwise never have met — in a document whose first line is *if a word
+needs a glossary, it is the wrong word.* Its only measurable effect was to put dead jargon back
+into circulation, and it contradicted the paragraph at the top of this file that says the retired
+words are deliberately not named.
+
+**The replacements are simply the entries above.** *We lost contact*, *what it left behind*,
+*shared equipment*, *a branch*, *a workspace*, *the board*, *a session* — not one of them needs a
+translation column, which is the whole reason they won.
+
+**The part that transfers, and the only part worth keeping:** when you catch yourself writing a
+glossary row for a word you invented, **delete the word instead of documenting it.**
 
 ---
 
