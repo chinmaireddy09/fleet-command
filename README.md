@@ -70,6 +70,21 @@ That is the whole loop. Everything else is for when something goes wrong.
 **Requirements:** `git`, [Claude Code](https://claude.com/claude-code), a **POSIX shell** (the
 scripts are bash), and `python3` — already present on macOS and most Linux.
 
+**It makes no assumptions about your repository.** There is no layout to adopt and nothing to
+add to your project before the first run:
+
+| | |
+|---|---|
+| **Your default branch** | any name. `main`, `master`, `trunk`, anything — resolved per repo, never assumed. Set `MC_BASE_REF` to override |
+| **Your remote** | any name. `origin` if you have one, otherwise the first remote you do have. **No remote at all also works** — it measures against your local branch and says that is what it did, rather than implying agreement with a remote that isn't there |
+| **Your board file** | wherever you already keep it. Nothing is moved; if you have none, one is offered at `docs/WORK-LOCKS.md` and you can say no |
+| **Your directory layout** | irrelevant. Call-signs name whatever areas your project actually has |
+| **Your language and tooling** | no stack is assumed. The one command that runs anything — `/mc go` — takes your test command from your project's own rules, and only when you ask for it |
+
+*Everywhere below writes `origin/main` and `docs/WORK-LOCKS.md`, because a doc has to write
+something. Both mean **whatever yours are** — the scripts resolve them and print what they
+found.*
+
 **Platforms — what is measured, and what is not.** Be guided by this table rather than by
 optimism; the honest state matters more here than the coverage does.
 
@@ -211,7 +226,7 @@ and copy again.
 ### Nothing to configure — `deploy` asks you once
 
 `/mc deploy <station>` opens a real session on a real post: it initiates the worktree, opens a
-terminal tab, has the session identify itself, and **verifies the row on `origin/main` carries
+terminal tab, has the session identify itself, and **verifies the row on the base branch carries
 its address** — not that the tab looks right. Those two came apart in practice: a spawn once
 reported success and left a tab whose session had never registered at all.
 
@@ -262,13 +277,17 @@ rm -f  ~/.claude/mission-control.json
 **Per project**, if you used the board and want it gone. **Read these before deleting — they are
 the only record of what each station did:**
 
+Run `/mc` first and read the **Board** line — it prints where yours actually lives. On a project
+that keeps its board somewhere else, the paths below delete nothing and it looks like it worked.
+
 ```bash
-rm -f docs/WORK-LOCKS.md docs/WORK-LOCKS-ARCHIVE.md docs/MISSION-CONTROL.md
+/mc                        # read the Board path off the header, then:
+rm -f <board> <board-archive> <your-MISSION-CONTROL.md>
 git worktree list          # then `git worktree remove <path>` for any lane you no longer want
 ```
 
-**`docs/PROGRESS-LOG.md` and `docs/PROJECT-STATUS-AND-BACKLOG.md` are yours, not the skill's** —
-they outlive it, and nothing here should delete them for you.
+**Your progress log and your status-and-backlog file are yours, not the skill's** — whatever they
+are called in your project, they outlive it, and nothing here should delete them for you.
 
 ---
 
@@ -402,7 +421,7 @@ Every row here is a real failure that cost somebody time, and the answer is what
 | Messages keep arriving from a station's **old** handle | The `@` header is the **sender's start-time name**, not a per-channel capture — measured 2026-08-22, a channel opened *after* a rename still carries the old name, because there is one socket per session and no per-channel handshake. Only restarting the sender clears it | Ignore the header. Resolve names through the fleet manifest and match on the `[ref]`, which survives renames |
 | *"No agent named '…' is reachable"* | You replied to a from-name that has since been renamed | Re-resolve the current name and send again. This bounce is the trap working, not a broken tool |
 | The board's rows all name sessions that are gone | Sessions end without cleaning up; a row outlives its holder | Run `/mc` — Control re-mans the post and rewrites dead rows. Rows are rewritten, never duplicated |
-| `Read` refuses to open the board | It is over the size ceiling — usually the *working copy*, not `origin/main` | Measure at the ref: `git show origin/main:docs/WORK-LOCKS.md \| wc -c`. Then `/mc board clear` to archive done rows |
+| `Read` refuses to open the board | It is over the size ceiling — usually the *working copy*, not the pushed one | Measure at the ref, using your own base branch and board path: `git show <base-ref>:<board> \| wc -c`. Then `/mc board clear` to archive done rows |
 | A worktree-isolated session refuses a command | The isolation guard rejects anything it cannot statically verify stays inside the worktree — `$$`, loops, heredocs, variable-built paths | Break it into plain commands with literal arguments, or run a shipped script instead of pasting one |
 | A station reports it "came up unnamed" and asks a peer | It may already know | `bash ~/.claude/skills/mission-control/mc-init.sh me` reads its own name locally. Only the `[ref]` needs a peer |
 | Identify or the board feels slow | Facts are being gathered one command at a time | Run `mc-init.sh` once and branch on it. One call, ~1.3s, instead of a dozen round-trips |
