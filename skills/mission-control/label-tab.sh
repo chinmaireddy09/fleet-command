@@ -25,11 +25,30 @@ CALLSIGN="${1:-}"
 # string and AppleScript has `do shell script`, so an unfiltered call-sign is remote
 # code execution with extra steps -- demonstrated 2026-08-18, it ran.
 # ALLOWLIST: letters, digits, spaces and the separators real call-signs use.
-case "$CALLSIGN" in
-  "" | *[!A-Za-z0-9\ ._/\&-]* )
-    echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
-    exit 2 ;;
-esac
+# THE ALLOWLIST IS MATCHED UNDER C SEMANTICS, ON PURPOSE. [A-Za-z0-9] is a COLLATION
+# range, so under a UTF-8 locale it admits whatever the locale sorts inside it. Measured
+# 2026-08-23 with explicit bytes, en_IN.UTF-8 vs C:
+#   U+00E9 e-acute  c3a9    UTF-8 ADMIT / C REJECT
+#   U+00C5 A-ring   c385    UTF-8 ADMIT / C REJECT
+#   U+FB00 ff-lig   efac80  UTF-8 ADMIT / C REJECT
+#   U+00A0 NBSP     c2a0    REJECTED under BOTH
+#   U+200B ZWSP     e2808b  REJECTED under BOTH
+# while the message promised "letters, digits, spaces and . _ / & - only".
+# NOTHING INVISIBLE EVER GOT IN, and an earlier version of this comment said otherwise --
+# a first report claimed NBSP was admitted, having typed a literal that was normalised to
+# a plain space before it reached the guard; the reporter caught and corrected it. The
+# real defect is narrower and still worth fixing: a call-sign can be accepted here with a
+# character that is VISUALLY CONFUSABLE with an ASCII one (CAFE vs CAFE with an accent)
+# and then match nothing anywhere else. Assert the bytes, never the literal.
+# LC_ALL=C makes the rule mean exactly what it says, in bytes.
+if ! ( LC_ALL=C; case "$CALLSIGN" in "" | *[!A-Za-z0-9\ ._/\&-]* ) exit 1;; esac ); then
+  echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
+  # ECHO WHAT WAS PASSED. This was the one guard that stated the rule without showing
+  # the input -- and a rejected call-sign is most often rejected for a character that
+  # LOOKS like an allowed one, which a rule restated without the input cannot resolve.
+  echo "        got: $CALLSIGN" >&2
+  exit 2
+fi
 if [ ${#CALLSIGN} -gt 64 ]; then echo "FAILED: call-sign too long (max 64)" >&2; exit 2; fi
 
 # The Bash tool has no tty; the `claude` process above it does. Walk up to find it.
@@ -83,10 +102,24 @@ elif printf '%s' "$CLAUDE_ARGS" | grep -q -- '--name'; then
     echo "          That is expected when the two differ; the board maps one to the other."
   fi
 else
+  # THE VERDICT STAYS FLAT. This briefly read "PROBABLY NOT" -- hedged because the
+  # overwrite was measured NOT to happen once. That was the wrong place to put the
+  # uncertainty: SKILL.md enforces "never report a tab as labelled unless this line
+  # agrees", and a station can talk itself past "probably not" where it cannot talk
+  # itself past "no". A hedge here widens what a station may claim about its own tab.
+  # The QUESTION is "may I rely on this label?", and unreliable means NO. The
+  # uncertainty is about the MECHANISM, so it lives in the explanation below.
+  # Caught 2026-08-23 by a station that ran this twice across the change and noticed
+  # the verdict had moved while nothing about its session had.
   echo "persists: NO — launched without --name and without CLAUDE_CODE_DISABLE_TERMINAL_TITLE."
-  echo "          Claude Code overwrites this tab at its next status change and the tab ends up"
-  echo "          showing the TURN SUMMARY (measured: 7 writes in one turn). The label above is"
-  echo "          cosmetic until the next prompt."
+  echo "          You may NOT report this tab as labelled. That verdict is flat, and it is the"
+  echo "          one this skill enforces."
+  echo "          Claude Code usually overwrites this tab at its next status change, leaving the"
+  echo "          TURN SUMMARY (measured: 7 writes in one turn). The TIMING is not certain --"
+  echo "          a tester on exactly this configuration kept a custom title for a whole turn"
+  echo "          across many status changes (2026-08-23). Unpredictable is why the answer is NO:"
+  echo "          a label you cannot predict is a label you cannot rely on. Do not read the"
+  echo "          uncertainty as permission -- go and look at the tab."
   echo "          A running session cannot fix this itself — argv and env are fixed at launch."
   echo "          The human types  /rename $CALLSIGN  in this tab (measured to hold), or the"
   echo "          session is relaunched with  claude --name <HANDLE>  as /mc deploy does."

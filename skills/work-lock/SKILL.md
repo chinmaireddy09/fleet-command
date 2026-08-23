@@ -60,7 +60,23 @@ your machine protects nobody.
 Projects name it all sorts of things. **Look, don't assume.**
 
 ```bash
+# ROOT is the checkout you are in, and it stays that way: everything below EDITS,
+# stages, commits and pushes through it, so it must be your own worktree and your own
+# branch -- never the shared checkout. `--show-toplevel` is correct here.
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# SHARED_ROOT is the main repository, and it is used for ONE thing: answering "does a
+# board already exist where I cannot see it?" before offering to create one. A station on
+# a lane that has not merged the commit adding the board finds nothing here, and "none"
+# falls through to "offer to create one" -- which is how a fleet ends up with two claim
+# boards, the one outcome a claim board must never produce.
+CDIR=$(git rev-parse --git-common-dir 2>/dev/null)
+[ -n "$CDIR" ] && CDIR=$(cd "$CDIR" 2>/dev/null && pwd)
+case "$CDIR" in
+  */.git) SHARED_ROOT=$(dirname "$CDIR") ;;   # normal repo, or a linked worktree
+  *)      SHARED_ROOT="$ROOT" ;;              # bare repo, or not a git repo at all
+esac
+
 ls "$ROOT"/docs/WORK-LOCKS.md "$ROOT"/WORK-LOCKS.md 2>/dev/null
 grep -rilE "work.?lock|who.s working|claim" "$ROOT"/CLAUDE.md "$ROOT"/AGENTS.md \
   "$ROOT"/README.md "$ROOT"/docs/*.md 2>/dev/null | head
@@ -68,7 +84,17 @@ grep -rilE "work.?lock|who.s working|claim" "$ROOT"/CLAUDE.md "$ROOT"/AGENTS.md 
 
 - **One candidate** → that's the board. Read it and match its existing table shape exactly.
 - **Several** → read each, then ask the user once which is the live claim board.
-- **None** → offer to create one (template at the end). Say clearly that you're creating it.
+- **None** → **look in the main repository first**, and only create if that is empty too:
+
+```bash
+[ "$SHARED_ROOT" != "$ROOT" ] && ls "$SHARED_ROOT"/docs/WORK-LOCKS.md "$SHARED_ROOT"/WORK-LOCKS.md 2>/dev/null
+```
+
+  **A hit means DO NOT CREATE.** The board exists and your branch simply does not have it
+  yet — merge or check out the branch that does, then claim in your own copy. Creating one
+  here gives the fleet a second board, and **two claim boards is worse than none**: each
+  looks authoritative, and neither shows the claims on the other. Only if this is empty as
+  well, offer to create one (template at the end) and say clearly that you're creating it.
 
 **Match the file's own conventions** — its columns, its status marks, its date format. Never
 impose a different shape on a board someone has been keeping by hand.
@@ -119,8 +145,85 @@ git -C "$ROOT" commit -m "claim: <task> (<who>)"
 git -C "$ROOT" push origin main
 ```
 
-**If the push is rejected**, someone claimed first. Pull, look at their row, and if it's the
-same job, go and talk to them before continuing.
+### If the push is rejected
+
+```
+! [rejected]  HEAD -> main (non-fast-forward)
+```
+
+Someone claimed first. **You do not have to remember to check whether it was the same job — git
+tells you which case you are in, mechanically.** Run the rebase and read what happens:
+
+```bash
+git -C "$ROOT" pull --rebase origin main
+```
+
+- **It rebases cleanly, no markers.** They claimed a *different* row. Git 3-way merged the two
+  rows and there is nothing to adjudicate. Push again and carry on.
+- **It stops with a conflict in the board.** You both claimed the **same row**. Both claims are
+  preserved verbatim, and git refuses to pick a winner — which is the correct behaviour for a
+  claim board.
+
+**The board's teeth are git's 3-way merge, not this paragraph.** Measured 2026-08-23: two stations
+claimed concurrently, one row auto-merged silently and the contested row conflicted, out of a
+single rebase. An uncontested claim never asks you to adjudicate; a contested one is impossible to
+miss.
+
+**When it conflicts, the dangerous option is `--skip`, and git recommends it to you.**
+
+```
+Resolve all conflicts manually, then run "git rebase --continue".
+You can instead skip this commit: run "git rebase --skip".
+```
+
+**Do NOT run `git rebase --skip`.** It discards *your* claim commit and leaves their row standing.
+Everyone watches for `--force`; nothing here offers force, and force is not the trap. `--skip`
+needs no alarming flag, is recommended by the tool itself, and is exactly what a losing claimant
+reaches for to make a conflict go away.
+
+**It is not that you "might not notice". EVERY signal you can cheaply read says it worked.**
+Measured 2026-08-23, in an isolated lane:
+
+```
+$ git rebase --skip
+Successfully rebased and updated refs/heads/lane/orders-rounding.     exit 0
+```
+
+| what you would check | what it says | truth |
+|---|---|---|
+| the tool's own words | `Successfully rebased` | a commit was destroyed |
+| `git status --porcelain` | empty — clean tree | nothing to review |
+| branch state | `...origin/main` — **in sync** | your claim is gone |
+| conflict markers | none | no evidence a dispute happened |
+| the board | the row reads correctly | **correct is the trap** |
+| your claim commit | — | reachable from **0** branches |
+
+**This is a false green:** a check whose every observable reports pass while the thing it was meant
+to secure is gone — and here the *tool itself* is what reports the false pass. A station that ran
+`--skip` would reasonably tell its coordinator the claim landed, would be wrong, would have no way
+to notice, **and the board would corroborate it.**
+
+It is recoverable only if you already know it happened: `ORIG_HEAD` and the reflog still hold the
+commit. Both are **local-only, both expire, and neither is consulted by anyone who has just been
+told "Successfully".** The recovery path exists; the prompt to use it does not.
+
+**Do this instead:**
+
+```bash
+git -C "$ROOT" rebase --abort     # their row stands, YOUR claim commit stays on your branch
+```
+
+Then go and talk to them — that conversation is the actual resolution, not the git command.
+
+**The contrast is the whole reason to prefer it**, both measured in the same lane an hour apart:
+
+| | exit | your claim | branch reads |
+|---|---|---|---|
+| `--abort` | 0 | **retained** | `ahead 1, behind 4` |
+| `--skip` | 0 | **discarded** | in sync |
+
+**`--abort` leaves the disagreement visible in the branch state. `--skip` resolves it into
+silence.** Same exit code, opposite outcome — which is why the exit code is not the thing to read.
 
 ---
 

@@ -49,14 +49,54 @@ Entries are decisions with reasoning; overwriting one destroys why it was made.
 `TODO.md`, or something else.
 
 ```bash
+# TWO ROOTS, AND ONLY ONE OF THEM IS WHERE YOU WRITE.
+#
+# ROOT — the checkout you are in, and the copy you EDIT. `--show-toplevel` is correct here
+# and must stay: a linked worktree has its own copy of the tracked files and its own
+# branch, so a station edits ITS OWN backlog and commits it on its own lane. An earlier
+# fix here pointed ROOT at the main repo to solve the discovery miss below, and that is an
+# over-correction — it makes a station edit the SHARED checkout out from under whoever is
+# sitting in it. `--git-common-dir` is for what should be REMEMBERED once;
+# `--show-toplevel` is for anything WRITTEN or COMMITTED. One variable cannot be both.
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-find "$ROOT" -maxdepth 2 -iname "*.md" | grep -iE "backlog|status|roadmap|todo" | grep -v node_modules
+
+# SHARED_ROOT — the main repository, used ONLY to answer "does a backlog already exist
+# somewhere I cannot see from this lane?" before offering to create one. A station on a
+# branch that has not merged the commit adding the backlog finds nothing in its own
+# checkout, and "not found" falls through to "create one".
+CDIR=$(git rev-parse --git-common-dir 2>/dev/null)
+[ -n "$CDIR" ] && CDIR=$(cd "$CDIR" 2>/dev/null && pwd)
+case "$CDIR" in
+  */.git) SHARED_ROOT=$(dirname "$CDIR") ;;   # normal repo, or a linked worktree
+  *)      SHARED_ROOT="$ROOT" ;;              # bare repo (dirname would escape it), or not git
+esac
+
+# No -maxdepth. It was 2, and docs/planning/BACKLOG.md is depth 3.
+find "$ROOT" -iname "*.md" \
+     -not -path "*/node_modules/*" -not -path "*/.git/*" \
+  | grep -iE "backlog|status|roadmap|todo"
 grep -rilE "backlog|epic|roadmap" "$ROOT"/CLAUDE.md "$ROOT"/README.md 2>/dev/null | head
 ```
 
 - **One** → that's it. Read enough to learn its ID scheme, grouping and checkbox style.
 - **Several** → read each and ask the user once which is the live backlog.
-- **None** → offer to create one, and say clearly you're creating it.
+- **None** → **look in the main repository before you believe it**, and only then offer to
+  create one, saying clearly that you're creating it:
+
+```bash
+[ "$SHARED_ROOT" != "$ROOT" ] && find "$SHARED_ROOT" -iname "*.md" \
+  -not -path "*/node_modules/*" -not -path "*/.git/*" | grep -iE "backlog|status|roadmap|todo"
+```
+
+  **A hit here means DO NOT CREATE.** It means the backlog exists and your branch simply
+  does not have it yet — merge or check out the branch that does, and edit your own copy.
+
+**A missed file does not fail safe — it duplicates.** "Not found" falls straight through to
+"create one", so a backlog one directory deeper than you looked becomes a SECOND backlog beside
+the real one. **Duplication is the single outcome a backlog-finder must never produce**, and it is
+the failure mode of this skill's central claim. The depth limit that caused it was `-maxdepth 2`;
+if you are about to create a file, that is the moment to widen the search rather than trust the
+first one. **Never create a backlog from inside a worktree without checking the shared checkout.**
 
 **Match what's there.** If the project uses `- [ ] **A-22** …` inside lettered epics, use that. Do
 not introduce a new numbering scheme alongside an existing one.
@@ -97,6 +137,20 @@ Record **what actually shipped**, not that it's done:
   most need and least often find
 - anything discovered along the way that deserves its own item
 
+**Marking it done: copy the file's own convention, and if it has none, use `[x]`.**
+`close` is told to mark an item done and was never told how — so one station wrote
+`- [x] **T6**`, another `- **T6** ✅ **DONE**`, and **done-ness spelled three ways is not
+greppable**, which is the one property a closed item needs.
+
+- The file already uses `- [ ]` → tick it: `- [x]`.
+- The file uses its own marker (`~~struck~~`, a `Status` column, a `## Done` section) → use that.
+- **The file has no convention at all** → use `- [x]` and nothing else. Do not invent a
+  decoration, and do not add an emoji the file has never used.
+
+Note the examples further down this page use `- [ ] **A1**` — that is a template for a file being
+created from scratch, **not a format to impose on a file that already exists.** Step 1's "match
+what's there" wins over it every time.
+
 ---
 
 ## Step 4 — re-scoping
@@ -120,6 +174,49 @@ Say **why** something is blocked, in the entry:
 
 **Blocked work looks like lazy work if nobody says otherwise.** And an item blocked on a
 decision will sit forever unless the decision is named as the next step.
+
+---
+
+## Step 6 — when one item must land before another, write it on BOTH
+
+Ordering between items is the thing a backlog most often knows and least often records.
+When item A must land before item B, **put the reference on both entries** — not on the one
+you happen to be editing:
+
+- on **B**: `blocked by: A — <what A has to produce first>`
+- on **A**: `blocks: B — do not close without telling whoever holds B`
+
+**One-sided cross-references are worse than none.** The person who needs it is almost never
+the person who wrote it: whoever opens B needs to know it cannot start, and whoever closes A
+needs to know somebody is waiting. Write it only on B and closing A goes unannounced; write
+it only on A and B gets picked up by someone who cannot finish it.
+
+**Name what A must produce, not just that it comes first.** *"blocked by A"* leaves the reader
+to guess whether A is half-enough. *"blocked by A — needs the migration's final column names"*
+tells them exactly what to watch for, and lets them start the rest of B now.
+
+**If you cannot state the dependency in a sentence, it may not be one.** Two items touching the
+same file is not an ordering. A real dependency has an artefact: a schema, a decision, an
+interface, a name. If there is no artefact, the items are merely related — say *"see also"*
+and leave both startable.
+
+---
+
+## Step 7 — committing it
+
+**Stage the backlog file by name. Never `git add -A`.**
+
+```bash
+git add docs/BACKLOG.md          # the path you edited, and nothing else
+git commit -m "backlog: file T7 — <one line>"
+```
+
+This page previously said nothing about staging at all — so it never reached for `-A`, and
+equally **nothing in it forbade one.** Every `-A` protection in the run that found this came from
+the surrounding fleet rules and the project's own `CLAUDE.md`, not from here. **Run this skill on
+its own, outside any fleet, and there was nothing to stop it.** A backlog edit is almost always
+made in a working tree holding unrelated work-in-progress, and `-A` sweeps that in behind a commit
+message that says only *backlog*.
 
 ---
 

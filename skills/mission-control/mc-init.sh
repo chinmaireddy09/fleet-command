@@ -128,6 +128,40 @@ emit_peers() {
     fleet_id=$(git rev-parse --git-common-dir 2>/dev/null) || fleet_id=""
     case "$fleet_id" in ""|/*) ;; *) fleet_id="$(cd "$(dirname "$fleet_id")" 2>/dev/null && pwd)/$(basename "$fleet_id")";; esac
   fi
+  # A DISPLACED STATION SAW ITS WHOLE FLEET AS STRANGERS, AND NOTHING SAID SO.
+  # Peers are classified by the peer's REGISTERED SESSION cwd -- the directory the
+  # session was launched in -- while `fleet_id` above comes from wherever this command
+  # is RUNNING. Those stop being the same the moment a station works outside its launch
+  # directory (a `cd`-prefixed command is enough; EnterWorktree refuses a cross-repo
+  # worktree, so there is no supported way to move the session cwd at all). Every peer
+  # then computes as OFF-FLEET -- correctly computed from the wrong input. Reproduced
+  # 2026-08-23 from a scratch repo: five live peers, all five called strangers,
+  # including the coordinator running the exercise.
+  # It fails conservatively -- fleet read as stranger, never the reverse -- but it goes
+  # TOTAL, and a coordinator reading it concludes it has no fleet at all.
+  # The tell was already on screen and nothing noticed it: ROOT and ME_CWD disagree, and
+  # ME_CWD is the value silently driving every verdict. So SAY SO. Re-deriving the right
+  # answer is not possible from here -- an honest "I cannot classify this" beats five
+  # confident wrong verdicts.
+  local my_cwd my_cwd_fleet
+  my_cwd=$(MYPID="${2:-0}" python3 -c "
+import json,os,sys
+p=os.path.expanduser('~/.claude/sessions/%s.json' % os.environ.get('MYPID','0'))
+try: print(json.load(open(p)).get('cwd',''))
+except Exception: print('')
+" 2>/dev/null)
+  if [ -n "$my_cwd" ] && [ -d "$my_cwd" ]; then
+    my_cwd_fleet=$(git -C "$my_cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || my_cwd_fleet=""
+    if [ -n "$my_cwd_fleet" ] && [ -n "$fleet_id" ] \
+       && [ "$(cd "$my_cwd_fleet" 2>/dev/null && pwd -P)" != "$(cd "$fleet_id" 2>/dev/null && pwd -P)" ]; then
+      echo "PEERS_WARNING: your session's registered cwd ($my_cwd) is a DIFFERENT repository from"
+      echo "               the one you are running in ($root). Peers are classified by their"
+      echo "               registered cwd, so EVERY on-fleet/off-fleet verdict below is computed"
+      echo "               against your LAUNCH repo, not this one, and is UNRELIABLE -- most"
+      echo "               likely calling your whole fleet strangers. Do not conclude you have no"
+      echo "               fleet. Run ListAgents, or re-run this from your session's own repo."
+    fi
+  fi
   MYPID="${2:-0}" ROOT="$root" FLEET_ID="$fleet_id" python3 - <<'PY'
 import glob,json,os,subprocess
 me=os.environ.get("MYPID","0"); root=os.environ.get("ROOT","")
@@ -178,15 +212,33 @@ PY
 # coordinator; then the user's recorded preference; then CONTROL.
 emit_coordinator() {
   local root="$1"
+  local base="${2:-}"
   local name=""
+  local tmpf=""
   # Separate statements on purpose: bash expands EVERY argument of `local` before it
   # performs any of the assignments, so `local a="$1" b="$a/x"` leaves $a unbound --
   # and under `set -u` that is a hard exit, not an empty string. Cost one smoke test
   # 2026-08-22, having passed `bash -n` cleanly, because it is a runtime error.
   local f=""
-  for c in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
-    [ -f "$root/$c" ] && { f="$root/$c"; break; }
-  done
+  # READ THE SAME COPY THE BOARD IS READ FROM. This used to read $root/<file>, i.e. the
+  # WORKING TREE -- so a station in a lane worktree resolved its coordinator and its
+  # rules from a file 64 commits behind, while the board three lines above was
+  # deliberately pinned to the ref for exactly that reason. Same block, same defect,
+  # opposite treatment. Reported 2026-08-23: the two copies differed by 38 diff lines.
+  if [ -n "$base" ]; then
+    for c in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
+      if git -C "$root" cat-file -e "$base:$c" 2>/dev/null; then
+        tmpf=$(mktemp 2>/dev/null) || tmpf=""
+        if [ -n "$tmpf" ] && git -C "$root" show "$base:$c" > "$tmpf" 2>/dev/null; then f="$tmpf"; fi
+        break
+      fi
+    done
+  fi
+  if [ -z "$f" ]; then
+    for c in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
+      [ -f "$root/$c" ] && { f="$root/$c"; break; }
+    done
+  fi
   [ -z "$f" ] && f="$root/docs/MISSION-CONTROL.md"
   if [ -f "$f" ]; then
     # 1. AN EXPLICIT DECLARATION, and it works for ANY word the project chose.
@@ -201,12 +253,30 @@ emit_coordinator() {
     # 2. LEGACY FALLBACK: boards written before a declaration line existed, which
     #    only mention a conventional name. Kept so those keep working; it is not the
     #    supported path and it cannot learn a name it has not been told.
-    [ -z "$name" ] && name=$(grep -oiE '^\|?[[:space:]]*\*{0,2}(CONTROL|FLEET COMMAND|FLEETCOM)\*{0,2}' "$f" 2>/dev/null | head -1 | tr -d '|*' | xargs 2>/dev/null)
+    #    IT MUST BE A DECLARATION, NOT A SENTENCE THAT STARTS WITH THE WORD. The old
+    #    pattern anchored at ^ and stopped at the name, so ANY line beginning with
+    #    "Control" matched -- and paragraph reflow puts words at column 1 for free. A
+    #    real project resolved COORDINATOR from the line
+    #        "Control was right to rule out `passWithNoTests`.** Two independent facts"
+    #    which is the middle of a sentence. Reported 2026-08-23. The answer happened to
+    #    be right, which is the kind of wrong that survives testing: reflowing that
+    #    paragraph would have silently changed it, and the value is load-bearing.
+    #    So: the whole line must reduce to the name once markdown decoration is
+    #    stripped. A mention inside prose is not a project naming its coordinator, and
+    #    falling through to the user's preference (or CONTROL) is the correct answer
+    #    for a file that never declared one.
+    #    Emitted in the canonical spelling -- these are conventional constants, and a
+    #    board writing "Control" was resolving to a registry handle of "CONTROL".
+    if [ -z "$name" ]; then
+      name=$(grep -oiE '^[[:space:]>*|#-]*(CONTROL|FLEET COMMAND|FLEETCOM)[[:space:]*|:.-]*$' "$f" 2>/dev/null \
+             | head -1 | tr -d '|*#>:.' | xargs 2>/dev/null | tr '[:lower:]' '[:upper:]')
+    fi
   fi
   if [ -z "$name" ] && [ -f "$HOME/.claude/mission-control.json" ]; then
     name=$(python3 -c "import json,os;d=json.load(open(os.path.expanduser('~/.claude/mission-control.json')));print(d.get('naming',{}).get('coordinator',''))" 2>/dev/null)
   fi
   [ -z "$name" ] && name="CONTROL"
+  [ -n "$tmpf" ] && rm -f "$tmpf"
   echo "COORDINATOR: $name"
 }
 
@@ -230,9 +300,52 @@ case "$BASE" in
   */*) : ;;
 esac
 echo "ROOT: $ROOT"
-echo "REPO: $(basename "$ROOT")"
+# REPO IS THE REPOSITORY, NOT THE DIRECTORY YOU HAPPEN TO BE STANDING IN. This was
+# `basename "$ROOT"`, and ROOT is `rev-parse --show-toplevel`, which for a station
+# inside a worktree IS ITS OWN WORKTREE. A station in .claude/worktrees/backend printed
+# `REPO: backend`. Reported 2026-08-23, and it fails INVISIBLY: lane worktrees are named
+# backend, finance, channels, backlog -- every one of which reads as a plausible repo
+# name, so nothing about the wrong answer looks wrong. It is the same substitution the
+# PEERS block already guards against; REPO was the one line never converted.
+# git-common-dir is the SAME path from the shared checkout and from every worktree.
+REPO_COMMON=$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || REPO_COMMON=""
+if [ -z "$REPO_COMMON" ]; then
+  REPO_COMMON=$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null) || REPO_COMMON=""
+  case "$REPO_COMMON" in
+    ""|/*) ;;
+    *) REPO_COMMON="$(cd "$ROOT" && cd "$(dirname "$REPO_COMMON")" 2>/dev/null && pwd)/$(basename "$REPO_COMMON")";;
+  esac
+fi
+case "$REPO_COMMON" in
+  */.git) REPO_NAME=$(basename "$(dirname "$REPO_COMMON")") ;;   # normal repo
+  "")     REPO_NAME=$(basename "$ROOT") ;;                       # cannot tell; say what we stand in
+  *)      REPO_NAME=$(basename "${REPO_COMMON%.git}") ;;         # bare, or a linked gitdir
+esac
+echo "REPO: $REPO_NAME"
 
-git -C "$ROOT" fetch -q origin 2>/dev/null
+# THIS SCRIPT IS NOT READ-ONLY, AND UNTIL 2026-08-23 IT NEVER SAID SO. This line writes
+# remote-tracking refs, and from a worktree it writes them into the SHARED .git that
+# every other lane reads -- a station "just orienting itself" mutates state for the whole
+# fleet. It is also the FIRST thing a station runs, so the undisclosed write happens
+# before preflight's disclosed one.
+# Two more defects reported with it, both fixed here:
+#   - it was hardcoded to `origin` while resolve_base_ref goes to real trouble to be
+#     remote-agnostic. On a repo whose only remote is `upstream`, BASE resolved to
+#     upstream/main, this fetch silently failed, and BASE_HEAD/AHEAD/BEHIND were then
+#     computed off stale refs and printed with no marker.
+#   - a FAILED fetch was silent. preflight.sh warns in exactly this case and this did
+#     not, so the two scripts had diverged on the same defect -- which is worse than
+#     both being wrong in the same way, because one of them looks trustworthy.
+FETCH_REMOTE=$(git -C "$ROOT" remote 2>/dev/null | grep -qx origin && echo origin \
+               || git -C "$ROOT" remote 2>/dev/null | head -1)
+FETCH_NOTE=""
+if [ -n "$FETCH_REMOTE" ]; then
+  git -C "$ROOT" fetch -q "$FETCH_REMOTE" 2>/dev/null \
+    || FETCH_NOTE="   # FETCH FAILED against '$FETCH_REMOTE' -- every number below that names a remote ref
+       #       (BASE_HEAD, AHEAD, BEHIND, the board measured at the ref) was computed from
+       #       POSSIBLY STALE remote-tracking refs. Fix the fetch before trusting them."
+fi
+[ -n "$FETCH_NOTE" ] && echo "FETCH: failed$FETCH_NOTE"
 
 # The board is measured AT THE REF YOU WILL WRITE. Measured 2026-08-19: two
 # stations independently reported a 289 KB unreadable board while origin/main
@@ -272,13 +385,28 @@ if git -C "$ROOT" cat-file -e "$BASE:$BOARD" 2>/dev/null; then
 else
   echo "BOARD: none at $BASE   # no board yet -- Step 0 offers to write one"
 fi
-RULES=""
+RULES=""; RULES_AT=""
 for f in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
-  [ -f "$ROOT/$f" ] && { RULES="$f"; break; }
+  if git -C "$ROOT" cat-file -e "$BASE:$f" 2>/dev/null; then RULES="$f"; RULES_AT="$BASE"; break; fi
 done
-[ -n "$RULES" ] && echo "RULES: $RULES   # its station names WIN over any default" || echo "RULES: none"
+if [ -z "$RULES" ]; then
+  for f in docs/MISSION-CONTROL.md MISSION-CONTROL.md .claude/MISSION-CONTROL.md; do
+    [ -f "$ROOT/$f" ] && { RULES="$f"; RULES_AT="working copy"; break; }
+  done
+fi
+if [ -n "$RULES" ]; then
+  echo "RULES: $RULES   # at $RULES_AT -- its station names WIN over any default"
+  # Say it out loud when the copy you would EDIT is not the copy that was READ.
+  if [ "$RULES_AT" = "$BASE" ] && [ -f "$ROOT/$RULES" ] \
+     && ! git -C "$ROOT" diff --quiet "$BASE" -- "$RULES" 2>/dev/null; then
+    echo "       # NOTE: your working copy of this file DIFFERS from $BASE. The names above were"
+    echo "       #       read at the ref, which is what your peers see. Reconcile before relying on it."
+  fi
+else
+  echo "RULES: none"
+fi
 
-emit_coordinator "$ROOT"
+emit_coordinator "$ROOT" "$BASE"
 
 # A detached worktree used to print "HEAD: HEAD @ abc1234", which reads as a bug
 # rather than as the intended state. Say detached; it costs nothing.

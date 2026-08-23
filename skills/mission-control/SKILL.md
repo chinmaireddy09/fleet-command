@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.50.0
+version: 6.62.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1016,6 +1016,27 @@ reply to an incoming message, copy its `from` attribute as your `to`"* — fails
 including one in another repo that logged the bounce and failed to draw the rule from it.
 
 **So: never reply to the `from-name`. Resolve the sender through the fleet manifest first.**
+
+**AND THE BOUNCE HANDS YOU A CONFIDENT WRONG ANSWER — that is the dangerous half, not the
+bounce.** Measured 2026-08-23, twice, from both ends. A reply sent to a renamed peer's stale
+`from-name` failed with:
+
+```
+No agent named 'ecom-nexus-oss-a1' is reachable. Did you mean:
+ecom-nexus-oss-99, ecom-nexus-oss-6f, ecom-nexus-oss-c9?
+```
+
+**All three suggestions were wrong, and the correct target was not among them.** The suggester
+ranks string similarity against the *stale* handle, so it returns that handle's lexical
+neighbours — which on a fleet whose sessions share a `<repo>-<hex>` prefix is precisely the set of
+sessions that are *not* the sender. It will do this every time, and every name it offers is a real,
+live, uninvolved station.
+
+A bounce is recoverable and announces itself. **A confident wrong suggestion is a
+misdirected-prompt generator:** take it and you deliver the coordinator's traffic to a station that
+has no way to know it was not the intended recipient. **Ignore the suggestions entirely and run
+`ListAgents`.** This is the harness's behaviour, not this skill's, and it is documented here
+because this is the only place anyone reads about the stale header.
 
 **The `[ref]` is the durable identifier; the name is not.** A renamed session keeps its ref and
 changes its name — `acme-shop-98 [fd89d9]` became `CONTROL [fd89d9]`, same ref throughout.
@@ -2273,6 +2294,21 @@ check that looked authoritative and could not physically see what it reported on
 | A gate result read as covering the current code | **the tree as it stood when the gate ran.** Compare the gate artefact's timestamp with the commit's — a run that started first proves nothing about what landed after |
 | `git rev-list --count origin/main..HEAD` used to find work at risk | **reachability, not content.** Commits already upstream by another route still count, so it reports danger that does not exist |
 | A `grep` for a sentence in a prose file | **one line at a time.** The sentence wrapped across two, so the pattern could never match and the absence of a hit was read as the sentence being gone |
+| A checksum published without naming its algorithm | **nothing, to a reader using a different one.** `shasum` bare is SHA-1; a manifest in the same exchange listed SHA-256 under the same word *checksums:*. Four correct files verified as four mismatches, and the natural reading of that is "the sync never landed" |
+| A `grep -c` for a pattern, used to check whether a fix landed | **occurrences, not their context.** `--show-toplevel` still appeared twice after being replaced — once in the comment explaining why it is wrong, once as the correct fallback *after* the new call. A count cannot tell live code from a comment documenting its own removal, and the better a fix is written up, the more hits it leaves behind |
+
+**Name the algorithm, or quote the digest full-length so its length names it.** `sha1:0cbe8909`
+costs four characters. Without them, a verifier following the convention *you* established gets a
+clean inversion — every file correct, every check failed — and the conclusion it invites is that
+the work is missing rather than that the instrument is wrong. **An identifier nobody can reproduce
+is not evidence, however precise it looks.**
+
+**Read the context, never the count.** The last row was hit twice in one day by the same
+coordinator — both times against fixes that had landed correctly, both times a hair from filing a
+false regression. It is the mirror of the wrapped-sentence row above: one reads absence as removal,
+the other reads presence as failure, and both come from asking a counter a question only a reader
+can answer. **A well-documented fix is the hardest kind to verify by grep**, because it deliberately
+leaves the old name behind in the note explaining why it is gone.
 
 **The fourth is the purest form:** a station reasoned confidently about components from their
 *location and import graph*, and the peer who simply **read both files** found the recommendation

@@ -9,6 +9,569 @@ repo as a whole.
 
 ---
 
+## 6.62.0 — 2026-08-23
+
+**A checksum published without naming its algorithm verified four correct files as four
+mismatches.** The digests handed over for a sync check were bare `shasum` — SHA-1, truncated to
+eight hex. An install manifest exchanged earlier in the same conversation listed 64-hex **SHA-256**
+under the same word, `checksums:`. A verifier following the convention *this side had itself
+established* got nothing matching on any file, and **the natural conclusion is "the sync did not
+land"** — not "the instrument is wrong".
+
+**It is a clean inversion, and it is the third of that shape recorded here** — after `pgrep -x`
+returning a false negative for a running Terminal, and `grep -c` counting a comment that documents
+a removal as evidence the removal never happened. Every file correct, every check failed, and the
+failure pointing away from the truth.
+
+The fix is four characters: `sha1:0cbe8909`, or quote the digest full-length so its length names
+the algorithm. **An identifier nobody can reproduce is not evidence, however precise it looks** —
+and precision is exactly what makes an unreproducible one persuasive.
+
+Recorded as a row in *A check must be able to observe the thing it claims to measure*. Found by the
+station verifying the sync, which noticed that four-for-four failure was likelier to be its
+instrument than the work, and checked the instrument.
+
+Suite unchanged at **93**; this is a rule.
+
+---
+
+## 6.61.0 — 2026-08-23
+
+**6.60.0's fix was an over-correction that moved the WRITES, not just the mapping — and the same
+mistake had been made in a second skill.** Caught within two minutes by a station that was in the
+same file fixing the same bug, and independently by an audit here at the same moment.
+
+**The rule the whole thing turns on:** `--git-common-dir` is for **what should be remembered
+once**; `--show-toplevel` is for **anything written or committed**. *One variable cannot be both,
+and inside a worktree the difference is not cosmetic.*
+
+`progress-and-log`'s `PROJECT_ROOT` was not only the config root — it is also the write target and
+the value printed by the new "About to write to …" step. Pointing it at the main repository fixed
+*the mapping dies with the worktree* and introduced **the entry lands in someone else's checkout**:
+a station in a lane would edit the SHARED checkout's `PROGRESS-LOG.md` rather than its own, and a
+bootstrapped file would be created outside the branch it belongs to. On a repo where several
+sessions share one checkout that is precisely the documented way one session's work gets swept into
+another's commit. **Two roots now — `PROJECT_ROOT` (write, unchanged) and `SHARED_ROOT` (the
+remembered mapping, and nothing else).**
+
+**`status-and-backlog` had the identical over-correction**, made here in the same pass and not
+reported by anyone: its `ROOT` drives the `find` whose results are then *edited*, so a station in a
+worktree would have edited the shared checkout's backlog. Separated the same way. The discovery
+miss it was originally fixing is now handled where it actually bites: **before creating**, look in
+the main repository, and **a hit there means DO NOT CREATE** — the backlog exists and your branch
+simply does not have it yet.
+
+**`work-lock` had the original bug and nobody had tested that path.** Found by auditing every
+remaining `--show-toplevel` rather than waiting for a report. Its `ROOT` is correct as-is and must
+not move — it stages, commits and pushes through it — so only the create path changed: check the
+main repository before offering to create a board, because **two claim boards is worse than none**,
+each looking authoritative and neither showing the claims on the other.
+
+**Two smaller corrections adopted from the same station**, both mine: `--path-format=absolute`
+returns empty on git older than 2.31 and silently falls back to `--show-toplevel` — *the original
+bug, with no signal* — so the plain form normalised with `cd` is used instead; and plain `dirname`
+on a **bare** repo escapes it (`/x/bare.git` → `/x`), so a `*/.git` case guard handles it.
+
+Verified across six cases against the blocks as they appear in the files rather than retyped:
+normal repo, subdir, linked worktree, its main repo, bare repo, non-git directory. **The acceptance
+test is that a worktree and its main repo resolve to the SAME shared root while keeping DIFFERENT
+write roots** — that pair is what the bug was, and it was the check that had been missing.
+
+*Recorded plainly: a peer's fix to my fix was better than mine, and I took it. The failure mode of
+a good fix is a second bug in the same lines, which is why the station that had just been told the
+answer still went and measured it.*
+
+Suite unchanged at **93** — all three are prose skills; `test/e2e.sh` covers `mission-control`.
+
+---
+
+## 6.60.0 — 2026-08-23
+
+**A retraction first: "`progress-and-log` has never been tested by anyone" was false, and this
+changelog said it in those words.** It was relayed to me as an honest coverage gap, I agreed it was
+the honest framing, and I published it. A station checked instead of inheriting it and found the
+disproof sitting in a real repo:
+
+`​.claude/progress-and-log.config.json`, **mtime five weeks old**, four entries — and writing that
+file is something *only the completed multi-file ask path* does. So that branch has run end to end,
+on a real project, with a human answering. It is not a default either: the fourth entry carries
+`gets: []` and the note *"Leave alone — this is a dated, one-time triage snapshot, not an ongoing
+log."* That is a considered human answer, not a generated one. Corroborated independently:
+`docs/PROGRESS-LOG.md` holds **215** `##` blocks in exactly the style that config describes.
+Verified here rather than taken on report.
+
+**The defensible claim is version-scoped: the CURRENT version is untested. "Never tested by
+anyone" is not the same sentence, and the difference is not pedantry** — it sends the next reader
+hunting first-run bugs in a code path with five weeks of production use behind it. Corrected above.
+
+**The finding to act on: the blast radius is decided by the current directory, and a saved mapping
+suppresses the only question that would have caught it.** The skill takes a TITLE, not a path;
+its target derives entirely from cwd; and there is no way to point it elsewhere. A session cannot
+always change that — `EnterWorktree` refuses a cross-repo worktree, so a station is stuck in the
+repo it was launched in. Step 2 short-circuits **both** detection and the ask when a config exists,
+which is true of every repo where this has been used once. **The natural, correct-looking
+invocation would have gone straight from "invoked" to editing three live documents in a repository
+it had been explicitly forbidden to touch, with no question asked at any point.** It was avoided
+only because the station read the skill before running it.
+
+Now a mandatory step that a saved mapping cannot skip: **state the resolved repository and the
+exact files before any edit**, and stop for confirmation when that repository is not the one under
+discussion, when the session's registered cwd is a different repo, or when a station is pointed at
+a repository that is not its own. A saved mapping settles *what goes where*; it does not settle
+*which repo*. **An entry written to the wrong PROGRESS-LOG is not a wrong answer in a scratch
+file — it is a durable, dated, plausible-looking record in someone else's project.**
+
+**And the saved mapping was per-worktree, not per-repo** — `--show-toplevel` again, the third
+place today. The config was written under `.../worktrees/<name>/.claude/`, so *ask once and
+remember* degraded to **ask once per station per worktree**, and the mapping died when the worktree
+was removed, which is exactly what retiring a station does. Every station re-answered the same
+question forever and no station ever benefited from another's answer. Resolved through
+`--git-common-dir`.
+
+**Measured positives worth recording, because they are the reason this skill was not the disaster
+the above implies.** Detection is genuinely semantic, not filename luck: it surfaced the log, the
+status/backlog and the claims board while correctly *excluding* a rules document. On multiple
+candidates the ask is a hard gate with no `--yes` escape — so on any fleet repo, which always has
+at least two tracking documents, **it is human-gated by construction**. And it never stages,
+commits or pushes: its allowed-tools list has no git-write path at all.
+
+Suite unchanged at **93** — `test/e2e.sh` covers `mission-control` only, and that remains the
+honest limit of what is automated here.
+
+---
+
+## 6.59.0 — 2026-08-23
+
+**A grep COUNT cannot tell live code from a comment documenting its own removal — and the better a
+fix is written up, the more hits it leaves behind.** A coordinator checking whether the
+`status-and-backlog` fixes had landed found `--show-toplevel` still appearing twice and
+`-maxdepth 2` once, which reads as a fix that never shipped. All three were legitimate: one comment
+explaining why `--show-toplevel` is wrong, one correct fallback *after* `--git-common-dir`, one
+line documenting the removed depth limit.
+
+**It is the mirror of the wrapped-sentence row already in that table.** One reads absence as
+removal; this reads presence as failure. Both come from asking a counter a question only a reader
+can answer. **Read the context, never the count.**
+
+Two things make it worth a row rather than a footnote. It was hit **twice in one day by the same
+coordinator**, both times against fixes that had landed correctly, both times a hair from filing a
+false regression — by the person cataloguing this exact defect class as it happened. And it
+punishes good practice specifically: **a well-documented fix is the hardest kind to verify by
+grep**, because retiring a name properly means leaving it behind in the note that explains why it
+is gone. This repo's own convention of keeping a near-miss documented rather than erasing it — the
+`PROBABLY NOT` comment retired in 6.57.0 is the example — would trip the same counter.
+
+Suite unchanged at **93**; this is a rule, not a code path.
+
+---
+
+## 6.58.0 — 2026-08-23
+
+**`status-and-backlog` had five defects and had never been tested by anything.** A station ran it
+end to end against a real backlog and filed all five with mechanisms; four are code-read defects it
+labelled as such rather than claiming to have observed.
+
+**Discovery resolved the WORKTREE, not the repository — and the miss does not fail safe, it
+duplicates.** Step 1 used `--show-toplevel`, so a station on a lane that had not merged the branch
+adding the backlog found nothing. **"Not found" falls straight through to "offer to create one".**
+Same root-resolution defect as the fleet blackout in `mc-init.sh`, in a place where the consequence
+is a SECOND backlog beside the real one — **duplication being the single outcome a backlog-finder
+must never produce, and the failure mode of this skill's central claim.** Now resolved through
+`--git-common-dir`, and the skill says never to create one from inside a worktree without checking
+the shared checkout.
+
+**And the search could not have found it anyway: `-maxdepth 2`, while `docs/planning/BACKLOG.md`
+is depth 3.** The depth limit is gone, `node_modules` and `.git` are pruned instead, and the
+instruction is to widen the search at the moment you are about to create a file rather than trust
+the first look.
+
+**`close` was told to mark an item done and never told how.** One station wrote `- [x] **T6**`,
+another invented `- **T6** ✅ **DONE**`. **Done-ness spelled three ways is not greppable**, which is
+the one property a closed item needs. Worse, the skill's only two examples use `- [ ]` — the very
+format Step 1 forbids imposing on an existing file — so `close` was caught between *match what's
+there* and a template contradicting it. Now: copy the file's own convention; if it has none use
+`[x]` and nothing else; and the templates are explicitly marked as for files being created from
+scratch, with *match what's there* winning over them.
+
+**It never mentioned staging or committing at all — so it could not reach for `git add -A`, and
+nothing in it forbade one either.** Every `-A` protection in the run that found this came from the
+surrounding fleet rules and the project's `CLAUDE.md`, not from the skill. **Run on its own,
+outside any fleet, nothing stopped it** — and a backlog edit is almost always made in a tree
+holding unrelated work-in-progress, which `-A` sweeps in behind a commit message that says only
+*backlog*. Now an explicit step: stage by path, never `-A`.
+
+**The strongest result in the exercise was a negative one, and it belongs here.** The station hit a
+genuinely unexplained cause, recorded it as unexplained with its ruled-out set, then probed the
+tempting explanation with `git commit --amend --dry-run`. It was allowed — and it recorded that as
+**INCONCLUSIVE rather than as a narrowing, because `--dry-run` performs no rewrite, so the allow
+proves nothing.** The tempting write-up was a confident wrong entry of exactly the class this skill
+exists to prevent, and it declined it and said why. **Its caveat is carried verbatim: the skill
+PROMPTS for honesty and cannot ENFORCE it.** Guidance present and usable is not invention
+prevented.
+
+**One caveat retired rather than left standing:** that station's findings were called the most
+stable in the exercise *because the file had not moved in six days*. This release moves it. The
+findings still attribute to the recorded hash, but anyone re-running them today is testing a
+different file, and **a caveat about stability is exactly the kind nothing prompts you to
+re-read.**
+
+No test-count change — `test/e2e.sh` covers `mission-control` only. **`progress-and-log` is the one
+skill of the four with no coverage of the CURRENT version**, which is a narrower and truer claim
+than the one first written here; see 6.60.0. Suite stands at **93**.
+
+---
+
+## 6.57.0 — 2026-08-23
+
+**A hedge in the wrong field quietly widened what a station may claim about itself.** 6.52.0's
+honesty fix softened `label-tab.sh`'s verdict from `persists: NO` to `persists: PROBABLY NOT`,
+because the overwrite it predicts had been measured *not* to happen once. **The uncertainty was
+real and it was put in the wrong place.** `SKILL.md` enforces *"never report a tab as labelled
+unless that line agrees"* — so that field is not a prediction, it is the thing the rule is checked
+against, and **a station can talk itself past "probably not" where it cannot talk itself past
+"no".**
+
+The question the field answers is *may I rely on this label?*, and **unpredictable means no** — a
+label whose timing you cannot predict is one you cannot rely on. The verdict is flat again, with
+the flat sentence *"You may NOT report this tab as labelled"* stated outright, and the genuine
+uncertainty moved into the explanation where it describes the MECHANISM instead of licensing a
+claim. Regression-tested: the check fails if the verdict is re-hedged.
+
+Caught by a station that ran `set-callsign.sh` twice in one session straddling an install, same
+tty and same launch conditions, and noticed the verdict had moved while nothing about its own
+session had. **It is also behavioural evidence that `label-tab.sh` was in the changed set — reached
+from the opposite direction to hashing, and agreeing with it.**
+
+**`status-and-backlog` advertised a capability its body never described.** The `description:`
+frontmatter promises it *"cross-references items that must land in a given order onto both"*, and
+the 152-line body contained no mention of cross-referencing, ordering, or dependencies. **The
+frontmatter is what decides whether the skill is invoked; the body is what is actually followed**,
+so a promise made only in the description is a promise nobody is instructed to keep. Now a step,
+with the rule that a one-sided cross-reference is worse than none — *the person who needs it is
+almost never the person who wrote it* — plus naming what the blocker must produce rather than only
+that it comes first, and a test for whether a dependency is real at all: **if there is no artefact,
+the items are merely related.**
+
+**The harness pins its own working directory per section.** Every `cd` in `test/e2e.sh` is
+absolute, but section 7 inherited whatever the previous section left, and 6d's `cd` sits inside a
+conditional. **A chained `cd` is how a coordinator produced a confident false FAILURE against a fix
+that was correct** — it ran case 2 in case 1's directory and got a warning comparing a path to
+itself. The same shape bit this file's author the same day. Latent rather than live, and closed
+while it was cheap.
+
+`test/e2e.sh` gains the flat-verdict check and is at **93**.
+
+---
+
+## 6.56.0 — 2026-08-23
+
+**`work-lock` gains the rejection recipe it never had, and it exists because a fleet exercise ran
+the push race for real instead of reasoning about it.** The board's one enforcing property was
+described in two lines — *"if the push is rejected, pull, look at their row, and if it's the same
+job go and talk to them"* — which reads as a discipline somebody has to remember.
+
+**It is not a discipline. It is mechanical, and git tells you which case you are in.** Two stations
+claimed concurrently and one rebase produced both answers: a *different* row auto-merged silently
+with zero markers, and the *same* row conflicted with both claims preserved verbatim and git
+refusing to pick a winner. **The board's teeth are git's 3-way merge, not the paragraph.** An
+uncontested claim never asks you to adjudicate; a contested one is impossible to miss.
+
+**The dangerous option is `git rebase --skip`, and git recommends it to you.** Everyone watches for
+`--force` — nothing in this flow offers force, and force is not the trap. `--skip` needs no
+alarming flag, is suggested by the tool in its own conflict advice, and is exactly what a losing
+claimant reaches for to make a conflict go away.
+
+**It is a FALSE GREEN, and that is stronger than "you might not notice".** Measured in an isolated
+lane: `--skip` prints *"Successfully rebased"*, exits 0, leaves a clean working tree, an **in-sync**
+branch, zero conflict markers, and a board whose row reads correctly — while the claim commit is
+reachable from **zero** branches. Every observable reports pass; **the tool itself is what reports
+the false pass**, and the board would corroborate a station that wrongly told its coordinator the
+claim had landed. Git refuses to commit with an unresolved conflict and warns on a detached HEAD;
+here it destroys a commit and calls it success. Recovery exists in `ORIG_HEAD` and the reflog —
+both local-only, both expiring, and neither consulted by anyone who has just been told
+*"Successfully"*.
+
+The contrast is the prescription, both measured in the same lane an hour apart: `--abort` and
+`--skip` both exit 0, but `--abort` retains the claim and leaves the branch reading *ahead 1,
+behind 4*, while `--skip` discards it and reads in sync. **`--abort` leaves the disagreement visible
+in the branch state; `--skip` resolves it into silence** — which is why the exit code is not the
+thing to read. Both are now in the skill as a table, with the false-green table beside it.
+
+*This is the sharpest instance yet of this repo's own rule that a check must be able to observe the
+thing it claims to measure — and the first where the tool doing the reporting is the one lying.*
+
+No test-count change: `test/e2e.sh` covers `mission-control` and this is `work-lock`. Extending it
+to the other three skills is the open gap, and it is what the fleet exercise is currently probing by
+hand. Suite stands at **92**.
+
+---
+
+## 6.55.0 — 2026-08-23
+
+**A four-station fleet exercise against a scratch repo found two defects the single-station testing
+could not reach — and one of them was in a regression test written three hours earlier.**
+
+**The NBSP regression test passed on the unfixed build and pinned nothing.** 6.54.0 corrected the
+*comment* that claimed a non-breaking space was admitted, and left the *test* built on it in place.
+A tester verified the claim instead of inheriting it: NBSP is refused under every locale and both
+shells, because **it is not a letter and so never collated among `[A-Za-z]` in the first place.**
+The underlying defect is real and is about LETTERS — `é` `ñ` `ä` and fullwidth `Ａ` were admitted
+under `en_IN.UTF-8`, Cyrillic and Greek were not, and `LC_ALL=C` refuses all of them. Decisive
+pair, same input, same checksum, locale the only variable: `LC_ALL=C` exits 2 at the allowlist,
+`en_IN.UTF-8` exits 1 having *passed* it. The witnesses are now `é`, `ä` and fullwidth `Ａ`, each
+verified to go red when `LC_ALL=C` is removed; NBSP is kept and **labelled as the negative control
+it always was**. *This skill's own rule, failing against itself: mutate it and watch it go red, or
+it is not a test.*
+
+**A displaced station reported its entire fleet as strangers.** Peers are classified by the peer's
+REGISTERED SESSION cwd — the directory the session was launched in — while the fleet id is derived
+from wherever the command is RUNNING. A `cd`-prefixed command is enough to separate them, and
+`EnterWorktree` refuses a cross-repo worktree, so there is no supported way to move a session's cwd
+at all. Reproduced from a scratch repo: five live peers, **all five OFF-FLEET, including the
+coordinator running the exercise and the station being deliberately collided with.** Correctly
+computed, from the wrong input.
+
+**This is not the worktree bug; that one is fixed and was verified separately.** It is a second,
+independent path to the same symptom — `--git-common-dir` is only as good as the cwd it is handed.
+It fails conservatively (a fleet reads as strangers, never the reverse) but it fails **totally**,
+and a coordinator reading it concludes it has no fleet.
+
+**The tell was already on screen and nothing noticed it:** `ROOT` and `ME_CWD` disagree, and
+`ME_CWD` is the value silently driving every verdict. It now says so, and says what to do instead.
+The right answer cannot be re-derived from there — **an honest "I cannot classify this" beats five
+confident wrong verdicts.** Regression-tested both ways, because a warning that never goes quiet is
+as useless as one that never fires.
+
+`test/e2e.sh` gains six checks — five new and one that was passing vacuously — and is at **92**.
+
+---
+
+## 6.54.0 — 2026-08-23
+
+**Three corrections, two of them to 6.53.0 itself, and one of them to a false sentence 6.53.0 wrote
+into a source comment.**
+
+**`mc-init.sh` never disclosed that it fetches, and 6.53.0 claimed it did.** The changelog said
+*"both these scripts fetch, and neither said so — the headers now admit it."* That was true of
+`preflight.sh` and false of `mc-init.sh`, which was left completely unchanged. Caught by the
+reporter re-reading the fixed build against the checkout that produced the original finding. It
+matters more than the symmetry: `mc-init.sh` is the **first** thing a station runs, so the
+undisclosed write happens before the disclosed one, and from a worktree it writes remote-tracking
+refs into the shared `.git` that every other lane reads. Now disclosed, and the other two halves of
+that report are fixed with it — the fetch is no longer hardcoded to `origin` while
+`resolve_base_ref` goes to real trouble to be remote-agnostic, and a FAILED fetch is reported
+instead of swallowed, naming every field computed from possibly-stale refs. **The two scripts had
+diverged on the same defect, which is worse than both being wrong the same way: one of them looked
+trustworthy.**
+
+**The justification written into the allowlist fix was false, and the disproof was already in
+hand.** 6.53.0's comment said a tester had measured a NON-BREAKING SPACE admitted under a UTF-8
+locale, and built two further sentences on it — that an *invisible* character could be accepted and
+then match nothing. The reporter re-measured with explicit bytes and withdrew it: their literal
+NBSP had been normalised to a plain space before it reached the guard. **The measurement that
+refuted it had already been run here and was read past.** The collation defect is real and the fix
+is right — `é` `Å` `ﬀ` were admitted under `en_IN.UTF-8` and are rejected under `LC_ALL=C`, while
+NBSP and ZWSP were rejected under both — but the comment now states the bytes, and the `got:` echo
+is re-motivated on characters that are **visually confusable** rather than invisible. *Assert the
+bytes, never the literal.*
+
+**The stale-handle bounce hands you a confident wrong answer, and that is the dangerous half.**
+Documented here because this skill is the only place anyone reads about the stale `@` header, even
+though the behaviour is the harness's. A reply to a renamed peer's `from-name` fails with a *"did
+you mean"* list built by string-similarity against the **dead** handle — so it offers that handle's
+lexical neighbours, which on a `<repo>-<hex>` fleet is exactly the set of sessions that are not the
+sender, and never the sender itself. Observed from both ends, twice: three suggestions, all live
+uninvolved stations, correct target absent. **A bounce announces itself and is recoverable; a
+confident wrong suggestion is a misdirected-prompt generator** — the station you deliver to has no
+way to know it was not the intended recipient. Ignore the suggestions, run `ListAgents`.
+
+**`formerNames` listed the CURRENT name as a former name.** Found by reading the code, confirmed
+against a live registry. The filter dropped the name being *replaced* and nothing ever dropped the
+name being *adopted*, so any rename that RETURNED to a previously-held name left it in `name` and
+in `formerNames` simultaneously — `CONTROL -> CONTROL-PROBE -> CONTROL` produced
+`name: CONTROL, formerNames: [..., 'CONTROL', 'CONTROL-PROBE']`. **It fails in the worst possible
+place:** the only reason anyone reads `formerNames` is to decide whether an address is stale, so
+the field false-positived on exactly the name it was being consulted to validate, inside the
+rename-resolution problem it exists to serve. One clause. This is a **second, independent** defect
+in that list — the existing warning that `formerNames[0]` is not a reliable start-time name covers
+a different case and both reasons to distrust it stand.
+
+`test/e2e.sh` gains the round-trip check and is at **85**.
+
+---
+
+## 6.53.0 — 2026-08-23
+
+**Four sessions field-tested the skill against a real 16-worktree fleet and returned nine
+findings. Seven were real, all seven are fixed here, and one of them was a bug in the fix shipped
+three hours earlier.** Every one was reported with a mechanism and a reproduction, and every one is
+regression-tested. The suite is at **84**.
+
+**`at-risk` printed `ok` over a commit that existed on no remote.** `git -C <missing dir>` exits
+128; stderr went to `/dev/null` and `|| continue` dropped the worktree without printing a line — so
+five of sixteen worktrees vanished from the check, and a repo whose only unpushed commit lived in a
+prunable worktree read as clean. **It is the dangerous direction twice over:** absence of a line
+reads as nothing wrong, and the tidy-up a reader runs on seeing *prunable* — `git worktree prune` —
+deletes the HEAD ref that is the only thing pinning that commit. The tool said `ok` immediately
+before the command that loses the work. git still records a HEAD sha for a missing worktree and
+every worktree shares the object store, so it is now measured from the main repo with that sha.
+Confirmed live: the reporter had already told their user *"nothing is single-disk"* off a
+hand-rolled sweep; the fixed check found the commit their loop missed.
+
+**Then the warning that fix printed was itself wrong, and it was caught the same way.** It said the
+worktree HEAD was *the only thing pinning* the commit and told the reader to create a branch —
+against a commit a local branch already held. Prune would not have lost it. **The danger was real
+but it was the WRONG danger, and the two have different fixes:** sole-pin is fixed by a branch,
+no-remote is fixed by a push. A reader following the printed command got a redundant branch, still
+had zero remote copies, and had just been told they were rescued. The claim is now checked with
+`for-each-ref --contains` before it is made. Both shapes are tested, because a naive fix deletes
+the true sole-pin warning — the case that actually loses work.
+
+**AppleScript injection through the worktree PATH.** The call-sign was allowlisted from the start;
+the path was escaped for the shell (`'` handled correctly) and then handed to a *second* parser as
+an AppleScript string literal, where `"` closes it. A worktree named
+`X" & (do shell script "…") & "Y` compiled as concatenation around a live call — proven by
+`osacompile`/`osadecompile` without ever running it. **Escaping the input that looked dangerous
+instead of every input that reaches the parser.** Both literals are now escaped, backslash before
+quote, and the regression test captures what is actually handed to `osascript`.
+
+**The allowlist was a collation range, so it did not mean what its message said.** Under a UTF-8
+locale it admitted accented letters and a NON-BREAKING SPACE while promising "letters, digits,
+spaces and . _ / & - only". Nothing exploitable — no quote or metacharacter homoglyph passes — but
+a call-sign carrying an invisible space is accepted and then matches nothing anywhere else, and the
+refusal could not be acted on because it never showed the offending character. Matched under
+`LC_ALL=C` now, and the refusal echoes the input.
+
+**`REPO:` named the directory you were standing in, not the repository.** `basename` of
+`--show-toplevel`, which for a station inside a worktree *is its own worktree*: a station in
+`.claude/worktrees/backend` printed `REPO: backend`. **It fails invisibly** — lanes are named
+backend, finance, channels, backlog, every one a plausible repo name. Derived from
+`--git-common-dir` now, the same value the PEERS block already computed correctly.
+
+**`COORDINATOR:` was read out of a wrapped prose sentence.** The legacy pattern anchored at `^` and
+stopped at the name, so any line *beginning* with the word matched — and paragraph reflow puts
+words at column 1 for free. A real project resolved its coordinator from the middle of the sentence
+*"Control was right to rule out `passWithNoTests`."* The answer happened to be right, which is the
+kind of wrong that survives testing: reflowing that paragraph would have silently changed a
+load-bearing value. It must now be a declaration — the whole line reduces to the name. The old
+pattern was wrong in **both** directions, and the fix corrects both: it read a coordinator out of
+prose, and it missed a genuine `# FLEET COMMAND` heading.
+
+**Rules were read from the working tree while the board was read at the ref.** Same block, opposite
+treatment — a station in a lane resolved its coordinator and its rules from a file 64 commits
+behind (38 diff lines apart), under a banner saying those names *win over any default*. Both are
+ref-pinned now, and a working copy that differs from the ref is called out rather than silently
+preferred.
+
+**A failed `git fetch` was silent, and it inflates.** Every number `at-risk` prints depends on
+remote-tracking refs; offline or with expired credentials they are stale, so work a peer already
+pushed reads as existing nowhere else. Reported now, naming the direction of the error. Both these
+scripts fetch, and neither said so — they are measurement tools that write refs, and the headers
+now admit it.
+
+**Two worktrees could render as the same label.** Two path components were printed, and a fleet
+whose scratchpads are all `<uuid>/scratchpad/board-flip` rendered three different worktrees as one
+string, with the discriminator one level above the window. The label now widens until unique, and
+prints the whole path rather than an ambiguous one — long beats ambiguous when the next step is
+`rm`.
+
+---
+
+## 6.52.0 — 2026-08-23
+
+**The suite relabelled the tab of anyone who ran it.** A field tester ran it twice and reported the
+constraint violation before the results: custom title `[◐ Claude Code]` before, `[MCTEST]` after.
+The identity section called the REAL `label-tab.sh` with `MCTEST` — a call-sign that passes every
+guard — so it walked the parent chain to the live tty and ran `set custom title of t` against the
+tester's own Terminal tab. **The header two screens above promises it never opens a terminal or
+renames a live session. It was doing the tab half of that on every run.**
+
+**It hid behind the very behaviour the skill documents.** Claude Code rewrites the tab title at
+each status change, so on a plain session `MCTEST` is overwritten within the turn and nobody sees
+it — which is why it survived this long here. On a session run with
+`CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1`, which by measurement writes **no** title of its own, there
+is nothing to overwrite it and **the relabel is permanent**. The configuration this skill documents
+as *"the custom title stands alone"* is precisely the one it silently vandalised.
+
+**Second order, and worse away from this machine:** `tell application "Terminal"` LAUNCHES
+Terminal.app when it is not running. On an iTerm2, Ghostty or VS Code host, a test suite promising
+never to open a terminal opens one. Not observable here, correctly reasoned by the tester from the
+AppleScript.
+
+**The damning part is the distance.** 6.51.0 had just copied `set-callsign.sh` away from
+`label-tab.sh` specifically so no `osascript` could reach a real tab, and was scrupulous about it.
+One hundred lines later the same file did the thing that care was taken against. *Care applied at
+one site is not a property of the file.*
+
+`osascript` is now stubbed **suite-wide**, beside the existing `tmux` and `wt.exe` stubs — not just
+at the tab test. The other two `label-tab.sh` calls are refused by input guards before any
+AppleScript runs, which is true and is also **guard ordering**, and ordering is what regresses; the
+stub means the suite cannot relabel a tab even if a guard moves. It also tests *more* than the live
+call did, because a tty that does NOT match can now be simulated: the unmatched path is asserted to
+report `NO-MATCH` and exit 1, which no live run could ever reach on a machine where the tab exists.
+
+**Verified by the thing that was missing before: a before/after measurement.** Tab title snapshotted
+either side of a full run — identical, stderr empty. Both new checks mutation-tested.
+
+**Also from the same report, and it re-reads every green run in this file:** the tester's stdout was
+not a tty, so `G/R/Y/Z` were empty and every check they ran took the UNCOLOURED path. 6.51.0's
+`readonly` colour guard was never under load there. A green run says less than it looks like it
+says, and the tester said so unprompted rather than banking the pass.
+
+`test/e2e.sh` gains four checks and is at **62**.
+
+---
+
+## 6.51.0 — 2026-08-23
+
+**The call-sign clash test drew the tester's own session out of the live registry and failed on
+it.** It picked a name off `~/.claude/sessions` to guarantee a real collision, taking the glob's
+first live entry — which is as likely to be the session running the test as anyone else's. It was.
+`set-callsign.sh` skips its own file when scanning for a clash, correctly, so there was no clash to
+find and the assert landed on `address already fleet-command-a4`. **The script was right and the
+test was wrong**, which is the reading that takes longest to reach when a suite goes red.
+
+**It was also unsafe in the direction nobody looks.** Had the clash check regressed, that same test
+would have renamed the tester's OWN live session — the one thing the file header promises never
+happens. It survived only because name==name exits early, i.e. by luck, on the path where the
+guard it was testing was already broken. **A test that borrows live state to prove a point is
+flaky; one that can mutate live state when the code under test regresses is a hazard wearing a
+test's clothes.**
+
+So build the registry instead of borrowing one. `set-callsign.sh` resolves its registry through
+`$HOME`, so a fake `$HOME` gives the test a private one: our own entry under the REAL claude pid —
+it walks the true parent chain and will not be fooled about who it is — plus a peer whose liveness
+the test chooses. Copied WITHOUT `label-tab.sh` beside it, so the tab surface takes its documented
+skip and no `osascript` ever runs against somebody's terminal.
+
+**That unlocked four paths that could not be tested before at any price**, because every one of
+them ends in a real rename: a dead session's call-sign is free, the rename lands with
+`nameSource=user`, the former name is kept, and re-setting the same name is a no-op that does not
+re-log it. Verified by mutation, not by reading: removing the clash guard, treating dead sessions
+as live, and dropping `formerNames` each turn the relevant checks red and leave the rest green.
+Under every mutant, *the tester's own session was never renamed* still passes — which is the
+property the fake `$HOME` was for.
+
+**A second bug, in the harness, found only because a mutant made a FAIL line render:** the new
+block used `R` as a scratch variable. `R` is the harness's red escape, read by `no()`. Assigning it
+blanked the colour for every failure after it and printed the registry contents where the escape
+belonged — `OLDNAME None FAIL  the registry carries the new name`. **It is invisible on a green
+run**, which is when nobody is reading the FAIL path. Renamed to `REGN`, and `G R Y Z` are now
+`readonly` so the next clobber says so on stderr instead of quietly eating the output.
+
+**The README said 28 end-to-end checks.** It has been 43, 45 and 49 since that number was written.
+Now 58, and it names the rename section and how it stays off live state.
+
+**Measured in passing, and it is the documented trap reproducing in the wild:** a peer renamed
+itself mid-exchange, and a reply addressed to the `from-name` on its message bounced with *no agent
+named … is reachable*. The address had moved; the start-time name stamped on the envelope had not.
+Resolving the peer by its current name delivered. The rule that says *resolve names, never reply to
+a from-name* is not theoretical, and the failure is silent to the sender who does not check.
+
+`test/e2e.sh` gains ten checks — nine new and the one that was failing — and is at **58**.
+
+---
+
 ## 6.50.0 — 2026-08-23
 
 **`at-risk` computed the right number, used it only as a gate, and then printed the wrong one.**

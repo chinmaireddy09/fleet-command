@@ -257,8 +257,21 @@ ASEOF
 # In batch mode the per-spawn verification is skipped here and done once for the whole
 # fleet afterwards -- so this delay goes to 0 rather than the check being deleted.
 if [ -n "$BATCH" ]; then AS_SRC=${AS_SRC//__VERIFYDELAY__/0}; else AS_SRC=${AS_SRC//__VERIFYDELAY__/4}; fi
-AS_SRC=${AS_SRC//__MYTTY__/$MYTTY}
-AS_SRC=${AS_SRC//__CMD__/$CMD}
+# TWO PARSERS, AND ONLY ONE OF THEM WAS ESCAPED FOR. $CMD is built with the worktree
+# path wrapped in SHELL single quotes (Q_WT escapes ' correctly), and is then dropped
+# into `do script "__CMD__"` -- an APPLESCRIPT double-quoted literal. A `"` in the path
+# was never escaped for that second parser, so it closed the literal: a worktree named
+#     /tmp/X" & (do shell script "echo INJECTED") & "Y
+# compiled as string concatenation around a live `do shell script`. Reported and proven
+# by osacompile/osadecompile 2026-08-23, without ever running it.
+# The call-sign was allowlisted from the start; the PATH was not, and the operator picks
+# the path. Escaping the call-sign and not the path is a rule applied to the input that
+# looked dangerous rather than to every input that reaches the parser.
+# AppleScript literal escaping: BACKSLASH FIRST, then the double quote -- reversed, the
+# backslash pass would escape the backslashes the quote pass had just added.
+as_lit() { local v="$1"; v=${v//\\/\\\\}; v=${v//\"/\\\"}; printf '%s' "$v"; }
+AS_SRC=${AS_SRC//__MYTTY__/$(as_lit "$MYTTY")}
+AS_SRC=${AS_SRC//__CMD__/$(as_lit "$CMD")}
 OUT=$(printf '%s' "$AS_SRC" | osascript - 2>&1)
 RC=$?
 echo "$OUT"

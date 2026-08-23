@@ -12,10 +12,13 @@
 # real run, because a syntax check is not a smoke test. Everything here EXECUTES.
 #
 # It creates throwaway git repos in $TMPDIR and removes them. It never writes to your
-# board, never opens a terminal, and never renames a live session -- the one test that
-# needs a name collision derives it from whatever is already running and SKIPS when
-# nothing is, because a test that mutates live state to prove a point is worse than an
-# untested line.
+# board, never opens a terminal, never relabels a tab, and never renames a live session.
+# osascript is stubbed suite-wide, because the tab test used to drive the REAL one at a
+# live tty and relabelled the tester's own tab (caught in the field, 6.52.0). The rename
+# tests build a session registry under a fake $HOME rather than borrowing the real one:
+# a test that mutates live state to prove a point is worse than an untested line, and
+# one that merely reads live state is flaky in a quieter way -- it drew the tester's own
+# session out of the registry and failed on it (6.51.0).
 set -uo pipefail
 
 D="${1:-$(cd "$(dirname "$0")/../skills/mission-control" && pwd)}"
@@ -25,6 +28,11 @@ command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 2; }
 
 PASS=0; FAIL=0; SKIP=0
 if [ -t 1 ]; then G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; Z=$'\033[0m'; else G=; R=; Y=; Z=; fi
+# readonly on purpose: these are one-letter names in a long script, and a later test
+# reusing one as scratch silently blanks every FAIL colour after it -- which is exactly
+# how a mangled "OLDNAME None FAIL" line got shipped past a green run (6.51.0). A
+# clobber now says so on stderr instead of quietly eating the output.
+readonly G R Y Z
 ok(){ printf '  %sPASS%s  %s\n' "$G" "$Z" "$1"; PASS=$((PASS+1)); }
 no(){ printf '  %sFAIL%s  %s\n        got: %s\n' "$R" "$Z" "$1" "$(printf '%s' "$2" | head -2 | tr '\n' ' ')"; FAIL=$((FAIL+1)); }
 sk(){ printf '  %sSKIP%s  %s\n' "$Y" "$Z" "$1"; SKIP=$((SKIP+1)); }
@@ -35,6 +43,20 @@ STUB="$WORK/stub"; mkdir -p "$STUB"
 for b in tmux wt.exe; do
   printf '#!/bin/bash\nexit ${STUB_RC:-0}\n' > "$STUB/$b"; chmod +x "$STUB/$b"
 done
+# osascript is stubbed for the WHOLE suite, not just the tab tests. Every label-tab.sh
+# call below is supposed to be refused by a guard before it reaches a real tab -- but
+# that is guard ORDERING, and ordering is exactly what regresses. With the stub on PATH
+# the suite cannot relabel a tester's tab even if a guard moves below the osascript.
+cat > "$STUB/osascript" <<'OSA'
+#!/bin/bash
+if [ -n "${STUB_OSA_CAPTURE:-}" ]; then cat > "$STUB_OSA_CAPTURE"; else cat >/dev/null; fi
+if [ -n "${STUB_OSA_NOMATCH:-}" ]; then
+  echo "NO-MATCH for ${STUB_TTY:-/dev/ttys999}"
+else
+  echo "${STUB_TTY:-/dev/ttys999} -> ${STUB_OSA_TITLE:-MCTEST}"
+fi
+OSA
+chmod +x "$STUB/osascript"
 
 newrepo(){ local r; r=$(mktemp -d "$WORK/repo.XXXXXX"); cd "$r"
   git init -q; git config user.email t@example.com; git config user.name t
@@ -115,29 +137,102 @@ chk "an unsupported host prints instead"     "$O" "CANNOT AUTOMATE HERE"
 
 echo
 echo "── 6. the guards ──────────────────────────────────────────────────"
-chk "AppleScript injection refused"    "$(bash "$D/label-tab.sh" 'A"; do shell script "x' 2>&1)" "FAILED:"
+chk "AppleScript injection refused"    "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" 'A"; do shell script "x' 2>&1)" "FAILED:"
 chk "shell injection refused"          "$(bash "$D/spawn-station.sh" 'A`whoami`' "$REPO" X --print 2>&1)" "FAILED:"
-chk "over-long call-sign refused"      "$(bash "$D/label-tab.sh" "$(python3 -c 'print("A"*70)')" 2>&1)" "too long"
-chk "spaced call-sign needs a handle"  "$(bash "$D/set-callsign.sh" 'FLEET COMMAND' 2>&1)" "needs a handle"
+chk "over-long call-sign refused"      "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" "$(python3 -c 'print("A"*70)')" 2>&1)" "too long"
+# The allowlist is a COLLATION range: under a UTF-8 locale it admitted accented letters
+# and a NON-BREAKING SPACE while its message promised ASCII. Not exploitable -- no quote
+# or metacharacter homoglyph passes -- but an invisible character that is accepted here
+# and matches nowhere else is a call-sign nobody can address. Reported 2026-08-23.
+chk "an accented letter is refused"    "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" 'CAFÉ' 2>&1)" "FAILED:"
+# WITNESS CHARACTERS MATTER. The first version of this check used a NON-BREAKING SPACE,
+# and NBSP is refused under EVERY locale -- it is not a letter, so it never collated
+# among [A-Za-z] in the first place. That check passed on the unfixed build and pinned
+# nothing. Caught 2026-08-23 by a tester who verified the claim instead of inheriting it.
+# The characters that actually WERE admitted are LETTERS: e-acute, a-umlaut, fullwidth A.
+chk "an umlaut is refused"             "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" "$(printf 'C\303\244FE')" 2>&1)" "FAILED:"
+chk "a fullwidth letter is refused"    "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" "$(printf '\357\274\241BC')" 2>&1)" "FAILED:"
+# kept as a negative control, and labelled as one: this was refused BEFORE the fix too.
+chk "a non-breaking space stays refused (control)" "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" "$(printf 'A\302\240B')" 2>&1)" "FAILED:"
+chk "a plain ASCII call-sign still passes" "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" 'BACK-END_2' 2>&1)" "BACK-END_2"
+# ...and the refusal must show what was passed. This was the one guard that stated the
+# rule without echoing the input, on the script most likely to reject something invisible.
+chk "the refusal echoes the input"     "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" 'BAD;NAME' 2>&1)" "got: BAD;NAME"
+chk "spaced call-sign needs a handle"  "$(PATH="$STUB:$PATH" bash "$D/set-callsign.sh" 'FLEET COMMAND' 2>&1)" "needs a handle"
 chk "missing worktree refused"         "$(bash "$D/spawn-station.sh" X /nope/nope X --print 2>&1)" "no such worktree"
-LIVE=$(python3 - "$$" <<'PY'
-import glob,json,os,sys
-for f in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
-    try: d=json.load(open(f))
-    except Exception: continue
-    try: os.kill(int(d["pid"]),0)
-    except Exception: continue
-    n=d.get("name")
-    if n: print(n); break
-PY
-)
-# Derived from live state on purpose: a hardcoded name passes or fails depending on
-# who happens to be running, and when the name is FREE set-callsign.sh succeeds and
-# renames the session running the test. Measured that happening 2026-08-23.
-if [ -n "$LIVE" ]; then
-  chk "live call-sign clash refused ($LIVE)" "$(bash "$D/set-callsign.sh" "$LIVE" 2>&1)" "REFUSED"
+
+echo
+echo "── 6a. renaming, against a registry we own ────────────────────────"
+# The clash test USED to pick a name off the live registry. It picked the session
+# RUNNING THE TEST -- the glob's first live entry is as likely to be us as anyone --
+# and set-callsign.sh skips its own file when scanning for a clash, so there was no
+# clash to find and the assert failed on "address already". Measured 2026-08-23.
+# It was also unsafe in the other direction: had the clash check regressed, the
+# rename would have landed on the tester's OWN live session, which is the one thing
+# the header promises never happens. It survived only because name==name exits early.
+#
+# So build the registry instead of borrowing one. set-callsign.sh reads $HOME, so a
+# fake HOME gives us a private registry: our own entry under the REAL claude pid (it
+# walks the true parent chain and will not be fooled about who it is), plus a peer
+# whose liveness we choose. Nothing here can touch the real registry or a real tab.
+# Copied WITHOUT label-tab.sh beside it, so the tab surface takes its documented skip
+# and no osascript ever runs against somebody's terminal.
+CP=$$
+while [ "$CP" -gt 1 ]; do
+  [ "$(ps -o comm= -p "$CP" 2>/dev/null | xargs basename 2>/dev/null)" = "claude" ] && break
+  CP=$(ps -o ppid= -p "$CP" 2>/dev/null | tr -d ' '); [ -z "$CP" ] && { CP=1; break; }
+done
+if [ "$CP" -le 1 ]; then
+  sk "renaming — no claude in the parent chain (run this from inside a session)"
 else
-  sk "live call-sign clash — no live session to clash with"
+  TH="$WORK/home"; mkdir -p "$TH/.claude/sessions" "$TH/bin"
+  cp "$D/set-callsign.sh" "$TH/bin/set-callsign.sh"
+  SC="$TH/bin/set-callsign.sh"
+  REAL="$HOME/.claude/sessions/$CP.json"
+  BEFORE=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('name',''))" "$REAL" 2>/dev/null)
+  printf '{"pid":%s,"name":"OLDNAME","cwd":"/tmp"}' "$CP" > "$TH/.claude/sessions/$CP.json"
+
+  # a peer that is genuinely alive, holding TAKEN
+  sleep 30 & PEER=$!
+  printf '{"pid":%s,"name":"TAKEN","cwd":"/tmp/peer"}' "$PEER" > "$TH/.claude/sessions/peer.json"
+  chk "a live peer's call-sign is refused" \
+      "$(HOME="$TH" bash "$SC" TAKEN 2>&1)" "REFUSED"
+  chk "the refusal names who holds it" \
+      "$(HOME="$TH" bash "$SC" TAKEN 2>&1)" "/tmp/peer"
+  kill $PEER 2>/dev/null; wait $PEER 2>/dev/null
+
+  # same name, same file -- but the holder is now dead, so the name is free
+  printf '{"pid":%s,"name":"GHOST","cwd":"/tmp/ghost"}' "$PEER" > "$TH/.claude/sessions/peer.json"
+  O=$(HOME="$TH" bash "$SC" GHOST 2>&1)
+  chk "a dead session's call-sign is free"  "$O" "OLDNAME -> GHOST"
+  chk "no label-tab.sh means a clean skip"  "$O" "tab title: skipped"
+  chk "the old handle is not claimed fixed" "$O" "ONLY A RESTART"
+  REGN=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d['name'],d.get('nameSource'),','.join(d.get('formerNames',[])))" "$TH/.claude/sessions/$CP.json")
+  chk "the registry carries the new name"   "$REGN" "GHOST user"
+  chk "the former name is kept"             "$REGN" "OLDNAME"
+  chk "re-setting the same name is a no-op" "$(HOME="$TH" bash "$SC" GHOST 2>&1)" "address already"
+  REGN=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('formerNames',[]))" "$TH/.claude/sessions/$CP.json")
+  case "$REGN" in *OLDNAME*OLDNAME*) no "a no-op does not re-log the former name" "$REGN";; *) ok "a no-op does not re-log the former name";; esac
+
+  # RENAMING BACK TO A NAME YOU ALREADY HELD must not leave it listed as former. Only
+  # the outgoing name was filtered, never the incoming one, so a CONTROL -> PROBE ->
+  # CONTROL round trip left CONTROL in `name` and in `formerNames` at once. The only
+  # reason anyone reads formerNames is to decide whether an address is STALE, so it
+  # false-positived on exactly the name it was consulted to validate. Live registry,
+  # 2026-08-23.
+  HOME="$TH" bash "$SC" ROUNDTRIP >/dev/null 2>&1
+  HOME="$TH" bash "$SC" GHOST     >/dev/null 2>&1
+  REGN=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d['name'],'|',','.join(d.get('formerNames',[])))" "$TH/.claude/sessions/$CP.json")
+  case "$REGN" in
+    "GHOST | "*GHOST*) no "a re-taken name is not also listed as former" "$REGN" ;;
+    "GHOST | "*ROUNDTRIP*) ok "a re-taken name is not also listed as former" ;;
+    *) no "a re-taken name is not also listed as former" "$REGN" ;;
+  esac
+
+  # the whole point of the fake HOME: the tester's own session is untouched
+  AFTER=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('name',''))" "$REAL" 2>/dev/null)
+  [ "$BEFORE" = "$AFTER" ] && ok "the tester's own session was never renamed" \
+                           || no "the tester's own session was never renamed" "$BEFORE -> $AFTER"
 fi
 
 echo
@@ -186,6 +281,94 @@ chk "and is named a duplicate, not a loss"     "$O" "duplicate by content"
 cd "$REPO"
 
 echo
+echo "── 6bd. at-risk cannot go blind on a worktree ─────────────────────"
+# The regression that matters most in this file: a worktree whose DIRECTORY is gone was
+# skipped silently, so the one repo state where work is most likely to be lost printed
+# "ok every commit in every worktree exists on a remote". Build exactly that state.
+GONE=$(newrepo); cd "$GONE"
+git worktree add -q --detach "$GONE/../gonewt" HEAD 2>/dev/null
+( cd "$GONE/../gonewt" && echo secret > only-here.txt && git add -A && git commit -qm "exists nowhere else" )
+LOSTSHA=$(git -C "$GONE/../gonewt" rev-parse HEAD)
+rm -rf "$GONE/../gonewt"                       # the worktree is now prunable
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "a prunable worktree is still measured"   "$O" "AT RISK"
+chk "it is not reported as safe"              "$(printf '%s' "$O" | grep -c 'every commit in every worktree')" "0"
+chk "the missing directory is named as such"  "$O" "[DIR GONE]"
+chk "the lost commit is listed"               "$O" "exists nowhere else"
+chk "prune is named as the thing that loses it" "$O" "worktree prune"
+chk "recovery is spelled out, not implied"    "$O" "git branch <name>"
+
+# ...and the claim must be CHECKED, not assumed. If a branch or tag also holds the
+# commit, prune cannot lose it: the exposure is "no remote", whose fix is a push, not
+# the branch this used to recommend. Reported against a live commit, 2026-08-23.
+git branch pinned/elsewhere "$LOSTSHA" >/dev/null 2>&1
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "another ref holding it is named"          "$O" "pinned/elsewhere"
+chk "prune is NOT blamed when a branch holds it" "$(printf '%s' "$O" | grep -c 'prune. DELETES')" "0"
+chk "the real exposure is named instead"       "$O" "the fix is a push, not a branch"
+chk "it is still reported as at risk"          "$O" "AT RISK"
+
+# and the inverse: a gone worktree whose content IS on a remote must not cry wolf
+GONE2=$(newrepo); cd "$GONE2"
+git worktree add -q --detach "$GONE2/../gonewt2" HEAD 2>/dev/null
+rm -rf "$GONE2/../gonewt2"
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "a gone worktree already on a remote is not at risk" "$O" "every commit in every worktree"
+
+echo
+echo "── 6be. a worktree label a reader can act on ──────────────────────"
+# Two worktrees whose last TWO path components are identical used to render as the
+# same string, with the discriminator one level above the window.
+# The reported shape exactly: the last TWO components are identical on both, and the
+# discriminator sits one level higher. An earlier version of this test used
+# <side>/scratchpad, whose 2-component label is already unique -- so it passed against
+# the very bug it was written for. Caught by mutation, 2026-08-23.
+COL=$(newrepo); cd "$COL"; mkdir -p "$COL/../aaa" "$COL/../bbb"
+for side in aaa bbb; do
+  git worktree add -q --detach "$COL/../$side/scratchpad/board-flip" HEAD 2>/dev/null
+  ( cd "$COL/../$side/scratchpad/board-flip" && echo "$side" > f."$side" && git add -A && git commit -qm "work in $side" )
+done
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "colliding labels are widened until unique" "$O" "aaa/scratchpad/board-flip"
+chk "and the other side is distinguishable"     "$O" "bbb/scratchpad/board-flip"
+[ "$(printf '%s' "$O" | grep -c 'AT RISK')" = "2" ] && ok "both worktrees get their own row" \
+  || no "both worktrees get their own row" "$(printf '%s' "$O" | grep -c 'AT RISK') AT RISK rows"
+
+echo
+echo "── 6bf. a failed fetch is not a silent stale read ─────────────────"
+# Every number at-risk prints depends on remote-tracking refs. If the fetch fails, they
+# are stale and the check OVERSTATES -- work a peer already pushed reads as at risk.
+FF=$(newrepo); cd "$FF"
+git remote add broken /nope/no/such/remote
+O=$(bash "$D/preflight.sh" at-risk 2>&1)
+chk "a failed fetch is reported"            "$O" "git fetch FAILED"
+chk "the direction of the error is named"   "$O" "OVERSTATES"
+
+echo
+echo "── 6bg. the worktree path reaches a SECOND parser ─────────────────"
+# The call-sign is allowlisted; the PATH was only shell-escaped, and then handed to
+# AppleScript, where `"` closes the string literal. A worktree named
+#   X" & (do shell script "...") & "Y
+# compiled as concatenation around a live call. Reported with an osacompile proof,
+# 2026-08-23. The operator chooses the path, so "it is our own value" was never true.
+INJ=$(newrepo); cd "$INJ"
+EVILWT="$WORK/X\" & (do shell script \"echo INJECTED\") & \"Y"
+mkdir -p "$EVILWT"
+CAP="$WORK/osa.capture"; : > "$CAP"
+PATH="$STUB:$PATH" TERM_PROGRAM=Apple_Terminal STUB_OSA_CAPTURE="$CAP" \
+  bash "$D/spawn-station.sh" BACKEND "$EVILWT" BACKEND >/dev/null 2>&1
+CAPTXT=$(cat "$CAP" 2>/dev/null)
+if [ -z "$CAPTXT" ]; then
+  sk "AppleScript path escaping — no osascript recipe reached on this host"
+else
+  chk "the quote in the path is escaped for AppleScript" "$CAPTXT" 'X\" & (do shell script \"'
+  case "$CAPTXT" in
+    *'" & (do shell script "'*) no "the path cannot close the AppleScript literal" "unescaped quote survived" ;;
+    *) ok "the path cannot close the AppleScript literal" ;;
+  esac
+fi
+
+echo
 echo "── 6c. detached HEAD and worktree wording ─────────────────────────"
 git worktree add -q --detach "$REPO/.claude/worktrees/det" HEAD 2>/dev/null
 O=$(cd "$REPO/.claude/worktrees/det" && bash "$D/mc-init.sh" 2>&1)
@@ -194,6 +377,40 @@ chk "dirty line names the worktree, not the checkout" "$O" "a worktree, not the 
 cd "$REPO"
 
 echo
+echo "── 6d. a displaced station must not call its fleet strangers ──────"
+# Peers are classified by the peer's REGISTERED SESSION cwd, while the fleet id comes
+# from where the command is RUNNING. Work outside your launch directory and every peer
+# computes OFF-FLEET -- correctly computed from the wrong input. Reproduced from a
+# scratch repo 2026-08-23: five live peers, all five called strangers, the coordinator
+# among them. It cannot re-derive the right answer, so it must say it cannot classify.
+if [ "$CP" -le 1 ]; then
+  sk "displaced-station warning — no claude in the parent chain"
+else
+  DIS=$(newrepo)            # a repo that is NOT the registry cwd we are about to write
+  ELSEWHERE=$(newrepo)
+  TH2="$WORK/home2"; mkdir -p "$TH2/.claude/sessions"
+  printf '{"pid":%s,"name":"DISPLACED","cwd":"%s"}' "$CP" "$ELSEWHERE" > "$TH2/.claude/sessions/$CP.json"
+  cd "$DIS"
+  O=$(HOME="$TH2" bash "$D/mc-init.sh" 2>&1)
+  chk "the mismatch is announced"            "$O" "PEERS_WARNING"
+  chk "it names the registered cwd"          "$O" "$ELSEWHERE"
+  chk "it says the verdicts are unreliable"  "$O" "UNRELIABLE"
+  chk "it warns against the wrong conclusion" "$O" "Do not conclude you have no"
+  # and it must stay QUIET when the session really is where it says it is
+  printf '{"pid":%s,"name":"HOMEBODY","cwd":"%s"}' "$CP" "$DIS" > "$TH2/.claude/sessions/$CP.json"
+  O=$(HOME="$TH2" bash "$D/mc-init.sh" 2>&1)
+  [ "$(printf '%s' "$O" | grep -c PEERS_WARNING)" = "0" ] \
+    && ok "no warning when the cwd matches" || no "no warning when the cwd matches" "warned anyway"
+fi
+
+echo
+# ONE ABSOLUTE cd PER SECTION. Never inherit the previous section's directory: 6d's cd
+# is inside a conditional, so skipping it silently hands this section whatever 6bg left.
+# A chained cd is how a coordinator produced a confident false FAILURE against a fix that
+# was correct -- it ran case 2 in case 1's directory and got a warning comparing a path
+# to itself (2026-08-23). The same shape bit the author of this file the same day. It is
+# latent here rather than live, and it is being closed while it is still cheap.
+cd "$REPO" || exit 1
 echo "── 7. identity surfaces ───────────────────────────────────────────"
 O=$(bash "$D/mc-init.sh" me 2>&1)
 if printf '%s' "$O" | grep -q "ME_PID: unknown"; then
@@ -203,12 +420,37 @@ else
   chk "ref pointed at the ListAgents self-line"  "$O" "self-line carries it"
   chk "self-line NAME marked do-not-use"         "$O" "DO NOT USE"
 fi
-O=$(bash "$D/label-tab.sh" MCTEST 2>&1)
-case "$O" in
-  *"persists:"*)  ok "tab persistence reported honestly" ;;
-  *"skipped"*|*"NO-MATCH"*) sk "tab label — no addressable terminal here" ;;
-  *) no "tab persistence reported honestly" "$O" ;;
+# The tab surface, WITHOUT touching a tab. This test used to call the real label-tab.sh
+# with a VALID call-sign -- so it passed the guards, walked the parent chain to the live
+# tty, and osascript'd `set custom title` onto THE TESTER'S OWN Terminal tab. A field
+# tester caught it and measured the change: [◐ Claude Code] -> [MCTEST], 2026-08-23.
+# Two ways it hid. Claude Code rewrites the title at every status change, so on a plain
+# session MCTEST is overwritten within the turn and nobody sees it -- but on a session
+# run with CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1, which writes NO title of its own, the
+# relabel is PERMANENT. And `tell application "Terminal"` LAUNCHES Terminal.app when it
+# is not running, so on an iTerm2/Ghostty/VS Code host this opened a terminal outright.
+# Both halves of the header's promise, broken by one line, 100 lines after 6a took care
+# to copy set-callsign.sh away from label-tab.sh for exactly this reason.
+# Stub osascript instead -- same pattern as tmux and wt.exe above. It exercises MORE of
+# the script than the live call did, because the tty match can now be made to fail.
+O=$(PATH="$STUB:$PATH" CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 bash "$D/label-tab.sh" MCTEST 2>&1)
+chk "the tab label names the tty it matched"    "$O" "-> MCTEST"
+chk "persistence is reported, not assumed"      "$O" "persists:"
+chk "disabled title writes read as durable"     "$O" "persists: YES"
+# The VERDICT must stay FLAT for the un-durable case. It briefly read "PROBABLY NOT",
+# hedged because the overwrite was once measured not to happen -- but SKILL.md enforces
+# "never report a tab as labelled unless this line agrees", and a station can talk itself
+# past "probably not" where it cannot talk itself past "no". The uncertainty belongs in
+# the explanation, not the verdict. Caught 2026-08-23 by a station that ran this twice
+# across the change and saw the verdict move while its own session had not.
+O2=$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" MCTEST 2>&1)
+case "$O2" in
+  *"persists: NO"*|*"persists: YES"*) ok "the persistence verdict is flat, never hedged" ;;
+  *) no "the persistence verdict is flat, never hedged" "$O2" ;;
 esac
+O=$(PATH="$STUB:$PATH" STUB_OSA_NOMATCH=1 bash "$D/label-tab.sh" MCTEST 2>&1); RC=$?
+chk "an unmatched tty is reported, not faked"   "$O" "NO-MATCH"
+[ $RC -eq 1 ] && ok "no matching tab is an error (exit 1)" || no "no matching tab is an error" "exit $RC"
 
 echo
 printf '── %d passed · %d failed · %d skipped ─────────────────────────────\n' $PASS $FAIL $SKIP

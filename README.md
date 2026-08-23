@@ -341,10 +341,12 @@ bash test/e2e.sh                                    # this repo's copy
 bash test/e2e.sh ~/.claude/skills/mission-control   # what is installed
 ```
 
-28 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
-every host, the input guards, the identity surfaces. **Every check executes something**; a syntax
-check is not a smoke test. Throwaway repos under `$TMPDIR`, removed on exit; it never touches your
-board, opens a terminal, or renames a live session.
+93 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
+every host, the input guards, renaming against a registry the test owns, the identity surfaces.
+**Every check executes something**; a syntax check is not a smoke test. Throwaway repos under
+`$TMPDIR`, removed on exit; it never touches your board, opens a terminal, relabels a tab, or
+renames a live session — the rename checks build their own session registry under a fake `$HOME`,
+and `osascript` is stubbed suite-wide so no tab is ever addressed.
 
 ## Troubleshooting
 

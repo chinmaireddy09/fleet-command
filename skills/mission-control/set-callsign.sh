@@ -9,6 +9,9 @@
 #      the rename carries the old name too (measured 2026-08-22). A renamed station keeps
 #      arriving under its old handle -- measured 2026-08-19, and it is the same capture that
 #      bounces a reply addressed to a from-name. Resolve names here; match on the [ref].
+#      AND THE BOUNCE SUGGESTS ALTERNATIVES THAT ARE ALL WRONG: it matches the DEAD handle,
+#      so it offers that handle's lexical neighbours -- live, real, uninvolved stations --
+#      and never the renamed sender. Measured 2026-08-23. Ignore them; run ListAgents.
 #   2. the Terminal tab title (delegated to label-tab.sh) -- CONDITIONAL, and the condition
 #      is fixed at LAUNCH, so THIS SCRIPT CANNOT CHANGE IT for a session already up.
 #      Claude Code writes the title once per status change. Measured 2026-08-22 on 2.1.239,
@@ -40,11 +43,27 @@ CALLSIGN="${1:-}"; HANDLE="${2:-}"
 # string and AppleScript has `do shell script`, so an unfiltered call-sign is remote
 # code execution with extra steps -- demonstrated 2026-08-18, it ran.
 # ALLOWLIST: letters, digits, spaces and the separators real call-signs use.
-case "$CALLSIGN" in
-  "" | *[!A-Za-z0-9\ ._/\&-]* )
-    echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
-    exit 2 ;;
-esac
+# THE ALLOWLIST IS MATCHED UNDER C SEMANTICS, ON PURPOSE. [A-Za-z0-9] is a COLLATION
+# range, so under a UTF-8 locale it admits whatever the locale sorts inside it. Measured
+# 2026-08-23 with explicit bytes, en_IN.UTF-8 vs C:
+#   U+00E9 e-acute  c3a9    UTF-8 ADMIT / C REJECT
+#   U+00C5 A-ring   c385    UTF-8 ADMIT / C REJECT
+#   U+FB00 ff-lig   efac80  UTF-8 ADMIT / C REJECT
+#   U+00A0 NBSP     c2a0    REJECTED under BOTH
+#   U+200B ZWSP     e2808b  REJECTED under BOTH
+# while the message promised "letters, digits, spaces and . _ / & - only".
+# NOTHING INVISIBLE EVER GOT IN, and an earlier version of this comment said otherwise --
+# a first report claimed NBSP was admitted, having typed a literal that was normalised to
+# a plain space before it reached the guard; the reporter caught and corrected it. The
+# real defect is narrower and still worth fixing: a call-sign can be accepted here with a
+# character that is VISUALLY CONFUSABLE with an ASCII one (CAFE vs CAFE with an accent)
+# and then match nothing anywhere else. Assert the bytes, never the literal.
+# LC_ALL=C makes the rule mean exactly what it says, in bytes.
+if ! ( LC_ALL=C; case "$CALLSIGN" in "" | *[!A-Za-z0-9\ ._/\&-]* ) exit 1;; esac ); then
+  echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
+  echo "        got: $CALLSIGN" >&2
+  exit 2
+fi
 if [ ${#CALLSIGN} -gt 64 ]; then echo "FAILED: call-sign too long (max 64)" >&2; exit 2; fi
 
 # A call-sign is what people SAY -- it may contain spaces ("FLEET COMMAND").
@@ -109,7 +128,15 @@ d=json.load(open(p))
 old=d.get("name")
 if old==new:
     print(f"address already {new}"); raise SystemExit(0)
-former=[x for x in d.get("formerNames",[]) if x!=old]
+# Drop BOTH the name being replaced and the name being ADOPTED. Only `old` was
+# filtered, so renaming BACK to a name you previously held left it in `name` and in
+# `formerNames` at once -- measured on a live registry 2026-08-23 after
+# CONTROL -> CONTROL-PROBE -> CONTROL: name=CONTROL, formerNames=[..., 'CONTROL', ...].
+# It lands in the worst possible place: the ONLY reason to read formerNames is to decide
+# whether an address is STALE, so the field false-positived on exactly the name it was
+# being consulted to validate. (This is a SECOND defect in this list, independent of the
+# documented one about formerNames[0] not being a reliable start-time name.)
+former=[x for x in d.get("formerNames",[]) if x!=old and x!=new]
 if old: former.append(old)
 d.update(name=new, nameSource="user", nameSince=int(time.time()*1000), formerNames=former)
 fd,tmp=tempfile.mkstemp(dir=os.path.dirname(p)); os.close(fd)
