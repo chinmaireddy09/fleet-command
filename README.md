@@ -394,7 +394,6 @@ Every row here is a real failure that cost somebody time, and the answer is what
 | [`references/field-notes.md`](skills/mission-control/references/field-notes.md) | The measured incidents behind the rules, kept out of the hot path |
 | [`references/sweeps.md`](skills/mission-control/references/sweeps.md) · [`countermeasures.md`](skills/mission-control/references/countermeasures.md) | Changes that cross every area · what to do when something went wrong |
 | [`VOCABULARY.md`](VOCABULARY.md) | Every word this uses, what it is underneath, and the plain sentence to say instead |
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed, and the failure that forced each change |
 | [`templates/`](templates/) | `MISSION-CONTROL.md` to copy into your own project, and the spawn-preferences shape |
 
 ---
