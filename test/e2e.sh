@@ -344,7 +344,7 @@ O=$(MC_CONFIG=/nonexistent MC_SPAWN_MODE=print bash "$D/spawn-station.sh" B "$RE
 chk "an explicit flag still beats the env"  "$O" "started as a background agent"
 # A junk value must be reported, not silently treated as a choice.
 O=$(MC_CONFIG=/nonexistent MC_SPAWN_MODE=sideways bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)
-chk "a junk MC_SPAWN_MODE is reported"      "$O" "is not one of tab|window|background|print"
+chk "a junk MC_SPAWN_MODE is reported"      "$O" "is not one of default|tab|window|background|print"
 chk "and it falls back to the default"      "$O" "started as a background agent"
 # The recorded preference file must accept tab too, or the two surfaces disagree.
 PT="$WORK/tabpref.json"
