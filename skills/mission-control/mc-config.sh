@@ -33,8 +33,38 @@ esac
 KEY="${2:-}"; VAL="${3:-}"
 
 # ── delegation, before anything else touches the file ────────────────────────────
+# KEEPING THE TWO SOURCES IN AGREEMENT IS THE SCRIPT'S JOB, NOT THE USER'S.
+# env.MC_SPAWN_MODE in ~/.claude/settings.json outranks this skill's file. While only the
+# file was written, choosing a mode could silently fail to take effect -- so the picker had
+# to explain precedence, settings.json and override semantics in every option, which is how
+# a one-keystroke setting turned into four paragraphs nobody could read. Syncing here
+# deletes the explanation by deleting the discrepancy.
+sync_env_mode() {   # $1 = mode, or "" to remove the key
+  local st="${MC_SETTINGS:-$HOME/.claude/settings.json}"
+  [ -w "$st" ] || return 0
+  MODE_V="$1" ST="$st" python3 - <<'PYS' 2>/dev/null || true
+import json, os, tempfile
+st = os.environ["ST"]; want = os.environ["MODE_V"]
+try:
+    with open(st) as f: d = json.load(f)
+except Exception: raise SystemExit(0)          # unreadable settings are never rewritten
+env = d.get("env") if isinstance(d.get("env"), dict) else None
+if env is None or "MC_SPAWN_MODE" not in env:
+    raise SystemExit(0)                        # only maintained if the user already has it
+if env.get("MC_SPAWN_MODE") == want: raise SystemExit(0)
+if want: env["MC_SPAWN_MODE"] = want
+else: env.pop("MC_SPAWN_MODE", None)
+if not env: d.pop("env", None)
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(st)); os.close(fd)
+with open(tmp, "w") as f: json.dump(d, f, indent=2)
+os.replace(tmp, st)
+PYS
+}
+
 if [ "$ACTION" = "set" ] && [ "$KEY" = "spawn.mode" ]; then
-  exec bash "$HERE/spawn-pref.sh" set "$VAL"
+  bash "$HERE/spawn-pref.sh" set "$VAL" || exit $?
+  sync_env_mode "$VAL"
+  exit 0
 fi
 if [ "$ACTION" = "set" ] && [ "$KEY" = "spawn.once" ]; then
   exec bash "$HERE/spawn-pref.sh" once "$VAL"
