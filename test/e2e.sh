@@ -372,6 +372,54 @@ chk "show renders it as a value"     "$(MC_CONFIG="$DP" bash "$D/mc-config.sh" s
 chk "and mc-config offers it"        "$(MC_CONFIG="$DP" bash "$D/mc-config.sh" keys 2>&1)" "default | background | window | tab"
 chk "the env var accepts it too"     "$(MC_CONFIG=/nonexistent MC_SPAWN_MODE=default bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)" "started as a background agent"
 
+echo "── 5h. once vs always ─────────────────────────────────────────────"
+# "Just the next deploy" is a SEPARATE key, never a temporary value of spawn.mode.
+# Overwriting the standing preference and restoring it afterwards means a crash, a closed
+# window or a failed spawn leaves the temporary value looking permanent -- the user asked
+# for one deploy and silently acquired a new default.
+OP="$WORK/oncepref.json"
+MC_CONFIG="$OP" bash "$D/spawn-pref.sh" set background >/dev/null 2>&1
+MC_CONFIG="$OP" bash "$D/spawn-pref.sh" once window >/dev/null 2>&1
+chk "a pending one-shot is reported"    "$(MC_CONFIG="$OP" bash "$D/spawn-pref.sh" read 2>&1)" "ONCE: window"
+chk "and mc-config shows it"            "$(MC_CONFIG="$OP" bash "$D/mc-config.sh" show 2>&1)" "PENDING ONE-SHOT"
+chk "the standing preference survives"  "$(MC_CONFIG="$OP" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: background"
+# --print starts nothing, so it must not consume the one-shot.
+MC_CONFIG="$OP" bash "$D/spawn-station.sh" B "$REPO" B --print >/dev/null 2>&1
+chk "--print does not consume it"       "$(MC_CONFIG="$OP" bash "$D/spawn-pref.sh" read 2>&1)" "ONCE: window"
+# Neither does a call with no --deploy: it starts nothing either.
+MC_CONFIG="$OP" bash "$D/spawn-station.sh" B "$REPO" B >/dev/null 2>&1
+chk "no --deploy does not consume it"   "$(MC_CONFIG="$OP" bash "$D/spawn-pref.sh" read 2>&1)" "ONCE: window"
+O=$(MC_CONFIG="$OP" TERM_PROGRAM=vscode bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)
+chk "a deploy uses it"                  "$O" "ONE-SHOT: window"
+chk "and says it is now cleared"        "$O" "now cleared"
+chk "and names the flag for siblings"   "$O" "Pass --window to the others"
+case "$(MC_CONFIG="$OP" bash "$D/spawn-pref.sh" read 2>&1)" in
+  *"ONCE:"*) no "it is consumed exactly once" "still pending" ;;
+  *) ok "it is consumed exactly once" ;;
+esac
+chk "the next deploy is back to standing" "$(MC_CONFIG="$OP" bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)" "started as a background agent"
+chk "and the standing preference is untouched" "$(MC_CONFIG="$OP" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: background"
+# An explicit flag is the more specific instruction and still wins over a pending one-shot.
+MC_CONFIG="$OP" bash "$D/spawn-pref.sh" once window >/dev/null 2>&1
+chk "an explicit flag beats a one-shot" "$(MC_CONFIG="$OP" bash "$D/spawn-station.sh" B "$REPO" B --background --deploy 2>&1)" "started as a background agent"
+chk "a bogus one-shot is refused"       "$(MC_CONFIG="$OP" bash "$D/spawn-pref.sh" once sideways 2>&1)" "usage:"
+
+echo "── 5i. the first-run contract ─────────────────────────────────────"
+# The picker is built from `mc-config.sh keys`, so the ORDER there is the order the user
+# sees. Default must come first and be the recommended answer: a first preference nobody
+# changed should be "follow the tool's default", not a mode they were nudged into pinning.
+chk "Default is the first option offered" "$(bash "$D/mc-config.sh" keys 2>&1 | head -1)" "default | background | window | tab"
+# And recording `default` must COUNT AS ANSWERED. If it left the key absent, the tour would
+# ask, record nothing, and the first deploy would ask the same question again.
+FR="$WORK/firstrun.json"
+chk "before the ask, nobody has been asked" "$(MC_CONFIG="$FR" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: unset"
+MC_CONFIG="$FR" bash "$D/mc-config.sh" set spawn.mode default >/dev/null 2>&1
+chk "choosing Default records an answer"    "$(MC_CONFIG="$FR" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: default"
+case "$(MC_CONFIG="$FR" bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)" in
+  *"nobody has been asked"*) no "so no later deploy asks again" "asked a second time" ;;
+  *) ok "so no later deploy asks again" ;;
+esac
+
 echo "── 5c. the scope rule: automation only under an explicit deploy ───"
 # The spawn automation exists for ONE job -- open a station and get it identified -- and
 # is triggered by ONE thing. The rule is enforced by a required flag rather than by a

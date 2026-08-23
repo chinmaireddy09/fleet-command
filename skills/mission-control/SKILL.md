@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.83.0
+version: 6.85.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a visible window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1232,8 +1232,10 @@ IDE and CLI: VS Code, Cursor, Windsurf, JetBrains, plain shells, SSH.
 bash <skill-dir>/spawn-pref.sh read           # background | window | unset
 ```
 
-When it says `unset`, put **one** `AskUserQuestion` — *background (no window)* or *a visible
-window* — then `spawn-pref.sh set <answer>`. **`unset` is not `background`**: they behave the same
+When it says `unset`, put **one** `AskUserQuestion` — **`Default` first and marked
+(recommended)**, then *tab*, *visible window*, *background pinned* — and record the answer with
+`spawn-pref.sh set <answer>`, **`default` included**. Writing `default` explicitly is what marks
+the question answered; leaving the key absent means *not yet asked* and they get asked again. **`unset` is not `background`**: they behave the same
 to a deploy that has to run anyway and mean opposite things to you, and collapsing them is how the
 ask never happens. **Never detect it instead of asking** — `$TERM_PROGRAM` says where *Control* is
 running, not where the user wants their stations.
@@ -1264,7 +1266,15 @@ So, in one turn, with no intermediate "would you like to change it?":
 2. **`AskUserQuestion` immediately**, with the valid values as options (`mc-config.sh keys` lists
    them per key) and **the value in force marked `(current)`** so the picker shows state as well
    as choices — that is half of what makes `/model` feel like a setting rather than a prompt.
-3. Write the answer with `mc-config.sh set`, and say in one line what changed and what it means.
+3. **Then ask once vs always** — *just the next deploy*, or *set as my default*. Two short
+   questions beat one compound one, and the second is the difference between trying a mode and
+   living with it.
+   - **always** → `mc-config.sh set spawn.mode <mode>`
+   - **just the next deploy** → `mc-config.sh set spawn.once <mode>`, which arms a **one-shot**:
+     it outranks the standing preference, is used by the next spawn, and is cleared by it. The
+     standing preference is never touched, so a crash or a closed window cannot leave a
+     temporary choice looking permanent.
+4. Say in one line what changed and what it means.
 
 **Offer `Default` as the first option, the way `/model` does.** It is a real choice and not a
 synonym for `background`: **an absent key means nobody has been asked** and the next deploy asks,
@@ -2143,13 +2153,13 @@ doing anything else — including before the board report they asked for.
   not a refused one, and it will be offered again next time. Only a finished or a refused
   walkthrough is settled.
 
-### The four steps
+### The five steps
 
 Run them in order, narrating what you are doing and why. **Confirm before every write, naming the
 exact file and repo.** This is somebody's first minute with the tool and the impression that lasts
 is whether it touched their project without asking.
 
-**1/4 — Your board.** Run Step 1's discovery. Then:
+**1/5 — Your board.** Run Step 1's discovery. Then:
 - **A board already exists** → **do not create anything.** Show them the real one, say where it
   lives and how many rows it holds. *"You already have one — that's it, at `docs/WORK-LOCKS.md`."*
   A tour that creates a second board beside a real one has taught them the exact thing this skill
@@ -2158,7 +2168,7 @@ is whether it touched their project without asking.
   thing that matters: **it is an ordinary file in their repo, committed and pushed like any other.
   Nothing is hidden and nothing is stored anywhere else.**
 
-**2/4 — Claim something.** Have them run `/mc checkin trying the tour`, or offer to run it for
+**2/5 — Claim something.** Have them run `/mc checkin trying the tour`, or offer to run it for
 them.
 
 **UPDATE THE TASK CELL ON THEIR EXISTING ROW. DO NOT ADD A SECOND ROW.** One row per live
@@ -2174,7 +2184,7 @@ Then **show them the line you just changed** — the actual row in the actual fi
 after. Point at their call-sign in it, and at the cell that moved. The claim is the whole idea; a
 row they have seen with their own name on it is worth more than a paragraph explaining claims.
 
-**3/4 — A second session.** **Describe it, offer it, and do not do it unprompted.** Opening a
+**3/5 — A second session.** **Describe it, offer it, and do not do it unprompted.** Opening a
 terminal window on somebody's first run is a lot, and it is the one step with a side effect they
 did not ask for.
 
@@ -2184,7 +2194,7 @@ did not ask for.
 
 Only on an explicit yes. **On no, that is not a failed tour** — say the command and move on.
 
-**4/4 — Let it go.** Release the claim from 2/4, so they end where they started and have seen a
+**4/5 — Let it go.** Release the claim from 2/4, so they end where they started and have seen a
 full cycle: `/mc checkin` put a row on, this takes it off. Then tell them the two words worth
 knowing:
 
@@ -2201,6 +2211,30 @@ Step 4 released a claim. That is `secure`, and it is the honest label for what t
 `standdown` would be the wrong word twice over: it describes something that did not happen, and
 **it tells somebody who has just arrived how to leave** — a first run that ends on *"and now close
 everything"* has taught the exit before the job.
+
+**5/5 — How stations should appear.** **The one preference this tool has, asked once, here.**
+A first run is the right moment for it: they have just watched a station open, so the question
+is concrete rather than hypothetical.
+
+Put the picker in front of them — `AskUserQuestion`, **`Default` first and marked
+(recommended)**:
+
+| Option | What they get |
+|---|---|
+| **Default (recommended)** | follow whatever this tool's default is — today that is background, no terminal at all |
+| **Tab** | a new tab in the current Terminal window (needs the Accessibility grant on Terminal.app) |
+| **Visible window** | each station in its own window |
+| **Background — pinned** | no terminal, and stays that way even if the default later moves |
+
+**Record whatever they choose with `mc-config.sh set spawn.mode <answer>` — including `default`.**
+Writing `default` explicitly is the point: it marks the question as *answered*, so no later deploy
+asks again, while still tracking the tool's default. An absent key would mean *not yet asked* and
+they would be asked a second time — the exact nag this step exists to prevent.
+
+**If they skip the tour, this question is not lost** — the first `/mc deploy` still asks it, which
+is the existing path. The tour is the better moment, not the only one.
+
+Then tell them it is changeable, in the same breath: ***"`/mc-config` changes it any time."***
 
 ### Finishing
 

@@ -36,6 +36,12 @@ KEY="${2:-}"; VAL="${3:-}"
 if [ "$ACTION" = "set" ] && [ "$KEY" = "spawn.mode" ]; then
   exec bash "$HERE/spawn-pref.sh" set "$VAL"
 fi
+if [ "$ACTION" = "set" ] && [ "$KEY" = "spawn.once" ]; then
+  exec bash "$HERE/spawn-pref.sh" once "$VAL"
+fi
+if [ "$ACTION" = "unset" ] && [ "$KEY" = "spawn.once" ]; then
+  exec bash "$HERE/spawn-pref.sh" once-clear
+fi
 if [ "$ACTION" = "unset" ] && [ "$KEY" = "spawn.mode" ]; then
   exec bash "$HERE/spawn-pref.sh" reset
 fi
@@ -64,6 +70,8 @@ CALLSIGN=(lambda v: bool(re.fullmatch(r"[A-Za-z0-9 ._/&-]{1,64}", v)),
 SPEC={
  "spawn.mode":           (one_of("default","background","window","tab")[0], "default | background | window | tab",
                           "nobody has been asked yet -- the next deploy asks and records it"),
+ "spawn.once":           (one_of("default","background","window","tab")[0], "default | background | window | tab",
+                          "no one-shot pending -- the standing preference decides"),
  "spawn.launchCommand":  (lambda v: bool(re.fullmatch(r"[A-Za-z0-9._/-]{1,64}", v)),
                           "a bare binary name, e.g. claude",
                           "claude"),
@@ -125,6 +133,10 @@ if action=="show":
     # the setting was not in Claude's own /config: the honest answer is that /config
     # renders a fixed schema and cannot be extended, so THIS is the screen, and it has to
     # carry both sources.
+    once = (d.get("spawn") or {}).get("once")
+    if once:
+        print(f"  PENDING ONE-SHOT: the next spawn uses {once}, then clears it.")
+        print()
     envmode = os.environ.get("MC_SPAWN_MODE", "")
     if envmode:
         filemode = (d.get("spawn") or {}).get("mode")

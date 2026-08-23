@@ -41,9 +41,10 @@ CFG="${MC_CONFIG:-$HOME/.claude/mission-control.json}"
 command -v python3 >/dev/null || { echo "SPAWN: unset   # python3 not found"; exit 0; }
 
 case "$ACTION" in
-  read|reset) ;;
+  read|reset|once-clear) ;;
+  once) case "${2:-}" in background|window|tab|default) ;; *) echo "usage: spawn-pref.sh once <background|window|tab|default>" >&2; exit 2;; esac ;;
   set) case "${2:-}" in background|window|tab|default) ;; *) echo "usage: spawn-pref.sh set <background|window|tab|default>" >&2; exit 2;; esac ;;
-  *) echo "usage: spawn-pref.sh [read|set <background|window|tab|default>|reset]" >&2; exit 2 ;;
+  *) echo "usage: spawn-pref.sh [read|set <mode>|once <mode>|once-clear|reset]" >&2; exit 2 ;;
 esac
 
 ACTION="$ACTION" MODE="${2:-}" CFG="$CFG" python3 <<'PY'
@@ -67,6 +68,9 @@ if d is None:
 spawn = d.get("spawn") if isinstance(d.get("spawn"), dict) else {}
 
 if action == "read":
+    o = spawn.get("once")
+    if o in ("background", "window", "tab", "default"):
+        print(f"ONCE: {o}   # one-shot, applies to the next spawn and is then cleared")
     m = spawn.get("mode")
     if m in ("background", "window", "tab", "default"):
         print(f"SPAWN: {m}   # recorded {spawn.get('date','?')}")
@@ -77,7 +81,19 @@ if action == "read":
         print("SPAWN: unset   # never asked on this machine -- ask once, then record it")
     raise SystemExit(0)
 
-if action == "reset":
+if action == "once":
+    # A ONE-SHOT IS A SEPARATE KEY, never a temporary value of spawn.mode. Writing the
+    # standing preference and putting it back afterwards means a crash, a closed window or
+    # a failed spawn leaves the temporary value looking permanent -- the user asked for one
+    # deploy and silently got a new default. A distinct key cannot do that: if it is never
+    # consumed it is one stale key that changes nothing until the next spawn reads it.
+    spawn["once"] = mode
+    d["spawn"] = spawn
+elif action == "once-clear":
+    spawn.pop("once", None)
+    if spawn: d["spawn"] = spawn
+    else: d.pop("spawn", None)
+elif action == "reset":
     spawn.pop("mode", None); spawn.pop("date", None)
     if spawn: d["spawn"] = spawn
     else: d.pop("spawn", None)
@@ -94,5 +110,5 @@ os.makedirs(os.path.dirname(cfg), exist_ok=True)
 fd, tmp = tempfile.mkstemp(dir=os.path.dirname(cfg)); os.close(fd)
 with open(tmp, "w") as f: json.dump(d, f, indent=2)
 os.replace(tmp, cfg)                                   # atomic; never a torn config
-print(f"SPAWN: {mode}" if action == "set" else "SPAWN: reset")
+print({"set": f"SPAWN: {mode}", "once": f"SPAWN: once={mode}", "once-clear": "SPAWN: one-shot cleared"}.get(action, "SPAWN: reset"))
 PY

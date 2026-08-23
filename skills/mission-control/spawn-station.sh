@@ -132,7 +132,7 @@ Q_WT=${WT//\'/\'\\\'\'}
 # wrong. Read with python3 when it is there, and simply skip when it is not: a missing
 # or unreadable config is a preference nobody expressed, never an error.
 CFG="${MC_CONFIG:-$HOME/.claude/mission-control.json}"
-CFG_MODE=""; LAUNCH=""
+CFG_MODE=""; LAUNCH=""; ONCE_MODE=""
 if [ -r "$CFG" ] && command -v python3 >/dev/null 2>&1; then
   eval "$(python3 - "$CFG" <<'PY' 2>/dev/null || true
 import json,sys,re
@@ -141,6 +141,8 @@ except Exception: sys.exit(0)
 s=d.get("spawn") or {}
 m=s.get("mode")
 if m in ("background","window","tab","print","default"): print('CFG_MODE=%s'%m)
+o=s.get("once")
+if o in ("background","window","tab","default"): print('ONCE_MODE=%s'%o)
 lc=s.get("launchCommand")
 # A launch command out of a config file reaches a command line. Bare binary only --
 # the same allowlist reasoning as the call-sign, applied to the other free-form input.
@@ -161,6 +163,15 @@ case "${MC_SPAWN_MODE:-}" in
   "") ;;
   *) echo "NOTE: MC_SPAWN_MODE=\"$MC_SPAWN_MODE\" is not one of default|tab|window|background|print — ignoring it." >&2 ;;
 esac
+
+# A ONE-SHOT OUTRANKS EVERY RECORDED PREFERENCE AND IS CONSUMED BY THE SPAWN THAT USES IT.
+# It loses only to an explicit flag, which is a more specific instruction at the call site.
+# Clearing is delegated to spawn-pref.sh rather than done here, so exactly one script writes
+# that key -- the same rule mc-config.sh follows.
+ONCE_USED=""
+if [ -z "$MODE" ] && [ -n "$ONCE_MODE" ]; then
+  MODE="$ONCE_MODE"; ONCE_USED=1
+fi
 
 UNRECORDED=""
 if [ -z "$MODE" ]; then
@@ -205,6 +216,13 @@ TXT
 fi
 
 # ── shared reporting ────────────────────────────────────────────────────────────
+# Consumed here, AFTER the --deploy guard, so a --print or a no-deploy call never eats it.
+if [ -n "$ONCE_USED" ]; then
+  bash "$(cd "$(dirname "$0")" && pwd)/spawn-pref.sh" once-clear >/dev/null 2>&1 || true
+  echo "ONE-SHOT: $MODE — used for this station and now cleared."
+  echo "  Deploying several at once? Pass --$MODE to the others; the one-shot is gone after this."
+fi
+
 print_paste() {   # $1 = leading line
   cat <<TXT
 $1
