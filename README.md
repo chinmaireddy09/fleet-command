@@ -3,7 +3,7 @@
 One repository. A live command board. A fleet of Claude Code sessions operating under a single
 command.
 
-Each session takes a call-sign, claims its sector of the codebase, and reports its position on
+Each session takes a call-sign, claims its area of the codebase, and reports its position on
 the board. They share the same repository but never work the same ground — no crossed commands,
 no conflicting changes, no duplicated effort.
 
