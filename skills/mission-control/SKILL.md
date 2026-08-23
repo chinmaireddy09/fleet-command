@@ -1,7 +1,7 @@
 ---
 name: mission-control
-version: 6.77.0
-description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station into its own terminal tab on request, verifies it really came up rather than trusting the tab, coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
+version: 6.78.0
+description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a visible window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1
@@ -1216,20 +1216,47 @@ has actually gone wrong, not before.
 the software meaning; say **"ship to production"** for that, and never a bare "deploy" in a repo
 where both are possible.
 
-`deploy` initiates the post, **hands you one command to paste into a new tab** — call-sign and
-path already filled in, so nothing can be mistyped — lets the session identify itself, and
-**verifies the row carries its address.** A deploy that ends with a 🚧 row and no session name has
-produced a lie, not a station.
+`deploy` initiates the post, **starts the session itself**, lets it identify, and **verifies the
+row carries its address.** A deploy that ends with a 🚧 row and no session name has produced a
+lie, not a station.
 
-**Asking to deploy is the authorisation to automate.** `/mc deploy X` means *put X on post
-without me typing anything*, so it opens the tab and runs the command. **Anything short of that
-prints instead** — initiating a post nobody is walking to yet, or a session coming up by hand.
+**Background is the default, and it opens nothing.** `claude --bg` starts the station as a
+background agent: it returns in about a second, opens no window, types nothing, and takes nobody's
+focus. It is a full station — the fleet manifest lists it and `SendMessage` reaches it by
+call-sign (measured 2026-08-23). Because no terminal is involved, this works identically in every
+IDE and CLI: VS Code, Cursor, Windsurf, JetBrains, plain shells, SSH.
+
+**Ask once, on the first deploy on a machine, and never again:**
+
+```bash
+bash <skill-dir>/spawn-pref.sh read           # background | window | unset
+```
+
+When it says `unset`, put **one** `AskUserQuestion` — *background (no window)* or *a visible
+window* — then `spawn-pref.sh set <answer>`. **`unset` is not `background`**: they behave the same
+to a deploy that has to run anyway and mean opposite things to you, and collapsing them is how the
+ask never happens. **Never detect it instead of asking** — `$TERM_PROGRAM` says where *Control* is
+running, not where the user wants their stations.
+
+**Window mode is fully automated too, and never puppetry.** It uses each terminal's own published
+API — iTerm2 `create tab`, Terminal.app `do script`, `tmux new-window`, kitty, WezTerm, Windows
+Terminal — so the window appears already in its worktree, already running, already identified.
+Nothing is typed while the user watches, and clicking away mid-deploy breaks nothing. **A host
+with no such API gets no window rather than a faked one** — that is why the ⌘T keystroke path was
+removed after it corrupted three deploys on 2026-08-23.
+
+**Asking to deploy is the authorisation to automate — and the authorisation is exactly that wide.**
+The spawn automation has one job (open a station and get it identified) and one trigger (an
+explicit deploy). It is **enforced by a required flag**: `spawn-station.sh` starts nothing without
+`--deploy` and prints the paste-able line instead. When the station is up and carrying its address
+the automation is finished — it does not go back to the terminal to arrange, focus, resize,
+retitle, close or read anything, and no other operation in this skill may reach for it.
 
 ### Deploying SEVERAL at once — `/mc deploy BACKEND FRONTEND FINANCE`
 
 **Deploy accepts a list, and a list is not a loop.** Deploying one station at a time is what makes
-a fleet slow to raise: each spawn spends ~4s proving its own tab came up, and the identify that
-follows adds another 30–45s of registration before the next one starts. Five stations that way is
+a fleet slow to raise. Spawning is no longer the slow part — it returns in about a second — but
+the identify that follows still adds 30–45s of registration before the next one starts. Five stations that way is
 minutes of a human watching a progress line. **The waiting is latency, not work** — nothing about
 station two depends on station one existing.
 
@@ -1238,16 +1265,17 @@ station two depends on station one existing.
 1. **Initiate every post** — worktree, branch, `CLAUDE.md`, row — and push the rows in **one**
    board commit, not one per station. Several stations pushing the same file in sequence is the
    collision the board's retry exists for; one commit avoids needing it.
-2. **Spawn each with `--batch`**, which opens the tab and returns immediately instead of doing its
-   own 4-second check:
+2. **Spawn each one.** Every spawn already returns in about a second, so there is no per-spawn
+   wait left to amortise and nothing to batch around — `--batch` still parses, and no longer
+   changes anything:
    ```bash
-   bash <skill-dir>/spawn-station.sh BACKEND  <worktree> BACKEND  --batch
-   bash <skill-dir>/spawn-station.sh FRONTEND <worktree> FRONTEND --batch
+   bash <skill-dir>/spawn-station.sh BACKEND  <worktree> BACKEND  --deploy
+   bash <skill-dir>/spawn-station.sh FRONTEND <worktree> FRONTEND --deploy
    ```
-3. **Then verify ALL of them once** — poll the fleet manifest for every call-sign together, not
-   each in turn. The tabs are already coming up in parallel while you poll.
-4. **Report one row per station: on post · tab opened but no session · not attempted.** A batch
-   spawn that nobody verified is a tab, not a station, and `--batch` deliberately says so on every
+3. **Then verify ALL of them once** — `claude agents --json` lists every session in one read, so
+   check the whole fleet against one call rather than polling per station.
+4. **Report one row per station: on post · started but not registered · not attempted.** A
+   spawn that nobody verified is a launch, not a station, and the script deliberately says so on every
    run so an unverified deploy cannot be mistaken for a finished one.
 
 **Never use `--batch` without step 3.** The per-spawn check exists because synthesising ⌘T
@@ -1963,7 +1991,8 @@ everything a station needs on post. The rest loads only when the command in hand
 | `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost — the incidents, not the procedure | anyone, rarely |
 | `set-callsign.sh` | **step 1 of identify — every station runs it, always, before the board.** Makes the call-sign the address peers resolve | every station |
 | `label-tab.sh` | called by the above — sets the tab title, and reads this session's own argv/env to report whether it will hold (`persists: YES/NO`) | every station |
-| `spawn-station.sh` | at deploy — opens the station's tab in **your own** window and verifies a session actually started in it | Control |
+| `spawn-station.sh` | **only at deploy, and it requires `--deploy` to spawn at all** — starts the station (background by default, a visible window on request) and reads the fleet manifest back to check it really registered | Control |
+| `spawn-pref.sh` | first deploy on a machine — records whether this person wants stations in the background or in a visible window. Asked once, never detected | Control |
 
 **`field-notes.md` is the one you should almost never open.** It holds the incidents behind the
 rules so that `SKILL.md` can keep the rule and a single clause. Read it when a rule looks

@@ -2,9 +2,8 @@
   "_comment": "EXAMPLE ONLY. The real file lives at ~/.claude/mission-control.json and is written by `/mc deploy` the first time you run it on a machine. Do not copy this into a repo — spawn preferences are per-person, and a clone carrying someone else's terminal choice is a bug, not a default.",
 
   "spawn": {
-    "platform": "darwin",
-    "terminal": "Apple_Terminal",
-    "placement": "auto",
+    "mode": "background",
+    "date": "2026-08-24",
     "launchCommand": "claude",
     "permissionMode": null
   },
@@ -20,21 +19,21 @@
   },
 
   "_fields": {
-    "platform": "darwin | linux | win32 — from `uname -s` or $OS",
-    "terminal": "Apple_Terminal | iTerm.app | vscode | WindowsTerminal | ghostty | WarpTerminal | other — detected from $TERM_PROGRAM or $WT_SESSION, then CONFIRMED with the user. Detection is not consent: $TERM_PROGRAM says where Control is running, not where stations should appear.",
-    "placement": "print | tab | window. DEFAULT IS auto: /mc deploy opens the tab and runs the command, because asking to deploy IS the authorisation to automate. /mc station and hand-started sessions print instead, and the automated path prints too the moment it cannot verify a claude process started. Chosen 2026-08-18 after measuring the alternative -- synthesising Cmd-T is the same keypress a finger makes and the only version that can misfire, and it did: the modifier lost its race, the bare t reached the shell, and a station ran `tcd /path && claude`. The same synthetic keypress also lands in whichever window has focus. tab still works and needs Accessibility (System Settings -> Privacy & Security -> Accessibility -> Terminal); it targets its own window by tty and verifies a claude process really started.",
+    "mode": "background | window. THE ONLY KEY THAT MATTERS, and it is the answer to a question the user was ASKED on their first deploy -- never detected. Absent means nobody has been asked yet, which is deliberately NOT the same as background: they behave alike and mean opposite things, and collapsing them is how the ask never happens. background = `claude --bg`, no terminal at all, works identically on every OS and in every IDE and CLI; measured 2026-08-23 to register in the fleet manifest and answer a radio check by call-sign. window = a visible window opened through the terminal's OWN published API (iTerm2 `create tab`, Terminal.app `do script`, tmux new-window, kitty, WezTerm, Windows Terminal) -- never a synthesised keystroke. Set it by hand with spawn-pref.sh set <mode>, or clear it with spawn-pref.sh reset to be asked again.",
+    "date": "when the answer was recorded. Written by spawn-pref.sh; nothing reads it back.",
     "launchCommand": "usually `claude`; override if the CLI is installed under another name",
     "coordinator": "OPTIONAL, and normally omitted. What THIS user calls the coordinating station ON EVERY FLEET -- CONTROL, FLEET COMMAND, or their own word. The skill has no opinion and must not act as though it does. Omitted means: this project's MISSION-CONTROL.md decides, else plain CONTROL. Do not write it to record a name you merely saw used.",
     "stationStyle": "same | long-callsign-short-handle | per-station -- how this user wants the OTHER stations named. \"same\" is one word for both. \"long-callsign-short-handle\" allows phrases on the radio with short addresses (CHANNELS & INTEGRATIONS -> CHANNELS). \"per-station\" means ask each time a call-sign is initiated.",
     "handles": "call-sign -> address, only for the ones that differ. A call-sign with a space cannot be a session name; a user may also just prefer a short address for a long call-sign. Both are legitimate and neither is derivable, so both are asked.",
-    "permissionMode": "null by default, and deploy NEVER sets this on your behalf. null means a spawned station prompts for its own pushes, exactly like any session, and deploy tells you to approve in the new tab. Setting it to anything else widens what a spawned session may do unattended — your choice, in your own file."
+    "permissionMode": "null by default, and deploy NEVER sets this on your behalf. null means a spawned station prompts for its own pushes, exactly like any session. A BACKGROUND station has no window for that prompt to appear in, so deploy's report hands you `claude attach <id>` -- that is the one real cost of not opening a terminal, and it is surfaced rather than papered over. Setting this to anything else widens what a spawned session may do unattended — your choice, in your own file."
   },
 
-  "_terminalsVerified": {
-    "Apple_Terminal": "print path VERIFIED end-to-end 2026-08-18. Tab path FAILED TWICE IN THE FIELD on 2026-08-17 -- a lost modifier race corrupted the command into `tcd`, and the synthetic keypress opened the tab in whichever window had focus. Since rewritten to target its own window by tty and to verify a claude process really started, and to print the paste-able command whenever it cannot; that rewrite is dry-run checked but its full spawn has NOT been re-run in the field. Window fallback works.",
-    "iTerm.app": "recipe shipped, UNVERIFIED",
-    "WindowsTerminal": "recipe shipped, UNVERIFIED",
-    "vscode": "no recipe exists — nothing outside the editor can open its integrated terminal reliably. Falls back to printing the exact command to paste.",
-    "other": "falls back to printing the command. That is a supported outcome, not a failure — the call-sign and path are filled in and cannot be mistyped."
+  "_hostsVerified": {
+    "background (any host)": "VERIFIED END TO END 2026-08-23 on Claude Code 2.1.241: `claude --bg --name X` in an untrusted worktree returned in ~1.5s, registered in the fleet manifest as `bg · idle`, and ANSWERED a radio check sent to it by call-sign. No terminal, no keystrokes, no focus change. This is the default and needs no host support of any kind.",
+    "print (any host)": "VERIFIED end-to-end 2026-08-18. No permissions, no timing, nothing to mistype.",
+    "Apple_Terminal (window)": "`do script` is Terminal's own API and opens a WINDOW -- Terminal.app publishes no scriptable new-tab. Needs the Automation grant only. THE TAB PATH IS GONE: it required System Events to press Cmd-T, and it failed in the field twice. 2026-08-17, a lost modifier race corrupted the command into `tcd`. 2026-08-23, deploying three stations, three tabs came up EMPTY and all three launch commands were typed into Control's own prompt, interleaved and corrupted (`ntialcd '/Users/...'`). Targeting by tty and verifying afterwards did not remove that race, it only made it observable -- so the requirement for a tab was removed instead.",
+    "tmux": "`new-window` -- the portable visible recipe: macOS, Linux, WSL, and inside IDE terminals.",
+    "iTerm.app / kitty / WezTerm / WindowsTerminal / gnome-terminal / konsole / xfce4-terminal / alacritty / ghostty / xterm": "recipes shipped, UNVERIFIED. Each says so when it uses one.",
+    "vscode / cursor / windsurf / jetbrains": "no window recipe exists and none will be invented -- nothing outside the editor can open its integrated terminal reliably. `--window` declines and says why; background mode needs no host, so these deploy normally."
   }
 }

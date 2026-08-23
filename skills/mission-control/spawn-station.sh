@@ -1,49 +1,85 @@
 #!/bin/bash
-# spawn-station.sh <CALLSIGN> <WORKTREE> [--print] — put a station on post.
+# spawn-station.sh <CALLSIGN> <WORKTREE> [HANDLE] [--background|--window|--print] — put a station on post.
 #
-# DEFAULT (what `/mc deploy` calls): open the tab, type the command, verify a
-#          session really started, and fall back to printing if any of that fails.
-# --print: print the command for the human to paste. What `/mc station` uses, and
-#          what you get automatically whenever the automated path cannot finish.
+# DEFAULT (what `/mc deploy` calls): --background. `claude --bg` starts the station as a
+#          background agent and returns immediately. No terminal is opened, nothing is
+#          typed, nothing is focused, and it works identically on macOS, Linux, Windows,
+#          and inside every IDE terminal — because no terminal is involved at all.
+# --window: open a visible window/tab instead, using the host terminal's OWN scripting
+#          API. Never synthesised keystrokes. For when the user wants to watch a station.
+# --print: print the command for the human to paste. What `/mc station` uses.
 #
-# THE RULE: asking to deploy IS the authorisation to automate. `/mc deploy X` means
-# "put X on post without me typing anything". Anything short of that -- initiating a
-# post nobody is walking to yet, or a session coming up by hand -- prints instead.
+# ── THE RULE, AND IT IS A SCOPE LIMIT ────────────────────────────────────────────
+# Asking to deploy IS the authorisation to automate. `/mc deploy X` means "put X on post
+# without me typing anything". Anything short of that -- initiating a post nobody is
+# walking to yet, or a session coming up by hand -- prints instead.
 #
-# Everything below survives from the 2026-08-17 failures, because the automation was
-# never the problem; being unverified and silent was:
-#   `keystroke "t" using command down` does not do something cleverer than pressing
-#   ⌘T — it synthesises the identical keypress, and only the synthetic version can
-#   go wrong. On 2026-08-17 the modifier lost its race, the bare "t" reached the
-#   shell, and the station tried to run `tcd '/path' && claude …`. The same keypress
-#   also lands in whichever window has focus, so a station opened in an unrelated
-#   window. A finger has neither failure mode.
+# **And the authorisation is exactly that wide and no wider.** The automation exists for
+# ONE job: open the station's session and get it identified. It is triggered by ONE
+# thing: an explicit deploy. When the station is up and carrying its address, the
+# automation is FINISHED -- it does not go back to the terminal to arrange, focus,
+# resize, retitle, close or read anything, and no other operation in this skill may
+# reach for it because it happens to be here.
 #
-#   So the automated path stayed, but it no longer trusts itself: it targets its own
-#   window by tty, checks a claude process is really running in the new tab, and
-#   prints the paste-able command whenever it cannot prove that.
+# This is enforced, not just written down: a spawn requires `--deploy`. Without it the
+# script prints the paste-able line and says why. An automation whose scope is a
+# sentence in a comment grows; one whose scope is a required flag does not, because
+# every call site has to state its intent out loud and `grep -c -- --deploy` counts them.
 #
-# Note the new tab inherits the SPAWNER's directory, not the worktree — Control sits
-# in the repo root and the station belongs in .claude/worktrees/<station> — so the
-# `cd` is required whoever opens the tab.
+# ── WHY THE KEYSTROKE PATH IS GONE ───────────────────────────────────────────────
+# Every version of this script through 6.77.0 opened a TAB by having System Events
+# press ⌘T, then wrote the command into whatever tab that produced. That is puppetry:
+# it drives the user's UI as if a person were at the keyboard, and it inherits every
+# failure a person never has.
+#
+# It failed in the field on 2026-08-23, deploying three stations at once, and the
+# screenshots are unambiguous:
+#   * Three tabs opened. All three came up EMPTY, at a plain `%` prompt, still in the
+#     spawner's directory. No station started in any of them.
+#   * All three command lines were typed into CONTROL'S OWN prompt instead, arriving
+#     interleaved and corrupted -- one line read `ntialcd '/Users/...' && claude ...`,
+#     a fragment of one spawn's text fused onto the next one's `cd`.
+# That is the 2026-08-17 modifier race and the focus race, both of them, at once and
+# three times over. The earlier fix -- target our own window by tty, then verify -- did
+# not remove the race. It only made the race observable. A race you can see is still a
+# race, and `do script ... in (selected tab of window id N)` resolves that reference
+# against a tab ⌘T may not have finished creating.
+#
+# The lesson is not "verify harder". It is that **the tab was never what made a station**.
+# A station is a registered session: something ListAgents shows, SendMessage reaches, and
+# the board can carry an address for. MEASURED 2026-08-23 on 2.1.241 -- a station started
+# with `claude --bg --name MCBGPROBE` in an untrusted worktree:
+#   * returned in under a second, no terminal, no keystrokes, no focus change;
+#   * registered as `MCBGPROBE [b2aa24] · bg · idle` in ListAgents;
+#   * ANSWERED A RADIO CHECK sent to it by call-sign with SendMessage.
+# It is a station by every test the fleet applies. So the automated path now starts one
+# directly, and the terminal window became an option for people who want to watch, rather
+# than the mechanism a deploy depends on.
+#
+# Note the worktree is passed as the launch directory rather than inherited, so no `cd`
+# is required of anybody in the default path.
 set -u
-# --print may appear anywhere; the rest are positional.
-MODE=""; BATCH=""; ARGS=""
+
+# --- flags may appear anywhere; the rest are positional -------------------------
+MODE=""; ARGS=""; DEPLOY=""
 for a in "$@"; do
   case "$a" in
-    --print) MODE="--print" ;;
-    # --batch: open the tab and return WITHOUT the 4s in-tab verification. For deploying
-    # several stations at once: the per-spawn wait is what makes N stations take N times
-    # as long, and it is pure latency -- the tabs can all be opened first and the whole
-    # fleet verified in ONE pass afterwards. Use it ONLY when a batch verification really
-    # follows; a spawn nobody checks is the 2026-08-17 failure this script exists to stop.
-    --batch) BATCH="1" ;;
+    --print)      MODE="print" ;;
+    --window|--tab) MODE="window" ;;
+    --background|--bg) MODE="background" ;;
+    # The authorisation, stated at the call site. See THE RULE above.
+    --deploy)     DEPLOY=1 ;;
+    # --batch was how the OLD tab path amortised its 4-second per-spawn verification
+    # across a fleet. Background spawns return immediately and are verified by one
+    # `claude agents` read, so there is no per-spawn wait left to amortise. Accepted
+    # so existing callers do not break; it no longer changes anything.
+    --batch)      : ;;
     *) ARGS="$ARGS
 $a" ;;
   esac
 done
 CALLSIGN=$(printf '%s' "$ARGS" | sed -n '2p'); WT=$(printf '%s' "$ARGS" | sed -n '3p'); HANDLE=$(printf '%s' "$ARGS" | sed -n '4p')
-[ -z "$CALLSIGN" ] || [ -z "$WT" ] && { echo "usage: spawn-station.sh <CALLSIGN> <WORKTREE> [HANDLE] [--print]" >&2; exit 2; }
+[ -z "$CALLSIGN" ] || [ -z "$WT" ] && { echo "usage: spawn-station.sh <CALLSIGN> <WORKTREE> [HANDLE] --deploy [--background|--window|--print]" >&2; exit 2; }
 [ -d "$WT" ] || { echo "FAILED: no such worktree: $WT" >&2; exit 1; }
 
 # The call-sign is what people say; the handle is what peers address. They are the
@@ -69,224 +105,330 @@ case "$HANDLE" in *[!A-Za-z0-9_-]*) echo "FAILED: a handle is [A-Za-z0-9_-] only
 # spaces, and the few separators real ones use. Quotes, backticks, $, backslashes,
 # newlines and every metacharacter are then gone by construction rather than by
 # remembering to enumerate them.
-case "$CALLSIGN" in
-  "" | *[!A-Za-z0-9\ ._/\&-]* )
-    echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
-    echo "        got: $CALLSIGN" >&2
-    exit 2 ;;
-esac
+#
+# THE ALLOWLIST IS MATCHED UNDER C SEMANTICS, ON PURPOSE, and the placement of LC_ALL
+# is the whole trick. [A-Za-z0-9] is a COLLATION range: under a UTF-8 locale it admits
+# accented letters and fullwidth forms while the message promises ASCII (reported
+# 2026-08-23 against label-tab.sh, which fixed it there and nowhere else).
+#
+# It has to be set for the shell evaluating the `case`, not for a command inside it --
+# `case "$(LC_ALL=C printf %s "$X")"` reads like a fix and is not one, because printf
+# only echoes bytes and the pattern match still happens in the caller's locale. This is
+# the idiom label-tab.sh already proved: a subshell that sets LC_ALL and then matches.
+if ! ( LC_ALL=C; case "$CALLSIGN" in "" | *[!A-Za-z0-9\ ._/\&-]* ) exit 1;; esac ); then
+  echo "FAILED: a call-sign may contain letters, digits, spaces and . _ / & - only" >&2
+  echo "        got: $CALLSIGN" >&2
+  exit 2
+fi
 if [ ${#CALLSIGN} -gt 64 ]; then echo "FAILED: call-sign too long (max 64)" >&2; exit 2; fi
 
-# The worktree path is not ours either. Escape it for the single-quoted context.
+# The worktree path is not ours either. Escape it for the single-quoted shell context.
 Q_WT=${WT//\'/\'\\\'\'}
 
-# Hand the station its own address anyway. It CAN read it for itself now -- ME_NAME off
-# the registry, [ref] off its own ListAgents self-line (6.34.0) -- so this is no longer
-# the rescue it once was. It is still worth sending: the spawner knows the address before
-# the station exists, so the station starts already agreeing with the board instead of
-# deriving agreement. What it must NOT do is trust the NAME on that self-line, which is a
-# start-time snapshot; the prompt below therefore asserts the address rather than telling
-# it to go look one up.
-# KEEP THIS PROMPT SHORT, AND THE REASON IS THE TAB TITLE. Terminal composes a tab's
-# title out of the working directory, the title the process sets, the process name AND
-# ITS FULL ARGUMENT LIST. This prompt IS an argument, so every character of it is on
-# the user's tab bar, pushing the repo and the call-sign off the readable part.
-#
-# It used to read "/mc identify X -- your ListAgents address is X; confirm with
-# ps -o args= on your own claude process", which existed only because a station could
-# not read its own address. 6.34.0 retired that: ME_NAME is live in the registry and
-# the [ref] is on the station's own ListAgents self-line. The long form is now both
-# unnecessary and wrong-headed, so the tab gets its width back for free -- no Terminal
-# setting to change, which matters because we should not be asking people to
-# reconfigure their terminal to make our own output legible.
-PROMPT="/mc identify $CALLSIGN"
-# `--name` is not only the ListAgents address. MEASURED 2026-08-22 on 2.1.239, by capturing
-# the pty across one real turn, three launches of the same session:
-#   plain `claude`          -> 7 title writes: "✳ Claude Code" ... then "✳ Pong reply".
-#                              The turn SUMMARY takes the tab. This is the tab going wrong.
-#   `claude --name FOO`     -> 5 title writes, every one "<glyph> FOO". The summary never
-#                              displaces it, so the call-sign is on the tab all watch.
-#   with CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 -> 0 writes.
-# So the tab is held by --name at LAUNCH and by nothing a running session can do to itself.
-# It is also plain OSC, so it holds in iTerm2/Ghostty/tmux where the AppleScript path cannot
-# reach. Do not "fix" the tab by disabling title writes here: that switches the durable,
-# portable mechanism off and replaces it with a Terminal.app-only one.
-CMD="cd '$Q_WT' && claude --name '$HANDLE' '$PROMPT'"
+# ── the user's recorded preference, if they have one ────────────────────────────
+# ~/.claude/mission-control.json is PER-MACHINE and user-level, and must never live in
+# the repo -- a clone carrying the author's terminal choice looks configured and is
+# wrong. Read with python3 when it is there, and simply skip when it is not: a missing
+# or unreadable config is a preference nobody expressed, never an error.
+CFG="${MC_CONFIG:-$HOME/.claude/mission-control.json}"
+CFG_MODE=""; LAUNCH=""
+if [ -r "$CFG" ] && command -v python3 >/dev/null 2>&1; then
+  eval "$(python3 - "$CFG" <<'PY' 2>/dev/null || true
+import json,sys,re
+try: d=json.load(open(sys.argv[1]))
+except Exception: sys.exit(0)
+s=d.get("spawn") or {}
+m=s.get("mode")
+if m in ("background","window","print"): print('CFG_MODE=%s'%m)
+lc=s.get("launchCommand")
+# A launch command out of a config file reaches a command line. Bare binary only --
+# the same allowlist reasoning as the call-sign, applied to the other free-form input.
+if isinstance(lc,str) and re.fullmatch(r"[A-Za-z0-9._/-]{1,64}",lc): print('LAUNCH=%s'%lc)
+PY
+)"
+fi
+[ -n "$LAUNCH" ] || LAUNCH="claude"
+# Precedence: explicit flag > recorded preference > background.
+UNRECORDED=""
+if [ -z "$MODE" ]; then
+  MODE="${CFG_MODE:-background}"
+  [ -n "$CFG_MODE" ] || UNRECORDED=1
+fi
 
-if [ "$MODE" = "--print" ]; then
+
+# KEEP THIS PROMPT SHORT, AND THE REASON IS THE TAB TITLE -- in --window mode Terminal
+# composes a tab's title out of the process name AND ITS FULL ARGUMENT LIST, so every
+# character here lands on the user's tab bar, pushing the repo and call-sign off the
+# readable part.
+PROMPT="/mc identify $CALLSIGN"
+# `--name` is not only the ListAgents address. MEASURED 2026-08-22 on 2.1.239, capturing
+# the pty across one real turn: plain `claude` writes the turn SUMMARY to the title,
+# `claude --name FOO` holds "<glyph> FOO" across all five title writes. It is plain OSC,
+# so it holds in iTerm2/Ghostty/tmux too, and it is what makes the call-sign the address.
+CMD="cd '$Q_WT' && $LAUNCH --name '$HANDLE' '$PROMPT'"
+
+# THE RULE, ENFORCED. No --deploy, no spawn. This is deliberately a demotion to --print
+# rather than a refusal: the caller still ends up with something that works, and the
+# post is already prepared either way. A guard that leaves the human empty-handed gets
+# routed around.
+if [ "$MODE" != "print" ] && [ -z "$DEPLOY" ]; then
   cat <<TXT
-STATION $CALLSIGN — open a tab (⌘T) and paste this:
+NOT A DEPLOY — no session was started and no window was opened.
+
+The spawn automation runs only when a deploy asked for it, and only to open a station
+and get it identified. This call did not say --deploy, so it printed instead:
 
   $CMD
 
-The tab inherits this window's directory, so the leading cd is what puts it in its
-own worktree. Nothing is typed for you and nothing can be mistyped — the call-sign
-and path are already filled in.
-
-Then verify by the BOARD, not by the tab looking right: the deploy is done when
-$CALLSIGN's row on the repo's base branch carries its ListAgents address.
+If this IS a deploy, pass --deploy. If it is not, this is the correct outcome.
 TXT
   exit 0
 fi
 
-# ── which automation can actually open a tab here ────────────────────────────
-# ONE RECIPE PER HOST, AND `--print` IS THE ONE THAT WORKS EVERYWHERE. This used to
-# call `osascript` unconditionally, so on Linux, on Windows, and inside the VS Code
-# integrated terminal it failed with "osascript: command not found" instead of simply
-# handing over the paste-able line it already had. **A missing recipe is not an
-# error** -- the human opening a tab by hand is the normal path on most machines, and
-# the deploy is finished by the board either way.
-#
-# tmux is checked FIRST and deliberately: it is the only recipe that works on macOS,
-# Linux, Windows (WSL) and INSIDE VS Code's terminal, so a user who runs tmux gets
-# real automation on every platform this skill will ever meet.
-
-print_fallback() {   # $1 = why
+# ── shared reporting ────────────────────────────────────────────────────────────
+print_paste() {   # $1 = leading line
   cat <<TXT
-CANNOT AUTOMATE HERE — $1
-Open a new tab yourself and paste this:
+$1
 
   $CMD
 
-That is not a degraded deploy. The tab is the only part a human was ever doing, and
-the post is already prepared: worktree, branch and board row are done. Verify by the
-BOARD, not by the tab looking right — the deploy is finished when $CALLSIGN's row on
-the repo's base branch carries its fleet-manifest address.
+The call-sign and path are already filled in and cannot be mistyped. Verify by the
+BOARD, not by the window looking right — the deploy is finished when $CALLSIGN's row
+on the repo's base branch carries its fleet-manifest address.
 TXT
 }
 
-# 1. tmux — portable, and the station lands in its own worktree directly.
+# Is a session called $HANDLE actually registered? `claude agents --json` prints active
+# sessions -- interactive AND background -- and explicitly does not require a TTY, which
+# is what finally makes verification scriptable. The old path had nothing like this and
+# had to read Terminal's scrollback to guess.
+registered() {
+  command -v "$LAUNCH" >/dev/null 2>&1 || return 2
+  local j; j=$("$LAUNCH" agents --json 2>/dev/null) || return 2
+  [ -n "$j" ] || return 2
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$j" | python3 -c '
+import json,sys
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(2)
+sys.exit(0 if any(s.get("name")==sys.argv[1] for s in d) else 1)' "$HANDLE"
+  else
+    # No python3: a name match in the raw JSON. Looser, and it says so rather than
+    # claiming the structured check ran.
+    case "$j" in *"\"name\":\"$HANDLE\""*|*"\"name\": \"$HANDLE\""*) return 0;; *) return 1;; esac
+  fi
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# PRINT
+# ════════════════════════════════════════════════════════════════════════════════
+if [ "$MODE" = "print" ]; then
+  print_paste "STATION $CALLSIGN — open a terminal and paste this:"
+  exit 0
+fi
+
+# ════════════════════════════════════════════════════════════════════════════════
+# BACKGROUND — the default, and the only path with no host dependency at all
+# ════════════════════════════════════════════════════════════════════════════════
+if [ "$MODE" = "background" ]; then
+  if ! command -v "$LAUNCH" >/dev/null 2>&1; then
+    print_paste "CANNOT SPAWN — \`$LAUNCH\` is not on PATH here. Open a terminal and paste this:"
+    exit 1
+  fi
+  # cwd is passed by launching from the worktree, so nothing depends on an inherited
+  # directory and no `cd` is typed anywhere.
+  OUT=$(cd "$WT" && "$LAUNCH" --bg --name "$HANDLE" "$PROMPT" 2>&1); RC=$?
+  # `backgrounded · <id> · <NAME>` is the launch line. The id is what `attach`, `logs`
+  # and `stop` take, so it is the single most useful thing to hand back.
+  # Take the token after "backgrounded", whatever it is made of. The first version of
+  # this matched [0-9a-f]{6,} because every real id observed was hex -- so it silently
+  # returned nothing for anything else, and a missing id is not visible in the happy
+  # path: the report still reads fine, just with `<id>` where attach/logs/stop needed
+  # a value. Matching the SHAPE (a separator, then a token) rather than the alphabet
+  # costs nothing and does not encode a guess about someone else's id format.
+  SID=$(printf '%s\n' "$OUT" | sed -n 's/.*backgrounded[^A-Za-z0-9]*\([A-Za-z0-9]\{4,\}\).*/\1/p' | head -1)
+  if [ $RC -ne 0 ]; then
+    echo "$OUT"
+    print_paste "BACKGROUND SPAWN FAILED (exit $RC). Open a terminal and paste this instead:"
+    exit 1
+  fi
+
+  echo "STATION $CALLSIGN — started as a background agent${SID:+ · session $SID}"
+  echo "  no terminal was opened, nothing was typed, and nothing took your focus."
+  # A default nobody chose is not the same as a choice, and the difference is invisible
+  # in the output unless it is said. Deploy is supposed to ask once and record the
+  # answer; if that never happened, this is the line that shows the ask was skipped
+  # rather than letting a silent default pass for a preference.
+  [ -z "$UNRECORDED" ] || cat <<'TXT'
+  MODE: background, by default — nobody has been asked on this machine yet.
+        /mc deploy asks once and records it; spawn-pref.sh set <background|window>
+        sets it directly, and spawn-pref.sh read shows what is recorded.
+TXT
+  if registered; then
+    echo "REGISTERED · $HANDLE is live in the fleet manifest — addressable by call-sign now."
+  else
+    case $? in
+      1) echo "NOT YET REGISTERED · the launch returned cleanly but $HANDLE is not in the"
+         echo "   manifest yet. It registers a moment after start — re-read the manifest"
+         echo "   before treating this as a failure, and read the board for the address." ;;
+      *) echo "REGISTRATION UNVERIFIED · could not read \`$LAUNCH agents --json\`. The launch"
+         echo "   returned cleanly; the manifest is the thing to check by hand." ;;
+    esac
+  fi
+  # A background station has no window to show a permission prompt in. That is the one
+  # real cost of dropping the terminal, so the commands that answer it are not an
+  # afterthought at the bottom of the report -- they ARE the report's second half.
+  echo
+  echo "The station runs with the user's own permissions, so it can still stop at a prompt"
+  echo "with no window to show it in. That is what these are for:"
+  printf '  %-26s %s\n' "$LAUNCH logs ${SID:-<id>}"   "what it is showing right now"
+  printf '  %-26s %s\n' "$LAUNCH attach ${SID:-<id>}" "take it over in this terminal, answer a prompt"
+  printf '  %-26s %s\n' "$LAUNCH stop ${SID:-<id>}"   "stand it down"
+  printf '  %-26s %s\n' "$LAUNCH agents"              "every station, background and interactive"
+  cat <<TXT
+
+NOT YET A MANNED POST. Verify by the BOARD: $CALLSIGN is on post when its row on the
+base branch carries its fleet-manifest address, not when this printed.
+TXT
+  exit 0
+fi
+
+# ════════════════════════════════════════════════════════════════════════════════
+# WINDOW — a visible session, using each terminal's OWN API. No synthesised keys.
+# ════════════════════════════════════════════════════════════════════════════════
+# ONE RECIPE PER HOST, AND EVERY ONE OF THEM IS AN API THE TERMINAL PUBLISHES. If a host
+# has no such API, this does NOT fall back to driving its UI -- it falls back to
+# background, which needs no host at all, and says so. **A missing recipe is not an
+# error**, and it is no longer even a degradation.
+window_unavailable() {   # $1 = why
+  cat <<TXT
+NO WINDOW RECIPE HERE — $1
+Nothing was typed and no UI was driven; that is deliberate.
+
+  Re-run without --window to start $CALLSIGN as a background agent (works everywhere),
+  or open a terminal yourself and paste:
+
+  $CMD
+TXT
+}
+
+# 1. tmux, already inside one — the station lands in its own worktree directly, and this
+#    is the one visible recipe that works on macOS, Linux, Windows (WSL) AND inside an
+#    IDE's integrated terminal.
 if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
   if tmux new-window -c "$WT" -n "$CALLSIGN" "$CMD" 2>/dev/null; then
-    # tmux's exit code proves a WINDOW was created. It does not prove a station started,
-    # and this script exists because "a tab is not a station". The AppleScript path can
-    # look inside its own tab for a live `claude`; tmux is told to run a command and
-    # returns immediately, so there is nothing here to look at yet. Say exactly that
-    # rather than borrowing the other path's confidence.
     echo "TMUX WINDOW OPENED · named $CALLSIGN · command dispatched"
     echo "NOT YET A STATION. Verify by the fleet manifest or the board — $CALLSIGN is on"
     echo "post when its row on the base branch carries its address, not when this printed."
-    echo "  tmux list-panes -t '$CALLSIGN' -F '#{pane_current_command}'   # should say: claude"
     exit 0
   fi
-  print_fallback "tmux is running but refused to open a window"; exit 1
+  window_unavailable "tmux is running but refused to open a window"; exit 1
 fi
 
-# 2. Windows Terminal.
+# There is deliberately NO "tmux is installed but we are not inside it" recipe here.
+# A detached tmux session is not a window -- `--window` is asked for by someone who
+# wants to WATCH a station, and handing them something invisible answers a question
+# they did not ask. Background mode already covers "start it without showing me", and
+# covers it better: `claude --bg` is native, addressable, and attachable by id.
+
+# 2. iTerm2 — a published AppleScript API. `create tab` is a real call, not a ⌘T.
+if [ "${TERM_PROGRAM:-}" = "iTerm.app" ] && command -v osascript >/dev/null 2>&1; then
+  # AppleScript literal escaping: BACKSLASH FIRST, then the double quote -- reversed,
+  # the backslash pass would escape the backslashes the quote pass just added. $CMD is
+  # built for a SHELL parser and then dropped into an APPLESCRIPT one; escaping for only
+  # the first parser is how a worktree path containing `"` became live code (2026-08-23).
+  as_lit() { local v="$1"; v=${v//\\/\\\\}; v=${v//\"/\\\"}; printf '%s' "$v"; }
+  OUT=$(osascript <<AS 2>&1
+tell application "iTerm"
+  if (count of windows) = 0 then
+    set w to (create window with default profile)
+    set s to current session of w
+  else
+    tell current window
+      set t to (create tab with default profile)
+      set s to current session of t
+    end tell
+  end if
+  tell s to write text "$(as_lit "$CMD")"
+end tell
+return "ok"
+AS
+)
+  case "$OUT" in
+    *ok*) echo "ITERM2 TAB OPENED · $CALLSIGN · command dispatched via iTerm's own API"
+          echo "NOT YET A STATION. Verify by the manifest or the board."; exit 0 ;;
+    *)    window_unavailable "iTerm2 refused: $OUT"; exit 1 ;;
+  esac
+fi
+
+# 3. kitty / WezTerm — both ship a CLI for exactly this.
+if [ -n "${KITTY_WINDOW_ID:-}" ] && command -v kitty >/dev/null 2>&1; then
+  if kitty @ launch --type=tab --tab-title "$CALLSIGN" --cwd "$WT" \
+       "$LAUNCH" --name "$HANDLE" "$PROMPT" >/dev/null 2>&1; then
+    echo "KITTY TAB OPENED · $CALLSIGN"; echo "NOT YET A STATION. Verify by the manifest or the board."; exit 0
+  fi
+  window_unavailable "kitty refused (remote control may be off: \`allow_remote_control yes\`)"; exit 1
+fi
+if [ -n "${WEZTERM_PANE:-}" ] && command -v wezterm >/dev/null 2>&1; then
+  if wezterm cli spawn --cwd "$WT" -- "$LAUNCH" --name "$HANDLE" "$PROMPT" >/dev/null 2>&1; then
+    echo "WEZTERM TAB OPENED · $CALLSIGN"; echo "NOT YET A STATION. Verify by the manifest or the board."; exit 0
+  fi
+  window_unavailable "wezterm cli refused"; exit 1
+fi
+
+# 4. Windows Terminal.
 if [ -n "${WT_SESSION:-}" ] && command -v wt.exe >/dev/null 2>&1; then
-  if wt.exe -w 0 nt -d "$WT" cmd /k "claude --name $HANDLE \"/mc identify $CALLSIGN\"" 2>/dev/null; then
-    # Same caveat as tmux, plus one more: this recipe has never been run against a real
-    # Windows Terminal. Do not report it as a verified deploy on either count.
+  if wt.exe -w 0 nt -d "$WT" cmd /k "$LAUNCH --name $HANDLE \"$PROMPT\"" 2>/dev/null; then
     echo "WT TAB OPENED · $CALLSIGN · command dispatched"
     echo "NOT YET A STATION, and this recipe is UNVERIFIED against a real Windows Terminal."
     echo "Verify by the board: $CALLSIGN is on post when its row carries its address."
     exit 0
   fi
-  print_fallback "Windows Terminal is running but \`wt\` refused to open a tab"; exit 1
+  window_unavailable "Windows Terminal is running but \`wt\` refused to open a tab"; exit 1
 fi
 
-# 3. macOS Terminal.app — the measured path, and the only one with a verification step.
-if [ "$(uname -s)" != "Darwin" ] || ! command -v osascript >/dev/null 2>&1; then
-  print_fallback "no recipe for this host ($(uname -s)${TERM_PROGRAM:+, $TERM_PROGRAM}). tmux would give you one on every platform."
-  exit 0     # not a failure: the human has everything they need
-fi
-if [ "${TERM_PROGRAM:-}" != "Apple_Terminal" ]; then
-  print_fallback "this is $TERM_PROGRAM, not Apple Terminal — the AppleScript recipe here is written for Terminal.app and would target the wrong application. Inside VS Code, run tmux and re-run, or paste the line."
-  exit 0
+# 5. macOS Terminal.app — `do script` is Terminal's OWN API and opens a WINDOW.
+#    A tab would need System Events to press ⌘T, which is the puppetry this script
+#    removed; a window it can actually create is worth more than a tab it races for.
+#    Say WINDOW, plainly: a window when someone pictured a tab is not a silent detail.
+if [ "$(uname -s)" = "Darwin" ] && [ "${TERM_PROGRAM:-}" = "Apple_Terminal" ] && command -v osascript >/dev/null 2>&1; then
+  as_lit() { local v="$1"; v=${v//\\/\\\\}; v=${v//\"/\\\"}; printf '%s' "$v"; }
+  # Fed on STDIN rather than with -e, and that is not a style choice: the escaping
+  # regression test captures what reaches osascript by reading its stdin. A recipe that
+  # passes the script as an argv string is invisible to that instrument, so the test
+  # that proves a `"` in a worktree path cannot close the AppleScript literal would
+  # quietly downgrade to a SKIP while the hole it guards stayed open.
+  OUT=$(printf 'tell application "Terminal" to do script "%s"\n' "$(as_lit "$CMD")" | osascript - 2>&1)
+  if [ $? -eq 0 ]; then
+    echo "TERMINAL WINDOW OPENED · $CALLSIGN · via \`do script\`, no keystrokes synthesised"
+    echo "  It is a WINDOW, not a tab. Terminal.app publishes no scriptable new-tab; the"
+    echo "  ⌘T path that used to fake one is what corrupted three deploys on 2026-08-23."
+    echo "NOT YET A STATION. Verify by the manifest or the board."
+    exit 0
+  fi
+  window_unavailable "Terminal.app refused: $OUT"; exit 1
 fi
 
-# Automated path. Find our own tty so the tab opens in OUR window, never "front window".
-p=$$; MYTTY=""
-while [ "$p" -gt 1 ]; do
-  t=$(ps -o tty= -p "$p" 2>/dev/null | tr -d ' ')
-  if [ -n "$t" ] && [ "$t" != "??" ]; then MYTTY="/dev/$t"; break; fi
-  p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+# 6. Linux terminals that take a command directly.
+for t in gnome-terminal konsole xfce4-terminal alacritty ghostty xterm; do
+  command -v "$t" >/dev/null 2>&1 || continue
+  case "$t" in
+    gnome-terminal) gnome-terminal --working-directory="$WT" -- bash -lc "$CMD; exec bash" >/dev/null 2>&1 ;;
+    konsole)        konsole --workdir "$WT" -e bash -lc "$CMD; exec bash" >/dev/null 2>&1 & ;;
+    xfce4-terminal) xfce4-terminal --working-directory="$WT" -e "bash -lc '$CMD; exec bash'" >/dev/null 2>&1 & ;;
+    alacritty)      alacritty --working-directory "$WT" -e bash -lc "$CMD; exec bash" >/dev/null 2>&1 & ;;
+    ghostty)        ghostty --working-directory="$WT" -e bash -lc "$CMD; exec bash" >/dev/null 2>&1 & ;;
+    xterm)          xterm -e bash -lc "cd '$Q_WT' && $CMD; exec bash" >/dev/null 2>&1 & ;;
+  esac
+  if [ $? -eq 0 ]; then
+    echo "$t WINDOW OPENED · $CALLSIGN"
+    echo "NOT YET A STATION, and this recipe is UNVERIFIED against a real $t."
+    echo "Verify by the manifest or the board."
+    exit 0
+  fi
 done
-[ -z "$MYTTY" ] && { echo "FAILED: no tty in the parent chain" >&2; exit 1; }
 
-AS_SRC=$(cat <<'ASEOF'
-on findWindowId(theTty)
-  tell application "Terminal"
-    repeat with w in windows
-      repeat with t in tabs of w
-        if tty of t is theTty then return id of w
-      end repeat
-    end repeat
-  end tell
-  return 0
-end findWindowId
-
-set myWin to findWindowId("__MYTTY__")
-tell application "Terminal" to activate
-
-if myWin is 0 then
-  tell application "Terminal" to do script "__CMD__"
-  return "WINDOW (own window not found by tty)"
-end if
-
-tell application "Terminal" to set frontmost of window id myWin to true
-delay 0.5
-
-try
-  tell application "System Events" to keystroke "t" using command down
-on error errMsg number errNum
-  tell application "Terminal" to do script "__CMD__"
-  return "WINDOW (no Accessibility: " & errNum & ")"
-end try
-delay 0.9
-
-tell application "Terminal"
-  set theTab to selected tab of window id myWin
-  do script "__CMD__" in theTab
-end tell
-
--- A tab existing is not the claim. A claude process running in it is.
-delay __VERIFYDELAY__
-tell application "Terminal"
-  set procs to (processes of (selected tab of window id myWin)) as string
-  if procs contains "claude" then
-    return "TAB ok · window " & myWin & " · " & (tty of (selected tab of window id myWin))
-  else
-    set h to history of (selected tab of window id myWin)
-    if (count of h) > 400 then set h to text -400 thru -1 of h
-    return "FAILED: no claude process in the new tab. Scrollback tail:" & return & h
-  end if
-end tell
-ASEOF
-)
-# In batch mode the per-spawn verification is skipped here and done once for the whole
-# fleet afterwards -- so this delay goes to 0 rather than the check being deleted.
-if [ -n "$BATCH" ]; then AS_SRC=${AS_SRC//__VERIFYDELAY__/0}; else AS_SRC=${AS_SRC//__VERIFYDELAY__/4}; fi
-# TWO PARSERS, AND ONLY ONE OF THEM WAS ESCAPED FOR. $CMD is built with the worktree
-# path wrapped in SHELL single quotes (Q_WT escapes ' correctly), and is then dropped
-# into `do script "__CMD__"` -- an APPLESCRIPT double-quoted literal. A `"` in the path
-# was never escaped for that second parser, so it closed the literal: a worktree named
-#     /tmp/X" & (do shell script "echo INJECTED") & "Y
-# compiled as string concatenation around a live `do shell script`. Reported and proven
-# by osacompile/osadecompile 2026-08-23, without ever running it.
-# The call-sign was allowlisted from the start; the PATH was not, and the operator picks
-# the path. Escaping the call-sign and not the path is a rule applied to the input that
-# looked dangerous rather than to every input that reaches the parser.
-# AppleScript literal escaping: BACKSLASH FIRST, then the double quote -- reversed, the
-# backslash pass would escape the backslashes the quote pass had just added.
-as_lit() { local v="$1"; v=${v//\\/\\\\}; v=${v//\"/\\\"}; printf '%s' "$v"; }
-AS_SRC=${AS_SRC//__MYTTY__/$(as_lit "$MYTTY")}
-AS_SRC=${AS_SRC//__CMD__/$(as_lit "$CMD")}
-OUT=$(printf '%s' "$AS_SRC" | osascript - 2>&1)
-RC=$?
-echo "$OUT"
-
-# osascript exits 0 even when the SCRIPT returns "FAILED:" — so inspect what it said,
-# not just how it exited. Either way the human must end up with something to act on.
-case "$OUT" in
-  *"not found by tty"*|*"no Accessibility"*) RC=1 ;;
-  *FAILED*) [ -n "$BATCH" ] || RC=1 ;;   # in batch mode "no claude yet" is expected, not a failure
-esac
-if [ -n "$BATCH" ]; then
-  echo "BATCH: tab opened for $CALLSIGN — NOT yet verified. The batch verification after"
-  echo "       the last spawn is what makes this a deploy; without it you have opened a tab."
-fi
-if [ $RC -ne 0 ]; then
-  printf '\nAutomated spawn did not finish cleanly. Open a tab (⌘T) and paste this instead:\n\n  %s\n' "$CMD"
-fi
-exit $RC
+# 7. An IDE's integrated terminal, or anything unrecognised. There is no API here and
+#    inventing one is what this rewrite exists to stop.
+window_unavailable "no published window API for this host ($(uname -s)${TERM_PROGRAM:+, $TERM_PROGRAM}). IDE terminals — VS Code, Cursor, Windsurf, JetBrains — cannot be driven from outside, and background mode does not need to be."
+exit 0     # not a failure: background works here, and the paste-able line is above

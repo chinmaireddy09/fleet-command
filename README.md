@@ -90,8 +90,8 @@ optimism; the honest state matters more here than the coverage does.
 
 | | Status |
 |---|---|
-| **macOS** | **Measured.** Everything: the board, worktrees, identity, tab titles, and opening a window for you in Terminal.app |
-| **Linux / WSL** | **Expected to work, lightly exercised.** The scripts are ordinary POSIX shell and the tmux path is the portable one. Nothing here depends on macOS except tab titles, which skip cleanly |
+| **macOS** | **Measured.** Everything: the board, worktrees, identity, tab titles, background stations, and opening a window for you in Terminal.app |
+| **Linux / WSL** | **Expected to work, lightly exercised.** The scripts are ordinary POSIX shell, background mode is `claude --bg` with no host dependency at all, and the tmux path is the portable visible one. Nothing here depends on macOS except tab titles, which skip cleanly |
 | **Windows, Git Bash** | **Unverified, and one specific thing is likely to break.** Finding your own session — the thing that turns a window into a station — walks the process tree with `ps -o ppid=`, and MSYS's `ps` does not implement that the way POSIX does. It **fails honestly** (`ME_PID: unknown`) rather than guessing, so the board still works; stations may need `claude --name <HANDLE>` at launch instead of self-identifying |
 | **Windows, native** | **Does not run.** The scripts are bash. Use WSL |
 | **iTerm2 · Windows Terminal** | Window-opening recipes are shipped and **have never been run**. They say so at runtime |
@@ -155,7 +155,7 @@ Two shapes of work, and they need different rules:
 The first version was reasoned. Then three sessions ran a real job with it for a night, and the
 rules that survived contact look different from the ones that did not:
 
-- **Verify the pushed row, not the live session.** A deploy reported success against a tab whose
+- **Verify the pushed row, not the live session.** A deploy reported success against a session whose
   session had never registered. The unclaimed row is what proved it.
 - **Silence is never evidence.** It does not acknowledge a sweep, release a hold, prove a station
   dead, or free a reserved post. Only an answer, a bounce, or absence from the fleet manifest does.
@@ -192,7 +192,8 @@ it, so four stations do not each carry procedure they will never run:
 | `preflight.sh` | **before a gate, a standdown, a baseline diff, or addressing a peer** — the four checks that were got wrong by hand | anyone |
 | `set-callsign.sh` | **step 1 of identify — every station runs it, always, before the board.** Makes the call-sign the address peers see | every station |
 | `label-tab.sh` | called by the above — sets the tab title, and reports whether this session's launch lets it hold | every station |
-| `spawn-station.sh` | at deploy — opens the tab in *your* window and verifies a session really started | Control |
+| `spawn-station.sh` | at deploy — starts the station (background by default, a window on request) and reads the manifest back to check it really registered. Requires `--deploy`; starts nothing without it | Control |
+| `spawn-pref.sh` | records whether you want stations in the background or in a window. Asked once, on your first deploy | Control |
 
 ---
 
@@ -225,37 +226,69 @@ and copy again.
 
 ### Nothing to configure — `deploy` asks you once
 
-`/mc deploy <station>` opens a real session on a real post: it initiates the worktree, opens a
-terminal tab, has the session identify itself, and **verifies the row on the base branch carries
-its address** — not that the tab looks right. Those two came apart in practice: a spawn once
-reported success and left a tab whose session had never registered at all.
+`/mc deploy <station>` opens a real session on a real post: it initiates the worktree, starts the
+session, has it identify itself, and **verifies the row on the base branch carries its address** —
+not that something appeared on screen. Those two came apart in practice, twice.
 
-**Asking to deploy is what authorises the automation.** `/mc deploy X` means *put X on post
-without me typing anything*. Anything short of that — initiating a post nobody is walking to yet,
-or a session you open by hand — **prints one command for you to paste instead**, call-sign and
-path already filled in. And the automated path prints it too the moment it cannot prove a session
-started, so you are never left with a tab that looks fine and a station that does not exist.
+**By default it opens nothing at all.** A station starts as a Claude Code *background agent*
+(`claude --bg`): it comes up in about a second, no window, nothing typed, nothing taking your
+focus. It is a full station — it appears in the fleet manifest and answers messages sent to its
+call-sign. You look at it when *you* want to:
 
-That means it has to know **your** terminal, and everyone's differs. The first time you run it,
-it detects what you're on (`$TERM_PROGRAM`, `$WT_SESSION`, `uname`), **confirms it with you**
-along with whether you want a tab or a window, and writes the answer to
-`~/.claude/mission-control.json`. After that it never asks again. See
+```
+claude agents          every station, background and interactive
+claude logs <id>       what it's showing right now
+claude attach <id>     take it over in this terminal — answer a prompt
+claude stop <id>       stand it down
+```
+
+Because no terminal is involved, this behaves identically everywhere: **VS Code, Cursor, Windsurf,
+JetBrains, iTerm2, Terminal.app, tmux, a plain SSH session.** There is no per-IDE support matrix
+any more, because there is nothing per-IDE to support.
+
+**The first deploy on a machine asks you one question** — background, or a visible window — and
+writes the answer to `~/.claude/mission-control.json`. After that it never asks again. It **asks
+rather than detects**: `$TERM_PROGRAM` says where *Control* is running, which is routinely not
+where you want your stations.
+
+**If you pick a visible window, that is fully automated too — and it is not puppetry.** Each
+terminal is driven through its own published API (iTerm2 `create tab`, Terminal.app `do script`,
+`tmux new-window`, kitty, WezTerm, Windows Terminal), so the window pops up already in its
+worktree, already running, already identified. Nothing is typed while you watch, and clicking away
+mid-deploy breaks nothing.
+
+**What it will never do is fake a keypress.** Through 6.77.0 a tab was opened by synthesising ⌘T
+through System Events. It failed in the field twice — once losing its modifier race so the station
+ran `tcd '/path' && claude …`, and again on 2026-08-23 deploying three stations, where three tabs
+came up empty and all three launch commands were typed into Control's own prompt, one of them
+mangled to `ntialcd '/Users/…'`. **A host with no real API now gets no window rather than a faked
+one**, and deploys in the background instead.
+
+**Asking to deploy is what authorises the automation — and only that.** The spawn automation has
+one job (open a station, get it identified) and one trigger (an explicit deploy); it is enforced
+by a required `--deploy` flag rather than by good intentions. Anything short of a deploy — a post
+nobody is walking to yet, a session you open by hand — **prints one command for you to paste**,
+call-sign and path already filled in. The automated path prints it too the moment it cannot prove
+a session registered, so you are never left with something that looks fine and no station.
+
+**Your preference file is deliberately not in this repo.** Spawn preferences are per-person; a
+clone carrying the author's terminal choice would look configured and be wrong. The repo ships the
+recipes, your machine holds the choice — so a fresh clone on someone else's laptop configures
+itself on their first deploy, with nothing for you to push. See
 `templates/mission-control.json.example` for the shape.
 
-**That file is deliberately not in this repo.** Spawn preferences are per-person; a clone
-carrying the author's terminal choice would look configured and be wrong. The repo ships the
-recipes, your machine holds the choice — so a fresh clone on someone else's laptop configures
-itself on their first deploy, with nothing for you to push.
-
-| Terminal | Status |
+| Host | Status |
 |---|---|
+| **background — every OS, every IDE, every CLI** | **the default, and measured end to end 2026-08-23**: registers in the manifest and answers a radio check by call-sign |
 | **any terminal — the printed command** | **verified end to end.** No permissions, no timing, nothing to mistype |
-| macOS Terminal.app — tab | works, and **failed twice in the field before being rewritten**: a synthesised ⌘T lost its modifier race and corrupted the command, and the keypress landed in whichever window had focus. Now targets its own window by tty and checks a real session started. Needs Accessibility |
-| iTerm2 · Windows Terminal | recipe shipped, **unverified** — it says so when it uses one |
-| VS Code · Warp · Ghostty · anything else | prints the command, which is the default anyway |
+| macOS Terminal.app — window | `do script`, Terminal's own API. Needs *Automation* only; **the *Accessibility* grant is no longer used by anything** |
+| tmux | `new-window` — the portable visible recipe: macOS, Linux, WSL, and inside IDE terminals |
+| iTerm2 · kitty · WezTerm · Windows Terminal · Linux terminals | recipes shipped, **unverified** — each says so when it uses one |
+| VS Code · Cursor · Windsurf · JetBrains · anything unrecognised | **no window, never a faked one.** Deploys in the background, which needs no host |
 
 Deploy never spawns a session with widened permissions. A new station asks you to approve its
-first push, in its own tab — and deploy's report tells you to go and do that.
+first push — and deploy's report tells you exactly where to answer it (`claude attach <id>` for a
+background station, or the window for a visible one).
 
 ---
 
@@ -398,9 +431,10 @@ bash test/e2e.sh ~/.claude/skills/mission-control   # what is installed
 129 end-to-end checks — a fresh project, board discovery, a station inside a worktree, deploy on
 every host, the input guards, renaming against a registry the test owns, the identity surfaces.
 **Every check executes something**; a syntax check is not a smoke test. Throwaway repos under
-`$TMPDIR`, removed on exit; it never touches your board, opens a terminal, relabels a tab, or
+`$TMPDIR`, removed on exit; it never touches your board, starts a session, opens a terminal, relabels a tab, or
 renames a live session — the rename checks build their own session registry under a fake `$HOME`,
-and `osascript` is stubbed suite-wide so no tab is ever addressed.
+and `osascript` **and `claude`** are stubbed suite-wide, so no tab is ever addressed and no
+billable session is ever started.
 
 **All four skills are covered.** `mission-control`'s scripts are exercised end to end; the other
 three are prose, but the shell they *do* contain — the write-root / shared-root resolution that

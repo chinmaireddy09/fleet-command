@@ -58,6 +58,46 @@ fi
 OSA
 chmod +x "$STUB/osascript"
 
+# claude is stubbed for the WHOLE suite, and this is the most important stub in it.
+# spawn-station.sh's DEFAULT mode starts a real background session. When that landed
+# (6.78.0) the suite's first run spawned five real ones -- four BACKENDs and one in the
+# AppleScript-injection worktree -- which then had to be hunted down with `claude stop`.
+# A suite that bills the person running it is worse than an untested line, and gating
+# that on remembering to prefix PATH per-call is the same ordering bug the osascript
+# stub exists to rule out. So the stub goes on PATH for everything, below.
+#
+# It behaves like a small registry rather than a fixed echo: a --bg launch records the
+# name it was given, and `agents --json` reads it back. That way the "did it register"
+# branch is exercised against something that can actually be wrong.
+cat > "$STUB/claude" <<'CLA'
+#!/bin/bash
+REG="${STUB_CLAUDE_REG:-/dev/null}"
+if [ "$1" = "agents" ]; then
+  [ "${STUB_CLAUDE_AGENTS_RC:-0}" = "0" ] || exit "${STUB_CLAUDE_AGENTS_RC}"
+  [ "${STUB_CLAUDE_REGISTERED:-1}" = "1" ] || { echo '[]'; exit 0; }
+  printf '['
+  sep=""
+  while IFS= read -r n; do
+    [ -n "$n" ] || continue
+    printf '%s{"id":"a1b2c3d4","name":"%s","status":"idle","kind":"background"}' "$sep" "$n"
+    sep=","
+  done < "$REG" 2>/dev/null
+  printf ']
+'
+  exit ${STUB_CLAUDE_AGENTS_RC:-0}
+fi
+name=""; prev=""
+for a in "$@"; do [ "$prev" = "--name" ] && name="$a"; prev="$a"; done
+if [ "${STUB_CLAUDE_RC:-0}" != "0" ]; then echo "stub: refusing to launch" >&2; exit "${STUB_CLAUDE_RC}"; fi
+[ "$REG" = /dev/null ] || printf '%s\n' "$name" >> "$REG"
+echo "backgrounded · a1b2c3d4 · $name"
+exit 0
+CLA
+chmod +x "$STUB/claude"
+# Suite-wide, for the reason argued above. Individual tests still set STUB_* knobs.
+export PATH="$STUB:$PATH"
+export STUB_CLAUDE_REG="$WORK/claude.registry"; : > "$STUB_CLAUDE_REG"
+
 newrepo(){ local r; r=$(mktemp -d "$WORK/repo.XXXXXX"); cd "$r"
   git init -q; git config user.email t@example.com; git config user.name t
   mkdir -p docs; echo init > README.md; git add -A; git commit -qm init
@@ -120,20 +160,145 @@ cd "$REPO"
 
 echo
 echo "── 5. deploy, on every host ───────────────────────────────────────"
+# 6.78.0 replaced the ⌘T keystroke path with `claude --bg`. These tests pin the two
+# properties the old path could not hold: nothing is typed, and nothing is claimed
+# that was not read back.
 chk "print path yields a paste-able launch line" \
     "$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --print 2>&1)" \
     "claude --name 'BACKEND' '/mc identify BACKEND'"
-O=$(PATH="$STUB:$PATH" TMUX="x,1,0" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND 2>&1)
-chk "tmux opens a window"                    "$O" "TMUX WINDOW OPENED"
-chk "tmux does not claim a station"          "$O" "NOT YET A STATION"
-O=$(PATH="$STUB:$PATH" STUB_RC=1 TMUX="x,1,0" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND 2>&1)
-chk "tmux refusing falls back to printing"   "$O" "CANNOT AUTOMATE HERE"
-O=$(PATH="$STUB:$PATH" WT_SESSION=1 bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND 2>&1)
-chk "windows terminal opens a tab"           "$O" "WT TAB OPENED"
-chk "windows recipe admits it is unverified" "$O" "UNVERIFIED"
-O=$(TERM_PROGRAM=vscode bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND 2>&1); RC=$?
-chk "an unsupported host prints instead"     "$O" "CANNOT AUTOMATE HERE"
-[ $RC -eq 0 ] && ok "no recipe is not an error (exit 0)" || no "no recipe is not an error" "exit $RC"
+
+# THE ANTI-PUPPETRY ASSERTION. Not a behaviour test -- a source test, and deliberately
+# so: every field failure this rewrite answers came from synthesising a keypress, and
+# the cheapest way for that to come back is somebody restoring the tab recipe. Comments
+# and printed prose may say the words; no executable line may.
+SRC=$(grep -vE '^\s*#' "$D/spawn-station.sh" | grep -vE '^\s*echo|^\s*cat <<|^[A-Z ]+·' || true)
+case "$SRC" in
+  *"keystroke"*|*"System Events"*) no "no keystroke is ever synthesised" "an executable line still synthesises keys" ;;
+  *) ok "no keystroke is ever synthesised" ;;
+esac
+
+O=$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+chk "background is the default with no flag"  "$O" "started as a background agent"
+chk "it says nothing took the user's focus"   "$O" "nothing took your focus"
+chk "the session id is handed back"           "$O" "session a1b2c3d4"
+chk "registration is READ BACK, not assumed"  "$O" "REGISTERED"
+chk "it never claims a manned post"           "$O" "NOT YET A MANNED POST"
+chk "the human gets attach"                   "$O" "claude attach a1b2c3d4"
+chk "the human gets logs"                     "$O" "claude logs a1b2c3d4"
+chk "the human gets stop"                     "$O" "claude stop a1b2c3d4"
+
+# A launch that returns cleanly while the manifest does not show it is the exact shape
+# of the 2026-08-18 "spawned but never registered" failure. It must be SAID, not implied.
+O=$(STUB_CLAUDE_REGISTERED=0 bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+chk "an unregistered station is reported"      "$O" "NOT YET REGISTERED"
+# Anchored at line start ON PURPOSE. A substring test for "REGISTERED ·" also matches
+# "NOT YET REGISTERED ·" -- the very string this is meant to accept -- so the check
+# failed against correct output and would have passed against silence.
+if printf '%s\n' "$O" | grep -q '^REGISTERED ·'; then
+  no "it does not claim registration it lacks" "claimed REGISTERED"
+else ok "it does not claim registration it lacks"; fi
+
+# Cannot read the manifest at all is a THIRD state, and it must not borrow either of the
+# other two's confidence: the launch did return cleanly, and we still do not know.
+O=$(STUB_CLAUDE_AGENTS_RC=3 bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+chk "an unreadable manifest is its own answer" "$O" "REGISTRATION UNVERIFIED"
+
+# A refused launch must still leave the human something to run.
+O=$(STUB_CLAUDE_RC=1 bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1); RC=$?
+chk "a refused launch says so"                 "$O" "BACKGROUND SPAWN FAILED"
+chk "and still prints the paste-able line"     "$O" "claude --name 'BACKEND'"
+[ $RC -ne 0 ] && ok "a refused launch is an error (non-zero)" || no "a refused launch is an error" "exit 0"
+
+# --window, and every recipe in it is an API the terminal publishes.
+O=$(TMUX="x,1,0" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --window --deploy 2>&1)
+chk "tmux opens a window"                      "$O" "TMUX WINDOW OPENED"
+chk "tmux does not claim a station"            "$O" "NOT YET A STATION"
+O=$(STUB_RC=1 TMUX="x,1,0" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --window --deploy 2>&1)
+chk "tmux refusing is reported"                "$O" "NO WINDOW RECIPE HERE"
+O=$(WT_SESSION=1 bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --window --deploy 2>&1)
+chk "windows terminal opens a tab"             "$O" "WT TAB OPENED"
+chk "windows recipe admits it is unverified"   "$O" "UNVERIFIED"
+O=$(TERM_PROGRAM=Apple_Terminal bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --window --deploy 2>&1)
+chk "Terminal.app uses do script, not a tab"   "$O" "TERMINAL WINDOW OPENED"
+chk "and says WINDOW rather than implying tab" "$O" "It is a WINDOW, not a tab"
+
+# An IDE terminal cannot be driven from outside, and the point of 6.78.0 is that it no
+# longer has to be: --window declines, and declining is not a failure.
+O=$(TERM_PROGRAM=vscode bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --window --deploy 2>&1); RC=$?
+chk "an IDE terminal declines rather than guessing" "$O" "NO WINDOW RECIPE HERE"
+chk "it names background as the way through"        "$O" "background agent"
+[ $RC -eq 0 ] && ok "no window recipe is not an error (exit 0)" || no "no window recipe is not an error" "exit $RC"
+# ...and the same host still deploys, because background needs no host at all.
+O=$(TERM_PROGRAM=vscode bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+chk "the SAME IDE host still deploys in background" "$O" "started as a background agent"
+
+echo
+echo "── 5b. the recorded preference, and its guards ────────────────────"
+CFGD="$WORK/cfg"; mkdir -p "$CFGD"
+printf '{"spawn":{"mode":"print"}}' > "$CFGD/mc.json"
+O=$(MC_CONFIG="$CFGD/mc.json" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+chk "a recorded mode is honoured"          "$O" "open a terminal and paste this"
+O=$(MC_CONFIG="$CFGD/mc.json" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --background --deploy 2>&1)
+chk "an explicit flag beats the config"    "$O" "started as a background agent"
+# A launchCommand out of a config file reaches a command line. Same allowlist reasoning
+# as the call-sign, applied to the input nobody thought of as dangerous.
+printf '{"spawn":{"launchCommand":"claude; touch %s/PWNED"}}' "$CFGD" > "$CFGD/evil.json"
+O=$(MC_CONFIG="$CFGD/evil.json" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+[ -e "$CFGD/PWNED" ] && no "a booby-trapped launchCommand is refused" "it executed" || ok "a booby-trapped launchCommand is refused"
+printf 'not json at all' > "$CFGD/bad.json"
+O=$(MC_CONFIG="$CFGD/bad.json" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+chk "an unreadable config is a preference nobody expressed" "$O" "started as a background agent"
+O=$(MC_CONFIG="$CFGD/nothing-here.json" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)
+chk "a missing config is not an error"     "$O" "started as a background agent"
+
+echo "── 5c. the scope rule: automation only under an explicit deploy ───"
+# The spawn automation exists for ONE job -- open a station and get it identified -- and
+# is triggered by ONE thing. The rule is enforced by a required flag rather than by a
+# comment, because a scope written in prose grows and a required flag has to be typed.
+O=$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND 2>&1); RC=$?
+chk "no --deploy means no spawn"            "$O" "NOT A DEPLOY"
+chk "and it says nothing was started"       "$O" "no session was started and no window was opened"
+chk "it still hands over a usable line"     "$O" "claude --name 'BACKEND'"
+[ $RC -eq 0 ] && ok "declining to spawn is not an error (exit 0)" || no "declining to spawn is not an error" "exit $RC"
+# The demotion must be a DEMOTION, not a quiet spawn: nothing may reach the launcher.
+: > "$STUB_CLAUDE_REG"
+bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND >/dev/null 2>&1
+bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --window >/dev/null 2>&1
+if [ -s "$STUB_CLAUDE_REG" ]; then no "nothing is launched without --deploy" "the launcher ran anyway"
+else ok "nothing is launched without --deploy"; fi
+chk "--print needs no --deploy"             "$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --print 2>&1)" "open a terminal and paste this"
+
+echo
+echo "── 5d. the preference is ASKED once, not detected ─────────────────"
+PD="$WORK/pref"; mkdir -p "$PD"; PCFG="$PD/mc.json"
+chk "a fresh machine has no preference"     "$(MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: unset"
+# unset must not read as background: they behave the same and MEAN different things.
+case "$(MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" read 2>&1)" in
+  *"SPAWN: background"*) no "unset is not silently reported as a choice" "reported background" ;;
+  *) ok "unset is not silently reported as a choice" ;;
+esac
+chk "a deploy on an unrecorded machine says so" \
+    "$(MC_CONFIG="$PCFG" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)" \
+    "nobody has been asked on this machine yet"
+MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" set window >/dev/null 2>&1
+chk "a recorded preference reads back"      "$(MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: window"
+chk "and the deploy then honours it"        "$(MC_CONFIG="$PCFG" TERM_PROGRAM=vscode bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)" "NO WINDOW RECIPE HERE"
+case "$(MC_CONFIG="$PCFG" bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)" in
+  *"nobody has been asked"*) no "a recorded machine is not nagged" "still says nobody was asked" ;;
+  *) ok "a recorded machine is not nagged" ;;
+esac
+# The same read-modify-write rule tour-state.sh follows: one key touched, everything
+# else survives, and a file we cannot parse is never overwritten.
+printf '{"_comment":"hand written, do not lose me","tour":{"state":"completed"},"spawn":{"mode":"window"}}' > "$PCFG"
+MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" set background >/dev/null 2>&1
+O=$(python3 -c "import json;d=json.load(open('$PCFG'));print(d.get('_comment',''),d.get('tour',{}).get('state',''),d.get('spawn',{}).get('mode',''))")
+chk "existing preferences survive the write" "$O" "hand written, do not lose me completed background"
+printf 'not json at all' > "$PCFG"; BEFORE=$(wc -c < "$PCFG")
+MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" set window >/dev/null 2>&1
+[ "$(wc -c < "$PCFG")" = "$BEFORE" ] && ok "an unparseable config is left alone" || no "an unparseable config is left alone" "it was rewritten"
+chk "and it says so rather than failing silently" "$(MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" read 2>&1)" "could not be parsed"
+chk "reset puts it back to unasked"          "$(printf '{"spawn":{"mode":"window"}}' > "$PCFG"; MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" reset >/dev/null 2>&1; MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: unset"
+chk "a bogus mode is refused"                "$(MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" set sideways 2>&1)" "usage:"
 
 echo
 echo "── 6. the guards ──────────────────────────────────────────────────"
@@ -355,8 +520,11 @@ INJ=$(newrepo); cd "$INJ"
 EVILWT="$WORK/X\" & (do shell script \"echo INJECTED\") & \"Y"
 mkdir -p "$EVILWT"
 CAP="$WORK/osa.capture"; : > "$CAP"
-PATH="$STUB:$PATH" TERM_PROGRAM=Apple_Terminal STUB_OSA_CAPTURE="$CAP" \
-  bash "$D/spawn-station.sh" BACKEND "$EVILWT" BACKEND >/dev/null 2>&1
+# --window is required to reach an AppleScript parser at all now: the default path
+# never builds one. Without the flag this test would pass by not executing the code it
+# is meant to guard, which is the most expensive kind of green.
+TERM_PROGRAM=Apple_Terminal STUB_OSA_CAPTURE="$CAP" \
+  bash "$D/spawn-station.sh" BACKEND "$EVILWT" BACKEND --window --deploy >/dev/null 2>&1
 CAPTXT=$(cat "$CAP" 2>/dev/null)
 if [ -z "$CAPTXT" ]; then
   sk "AppleScript path escaping — no osascript recipe reached on this host"
