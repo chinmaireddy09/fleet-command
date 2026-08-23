@@ -1,16 +1,25 @@
 # Fleet Command
 
-Four skills for [Claude Code](https://claude.com/claude-code) that let you **command a fleet of
-sessions on one repository at the same time without them overwriting each other.**
+One repository. A live command board. A fleet of Claude Code sessions operating under a single
+command.
 
-Nothing to register and no limit on how many. Open a window, give it a call-sign, and it is on
-the fleet; close it and it is not.
+Each session takes a call-sign, claims its sector of the codebase, and reports its position on
+the board. They share the same repository but never work the same ground — no crossed commands,
+no conflicting changes, no duplicated effort.
 
-Open three windows on the same project and they will quietly ruin each other's day: one
-switches branches and the files change under another; one runs `git add -A` and swallows a
-third's unfinished work; two file the same finding twice; a fourth dies and takes its only
-copy of something with it. Every one of those happened in a single afternoon — that afternoon
-is why these exist.
+Before any session signs off, it hands over its progress, its decisions, and the next course of
+action. Nothing disappears when a window closes, and the fleet keeps moving as one.
+
+Deploy as many sessions as the mission demands. **One repo. One command. An entire fleet in
+formation.**
+
+Four skills for [Claude Code](https://claude.com/claude-code) that make that true. Nothing to
+sign up for, and no limit on how many.
+
+*Why they exist:* open a handful of windows on one project and they will quietly ruin each
+other's day — one switches branches and the files change under another; one runs `git add -A`
+and swallows a third's unfinished work; two file the same finding twice; a fourth dies and takes
+its only copy of something with it. Every one of those happened in a single afternoon.
 
 ---
 
@@ -46,8 +55,9 @@ it whenever you want.
 2. Open a session on your repo and run **`/mc`**. It becomes the coordinator, names itself, and
    tells you who else is working and on what.
 3. Open another window and run **`/mc identify FRONTEND`** — **any name you like**, and a name
-   nobody has used before is a normal answer, not an error. That session gives itself its own
-   copy of the repo (a git worktree) and moves into it on its own. You never `cd` anywhere.
+   nobody has used before is a normal answer, not an error. That session opens its own
+   workspace inside the same repository (a git worktree) and moves into it on its own. You never
+   `cd` anywhere.
 4. Repeat step 3 for as many windows as you want. They do not have to be started in any order,
    and none of them waits for the others.
 5. Before starting a job, run **`/mc depends <path>`** — it tells you who else is touching that
