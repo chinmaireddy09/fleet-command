@@ -57,14 +57,27 @@ it whenever you want.
 
 That is the whole loop. Everything else is for when something goes wrong.
 
-**Requirements:** `git`, [Claude Code](https://claude.com/claude-code), and `python3` (already on
-macOS and most Linux). No accounts, no services, no config file to fill in.
+**Requirements:** `git`, [Claude Code](https://claude.com/claude-code), a **POSIX shell** (the
+scripts are bash), and `python3` — already present on macOS and most Linux.
 
-**Platforms.** Naming a window and everything on the board works anywhere Claude Code runs.
-*Opening* a new window for you is automated on macOS Terminal.app, in tmux (which covers Linux,
-Windows via WSL, and inside VS Code's terminal), and in Windows Terminal. Anywhere else it prints
-the one line for you to paste — which is not a lesser path, because opening a window was the only
-part a human was ever doing.
+**Platforms — what is measured, and what is not.** Be guided by this table rather than by
+optimism; the honest state matters more here than the coverage does.
+
+| | Status |
+|---|---|
+| **macOS** | **Measured.** Everything: the board, worktrees, identity, tab titles, and opening a window for you in Terminal.app |
+| **Linux / WSL** | **Expected to work, lightly exercised.** The scripts are ordinary POSIX shell and the tmux path is the portable one. Nothing here depends on macOS except tab titles, which skip cleanly |
+| **Windows, Git Bash** | **Unverified, and one specific thing is likely to break.** Finding your own session — the thing that turns a window into a station — walks the process tree with `ps -o ppid=`, and MSYS's `ps` does not implement that the way POSIX does. It **fails honestly** (`ME_PID: unknown`) rather than guessing, so the board still works; stations may need `claude --name <HANDLE>` at launch instead of self-identifying |
+| **Windows, native** | **Does not run.** The scripts are bash. Use WSL |
+| **iTerm2 · Windows Terminal** | Window-opening recipes are shipped and **have never been run**. They say so at runtime |
+
+**If you are the first person to run this on Windows or in iTerm2, you are genuinely the first.**
+One command settles the load-bearing unknown — `bash ~/.claude/skills/mission-control/mc-init.sh me`
+— and its output is worth sending back.
+
+*Opening* a window is the only part any of this automates, and where no recipe fits it prints the
+one line for you to paste. That is not a lesser path: opening a window was the only part a human
+was ever doing.
 
 ---
 
