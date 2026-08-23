@@ -442,6 +442,29 @@ chk "the board is still measured"            "$O" "BOARD:"
 chk "and the base ref still resolves"        "$O" "BASE_REF:"
 cd "$REPO"
 
+echo "── 5k. the status line cannot hang and cannot spawn ───────────────"
+# It renders under the user's prompt on every event, so its failure modes are the two that
+# would be most visible: blocking, and starting processes.
+SL="$D/statusline.sh"
+if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
+  # `IN=$(cat)` reads stdin forever when stdin is a pipe nobody writes to. Claude Code
+  # always supplies a payload, so the bug is invisible in the one place it is used and
+  # fatal everywhere else -- it wedged a build here on 2026-08-24.
+  if echo -n "" | timeout 10 bash "$SL" >/dev/null 2>&1; then ok "an empty pipe does not hang it"
+  else no "an empty pipe does not hang it" "timed out or failed"; fi
+  if timeout 10 bash "$SL" </dev/null >/dev/null 2>&1; then ok "no stdin does not hang it"
+  else no "no stdin does not hang it" "timed out or failed"; fi
+  # `claude agents --json` costs ~0.21s per render AND starts a background service that
+  # inherits the caller's stdout -- backgrounding it hung a shell for two minutes.
+  case "$(grep -vE '^\s*#' "$SL")" in
+    *"claude agents"*) no "it never shells out to claude" "claude agents is back" ;;
+    *) ok "it never shells out to claude" ;;
+  esac
+  # An off-fleet repo must render nothing rather than somebody else's sessions.
+  O=$(cd "$WORK" && timeout 10 bash "$SL" </dev/null 2>/dev/null)
+  [ -z "$O" ] && ok "an unrelated directory shows no fleet" || no "an unrelated directory shows no fleet" "$O"
+fi
+
 echo "── 5c. the scope rule: automation only under an explicit deploy ───"
 # The spawn automation exists for ONE job -- open a station and get it identified -- and
 # is triggered by ONE thing. The rule is enforced by a required flag rather than by a

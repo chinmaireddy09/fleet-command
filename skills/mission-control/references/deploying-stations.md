@@ -157,6 +157,7 @@ application; it does it and tells you, or it errors. No focus, no keys, no sleep
 | Host | The actual call | Status |
 |---|---|---|
 | **anything at all** | `claude --bg --name <HANDLE>` | **measured 2026-08-23** — registers, answers radio |
+| **macOS Terminal.app — a TAB** | Terminal's own *Shell → New Tab* menu item, clicked **by name** | **verified end to end 2026-08-24.** Needs the Accessibility grant; falls back to a window without it |
 | **tmux** (inside one) | `tmux new-window -c <wt> -n <CALLSIGN>` | portable: macOS, Linux, WSL, and inside IDE terminals |
 | **iTerm2** | `create tab with default profile` → `write text` | recipe shipped, **not verified** |
 | **macOS Terminal.app** | `do script "<cmd>"` | opens a **WINDOW**. See below |
@@ -206,6 +207,14 @@ in this skill closes a terminal.
 `do script` is Terminal's own API and creates a window atomically. **A window when somebody
 pictured a tab is not a silent detail** — say which one they got. It also needs only the
 *Automation* grant, never *Accessibility*, because nothing is sending keystrokes any more.
+
+**Tab mode is the one recipe that touches the UI, and its boundary is precise.** There is no
+scriptable new-tab (measured four ways, below), so the tab comes from a **named menu item**, not
+a keystroke. Two things separate it from the ⌘T path that corrupted three deploys: **no chord**,
+so no modifier can be lost; and **no `selected tab`** — every tty is snapshotted before the click
+and the command is written to the tab carrying a tty that was not there before. It needs the
+Accessibility grant, and every failure (no grant, no new tty, no `claude` process) falls back to
+a window and names which happened.
 
 **The fallback rule: no published API means no window — never a faked one.** For VS Code, Cursor,
 Windsurf, JetBrains, or an unrecognised `$TERM_PROGRAM`, `--window` **declines**, says why, and

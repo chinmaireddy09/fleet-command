@@ -175,7 +175,19 @@ fi
 
 UNRECORDED=""
 if [ -z "$MODE" ]; then
-  MODE="${ENV_MODE:-${CFG_MODE:-background}}"
+  # THE FILE OUTRANKS THE ENV, AND THAT IS THE FIX FOR A REAL FIELD BUG.
+  # env.MC_SPAWN_MODE is injected at SESSION LAUNCH, so a session that has been running
+  # since before the setting changed carries the OLD value -- and while the env outranked
+  # the file, `/mc-config set background` recorded background and the very next deploy
+  # still opened a tab. Reported 2026-08-24 by a coordinator that hit it live: "recorded
+  # background, got a tab."
+  #
+  # The file is re-read from disk on every spawn, so it is never stale. mc-config.sh writes
+  # BOTH, so the two only disagree when the env copy is a launch-time snapshot of a value
+  # since changed -- which means a disagreement is itself the evidence that the env is old.
+  # So the file wins whenever it has a value, and the env is what speaks for a machine that
+  # has an env key and no recorded file yet.
+  MODE="${CFG_MODE:-${ENV_MODE:-background}}"
   [ -n "$ENV_MODE" ] || [ -n "$CFG_MODE" ] || UNRECORDED=1
 fi
 # "default" is a RECORDED CHOICE that resolves to whatever this tool's default is, so that

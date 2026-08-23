@@ -85,6 +85,41 @@ add to your project before the first run:
 something. Both mean **whatever yours are** — the scripts resolve them and print what they
 found.*
 
+### See your fleet under the prompt
+
+Claude Code's footer counts shells; it can't show your stations. `statusLine` can — add this to
+`~/.claude/settings.json`:
+
+```json
+{ "statusLine": { "type": "command",
+                  "command": "bash ~/.claude/skills/mission-control/statusline.sh" } }
+```
+
+```
+fleet  BACKEND  CHANNELS·bg  FRONTEND  +1 unidentified
+```
+
+Bold is busy, dim is idle, `·bg` is a background station. **Only this repo's sessions** — the
+registry holds every Claude session on the machine, and a status line showing an unrelated
+project as if it were your fleet is the worst possible place for that confusion. A session with
+a generated handle is counted, never named: an address is not a call-sign.
+
+**It spawns nothing.** The obvious build shells out to `claude agents --json`; that costs ~0.21s
+per render *and* starts a background service that inherits the caller's stdout — it hung a shell
+for two minutes during development. It reads `~/.claude/sessions/*.json` and `/tmp/cc-socks/`
+instead: microseconds, cannot hang, cannot start a daemon.
+
+### Speed
+
+`/mc` starts in **~0.3s**. It was 1.4s until 2026-08-24, and `git fetch` was 1.12s of that — a
+network round trip on every invocation, including several in a row while nothing upstream had
+moved. The fetch is now skipped when the remote-tracking refs are under 60 seconds old, and it
+**says** it skipped rather than doing it silently. `MC_FETCH_TTL=0` forces one when you have just
+been told something landed.
+
+`/mc-config` is a standalone command that does **not** load the skill — 2 KB instead of 184 KB,
+because changing one setting should not cost the whole protocol.
+
 **Platforms — what is measured, and what is not.** Be guided by this table rather than by
 optimism; the honest state matters more here than the coverage does.
 
@@ -194,7 +229,7 @@ it, so four stations do not each carry procedure they will never run:
 | `label-tab.sh` | called by the above — sets the tab title, and reports whether this session's launch lets it hold | every station |
 | `spawn-station.sh` | at deploy — starts the station (background by default, a window on request) and reads the manifest back to check it really registered. Requires `--deploy`; starts nothing without it | Control |
 | `spawn-pref.sh` | records whether you want stations in the background or in a window. Asked once, on your first deploy | Control |
-| `mc-config.sh` | `/mc config` — shows every preference and changes any of them in place | Control |
+| `mc-config.sh` | `/mc-config` — the preference picker, and it keeps `settings.json` in agreement with the skill's own file | Control |
 
 ---
 
@@ -266,11 +301,33 @@ It also flags **stale keys** — settings an older version wrote that nothing re
 where they sit, but a dead key that looks like live configuration is a question waiting to be
 asked, so it gets labelled instead of silently ignored.
 
+**Four choices, and `/mc-config` is the picker** — one question, one keystroke, like `/model`:
+
+| | What you get |
+|---|---|
+| **Default** *(recommended)* | follow whatever the tool's default is — today background |
+| **Tab** | a new tab in your current Terminal window (macOS Terminal.app; needs the Accessibility grant) |
+| **Window** | each station in its own window |
+| **Background — pinned** | no terminal, and it stays that way even if the default moves |
+
+```
+/mc-config              # the picker
+/mc-config once tab     # just the next deploy, then back to your default
+```
+
 **If you pick a visible window, that is fully automated too — and it is not puppetry.** Each
 terminal is driven through its own published API (iTerm2 `create tab`, Terminal.app `do script`,
 `tmux new-window`, kitty, WezTerm, Windows Terminal), so the window pops up already in its
 worktree, already running, already identified. Nothing is typed while you watch, and clicking away
 mid-deploy breaks nothing.
+
+**Tab mode is the one mode that touches your UI, and it says so.** Terminal.app publishes no
+scriptable new-tab — measured four ways — so a tab can only come from Terminal's own **Shell →
+New Tab** menu item, clicked by name. That needs the Accessibility grant. It is **not** the ⌘T
+path that broke, and two things make the difference: **no chord**, so there is no modifier to
+lose; and **no "selected tab"** — every tty is snapshotted before the click and the command goes
+to the tab carrying a tty that was not there before. Any failure falls back to a window and says
+which.
 
 **What it will never do is fake a keypress.** Through 6.77.0 a tab was opened by synthesising ⌘T
 through System Events. It failed in the field twice — once losing its modifier race so the station
@@ -295,8 +352,9 @@ itself on their first deploy, with nothing for you to push. See
 | Host | Status |
 |---|---|
 | **background — every OS, every IDE, every CLI** | **the default, and measured end to end 2026-08-23**: registers in the manifest and answers a radio check by call-sign |
+| **macOS Terminal.app — tab** | **verified end to end 2026-08-24.** Terminal's own *Shell → New Tab* menu item, clicked by name. Needs the *Accessibility* grant; falls back to a window without it |
 | **any terminal — the printed command** | **verified end to end.** No permissions, no timing, nothing to mistype |
-| macOS Terminal.app — window | `do script`, Terminal's own API. Needs *Automation* only; **the *Accessibility* grant is no longer used by anything** |
+| macOS Terminal.app — window | `do script`, Terminal's own API. Needs *Automation* only |
 | tmux | `new-window` — the portable visible recipe: macOS, Linux, WSL, and inside IDE terminals |
 | iTerm2 · kitty · WezTerm · Windows Terminal · Linux terminals | recipes shipped, **unverified** — each says so when it uses one |
 | VS Code · Cursor · Windsurf · JetBrains · anything unrecognised | **no window, never a faked one.** Deploys in the background, which needs no host |
