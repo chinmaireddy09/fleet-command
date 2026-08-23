@@ -140,7 +140,7 @@ try: d=json.load(open(sys.argv[1]))
 except Exception: sys.exit(0)
 s=d.get("spawn") or {}
 m=s.get("mode")
-if m in ("background","window","tab","print"): print('CFG_MODE=%s'%m)
+if m in ("background","window","tab","print","default"): print('CFG_MODE=%s'%m)
 lc=s.get("launchCommand")
 # A launch command out of a config file reaches a command line. Bare binary only --
 # the same allowlist reasoning as the call-sign, applied to the other free-form input.
@@ -157,9 +157,9 @@ fi
 # outranks this skill's own file: one place to look beats two that can disagree.
 ENV_MODE=""
 case "${MC_SPAWN_MODE:-}" in
-  tab|window|background|print) ENV_MODE="$MC_SPAWN_MODE" ;;
+  tab|window|background|print|default) ENV_MODE="$MC_SPAWN_MODE" ;;
   "") ;;
-  *) echo "NOTE: MC_SPAWN_MODE=\"$MC_SPAWN_MODE\" is not one of tab|window|background|print — ignoring it." >&2 ;;
+  *) echo "NOTE: MC_SPAWN_MODE=\"$MC_SPAWN_MODE\" is not one of default|tab|window|background|print — ignoring it." >&2 ;;
 esac
 
 UNRECORDED=""
@@ -167,6 +167,12 @@ if [ -z "$MODE" ]; then
   MODE="${ENV_MODE:-${CFG_MODE:-background}}"
   [ -n "$ENV_MODE" ] || [ -n "$CFG_MODE" ] || UNRECORDED=1
 fi
+# "default" is a RECORDED CHOICE that resolves to whatever this tool's default is, so that
+# somebody who picked it follows the default if it ever moves. It must resolve AFTER the
+# UNRECORDED test above: an absent key and a recorded "default" behave identically at a
+# deploy and mean opposite things to the ask -- one is a question nobody has put, the other
+# is an answer already given. Collapsing them nags a person who answered.
+[ "$MODE" = "default" ] && MODE="background"
 
 
 # KEEP THIS PROMPT SHORT, AND THE REASON IS THE TAB TITLE -- in --window mode Terminal

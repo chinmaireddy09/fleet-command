@@ -62,7 +62,7 @@ def one_of(*opts):
 CALLSIGN=(lambda v: bool(re.fullmatch(r"[A-Za-z0-9 ._/&-]{1,64}", v)),
           "letters, digits, spaces and . _ / & - only")
 SPEC={
- "spawn.mode":           (one_of("background","window","tab")[0], "background | window | tab",
+ "spawn.mode":           (one_of("default","background","window","tab")[0], "default | background | window | tab",
                           "nobody has been asked yet -- the next deploy asks and records it"),
  "spawn.launchCommand":  (lambda v: bool(re.fullmatch(r"[A-Za-z0-9._/-]{1,64}", v)),
                           "a bare binary name, e.g. claude",
@@ -144,7 +144,10 @@ if action=="show":
             v=t.get("state"); when=t.get("date")
         else:
             v=get(d,k); when=get(d,k.rsplit(".",1)[0]+".date") if k.startswith("spawn.") else None
-        if v is None:
+        if k == "spawn.mode" and v == "default":
+            print(f"  {k.ljust(width)}  Default → background   (set {when})" if when
+                  else f"  {k.ljust(width)}  Default → background")
+        elif v is None:
             print(f"  {k.ljust(width)}  (not set)   → {dflt}")
         else:
             print(f"  {k.ljust(width)}  {v}{('   (set '+when+')') if when else ''}")

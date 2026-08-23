@@ -18,8 +18,15 @@
 # -- it looks configured and is wrong.
 #
 # THE TWO MODES:
+#   default     FOLLOW THE TOOL'S OWN DEFAULT, whatever it becomes. Today that resolves to
+#               background. This is a RECORDED CHOICE and is NOT the same as the key being
+#               absent: absent means nobody has been asked and the next deploy asks;
+#               "default" means the user was asked and chose to track the default rather
+#               than pin a mode. Collapsing the two would either nag someone who answered
+#               or silently pin a value they did not choose.
 #   background  no window at all. `claude --bg`. Works identically on every OS and in
-#               every IDE terminal, because no terminal is involved. THE DEFAULT.
+#               every IDE terminal, because no terminal is involved. Pinned explicitly:
+#               it stays background even if the tool's default changes later.
 #   tab         a new TAB in the current terminal window. On Terminal.app this is the one
 #               mode that needs the Accessibility grant: Terminal publishes no scriptable
 #               new-tab, so the tab comes from its own Shell > New Tab menu item. No
@@ -35,8 +42,8 @@ command -v python3 >/dev/null || { echo "SPAWN: unset   # python3 not found"; ex
 
 case "$ACTION" in
   read|reset) ;;
-  set) case "${2:-}" in background|window|tab) ;; *) echo "usage: spawn-pref.sh set <background|window|tab>" >&2; exit 2;; esac ;;
-  *) echo "usage: spawn-pref.sh [read|set <background|window|tab>|reset]" >&2; exit 2 ;;
+  set) case "${2:-}" in background|window|tab|default) ;; *) echo "usage: spawn-pref.sh set <background|window|tab|default>" >&2; exit 2;; esac ;;
+  *) echo "usage: spawn-pref.sh [read|set <background|window|tab|default>|reset]" >&2; exit 2 ;;
 esac
 
 ACTION="$ACTION" MODE="${2:-}" CFG="$CFG" python3 <<'PY'
@@ -61,7 +68,7 @@ spawn = d.get("spawn") if isinstance(d.get("spawn"), dict) else {}
 
 if action == "read":
     m = spawn.get("mode")
-    if m in ("background", "window", "tab"):
+    if m in ("background", "window", "tab", "default"):
         print(f"SPAWN: {m}   # recorded {spawn.get('date','?')}")
     else:
         # UNSET IS NOT background. They mean the same thing to a deploy that has to run

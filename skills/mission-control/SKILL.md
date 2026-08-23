@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.82.0
+version: 6.83.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a visible window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1266,6 +1266,12 @@ So, in one turn, with no intermediate "would you like to change it?":
    as choices — that is half of what makes `/model` feel like a setting rather than a prompt.
 3. Write the answer with `mc-config.sh set`, and say in one line what changed and what it means.
 
+**Offer `Default` as the first option, the way `/model` does.** It is a real choice and not a
+synonym for `background`: **an absent key means nobody has been asked** and the next deploy asks,
+while **`default` means they were asked and chose to track the tool's default** rather than pin a
+mode. The two deploy identically today, which is exactly why collapsing them is tempting — and
+doing so either nags somebody who already answered or silently pins a value they never picked.
+
 **Asking "do you want to change anything?" first is the failure mode.** It is a question whose
 answer is already implied by having typed `/mc config`, and it turns a one-keystroke setting into
 a conversation — the same defect §1 names for *do not ask whether to take Control*.
@@ -1295,7 +1301,8 @@ one place to look beats two that can disagree — and an explicit flag outranks 
 
 | mode | what happens | needs |
 |---|---|---|
-| `background` | **the default.** No terminal at all. Works in every IDE and CLI | nothing |
+| `default` | **follow whatever this tool's default is**, today `background`. A recorded choice — it tracks the default if it ever moves | nothing |
+| `background` | **pinned.** No terminal at all. Works in every IDE and CLI. Stays background even if the default changes | nothing |
 | `tab` | a new **tab** in the current Terminal window, already in its worktree and identified | Accessibility, on Terminal.app only |
 | `window` | a separate visible window | nothing on Terminal.app; a published API elsewhere |
 

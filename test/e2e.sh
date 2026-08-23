@@ -352,6 +352,26 @@ MC_CONFIG="$PT" bash "$D/spawn-pref.sh" set tab >/dev/null 2>&1
 chk "tab is a recordable preference"        "$(MC_CONFIG="$PT" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: tab"
 chk "and mc-config offers it"               "$(MC_CONFIG="$PT" bash "$D/mc-config.sh" keys 2>&1)" "background | window | tab"
 
+echo "── 5g. Default is a CHOICE, not the absence of one ────────────────"
+# Three states, and the middle one is why this exists: absent means nobody was asked and
+# the next deploy asks; "default" means they WERE asked and chose to track whatever the
+# tool's default is rather than pin a mode. Both deploy the same way today, so collapsing
+# them looks harmless -- and then it either nags someone who already answered, or silently
+# pins a value they never chose.
+DP="$WORK/defpref.json"
+chk "never asked reads unset"        "$(MC_CONFIG="$DP" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: unset"
+MC_CONFIG="$DP" bash "$D/spawn-pref.sh" set default >/dev/null 2>&1
+chk "default is recordable"          "$(MC_CONFIG="$DP" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: default"
+O=$(MC_CONFIG="$DP" bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)
+chk "default deploys in background"  "$O" "started as a background agent"
+case "$O" in
+  *"nobody has been asked"*) no "and a recorded default is not nagged" "still nagged" ;;
+  *) ok "and a recorded default is not nagged" ;;
+esac
+chk "show renders it as a value"     "$(MC_CONFIG="$DP" bash "$D/mc-config.sh" show 2>&1)" "Default → background"
+chk "and mc-config offers it"        "$(MC_CONFIG="$DP" bash "$D/mc-config.sh" keys 2>&1)" "default | background | window | tab"
+chk "the env var accepts it too"     "$(MC_CONFIG=/nonexistent MC_SPAWN_MODE=default bash "$D/spawn-station.sh" B "$REPO" B --deploy 2>&1)" "started as a background agent"
+
 echo "── 5c. the scope rule: automation only under an explicit deploy ───"
 # The spawn automation exists for ONE job -- open a station and get it identified -- and
 # is triggered by ONE thing. The rule is enforced by a required flag rather than by a
