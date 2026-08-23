@@ -301,6 +301,51 @@ chk "reset puts it back to unasked"          "$(printf '{"spawn":{"mode":"window
 chk "a bogus mode is refused"                "$(MC_CONFIG="$PCFG" bash "$D/spawn-pref.sh" set sideways 2>&1)" "usage:"
 
 echo
+echo "── 5e. preferences change in place, like /config ──────────────────"
+# A preference you can only change by making the tool forget you answered is not a
+# setting, it is a fresh install. That was the state before 6.79.0.
+CD2="$WORK/cfg2"; mkdir -p "$CD2"; CC="$CD2/mc.json"
+printf '{"spawn":{"placement":"tab","launchCommand":"claude"},"naming":{"stationStyle":"same"}}' > "$CC"
+O=$(MC_CONFIG="$CC" bash "$D/mc-config.sh" show 2>&1)
+chk "show lists a set value"                "$O" "spawn.launchCommand"
+chk "show explains what an unset one does"  "$O" "(not set)"
+chk "show names the file it is reading"     "$O" "$CC"
+# A dead key that looks like live configuration is a question waiting to be asked.
+chk "stale keys are named, not ignored"     "$O" "STALE"
+chk "and it says what replaced them"        "$O" "replaced by spawn.mode in 6.78.0"
+
+# ONE OWNER PER KEY. mc-config delegates rather than writing these itself; if it ever
+# stops, two writers disagree about what the user chose and both look right.
+MC_CONFIG="$CC" bash "$D/mc-config.sh" set spawn.mode window >/dev/null 2>&1
+chk "setting spawn.mode goes through its owner" "$(MC_CONFIG="$CC" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: window"
+chk "and the deploy honours it immediately"     "$(MC_CONFIG="$CC" TERM_PROGRAM=vscode bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --deploy 2>&1)" "NO WINDOW RECIPE HERE"
+MC_CONFIG="$CC" bash "$D/mc-config.sh" set spawn.mode background >/dev/null 2>&1
+chk "and it changes back in place"              "$(MC_CONFIG="$CC" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: background"
+chk "unset returns it to being asked"           "$(MC_CONFIG="$CC" bash "$D/mc-config.sh" unset spawn.mode >/dev/null 2>&1; MC_CONFIG="$CC" bash "$D/spawn-pref.sh" read 2>&1)" "SPAWN: unset"
+
+# Guards. Same reasoning as the call-sign allowlist, applied to every value that lands
+# in a config file other code reads back.
+chk "an invalid value is refused"           "$(MC_CONFIG="$CC" bash "$D/mc-config.sh" set naming.stationStyle sideways 2>&1)" "takes"
+chk "an unknown key is refused"             "$(MC_CONFIG="$CC" bash "$D/mc-config.sh" set spawn.nonsense x 2>&1)" "unknown key"
+chk "an injection-shaped value is refused"  "$(MC_CONFIG="$CC" bash "$D/mc-config.sh" set naming.coordinator 'A`whoami`' 2>&1)" "letters, digits, spaces"
+# A stale key must refuse cleanly. Looking it up in the live table first raises a
+# KeyError, and a traceback is not the sentence explaining why the key is dead.
+O=$(MC_CONFIG="$CC" bash "$D/mc-config.sh" set spawn.placement tab 2>&1)
+chk "a stale key refuses with a reason"     "$O" "is not read by anything today"
+case "$O" in *Traceback*) no "and not with a traceback" "python traceback" ;; *) ok "and not with a traceback" ;; esac
+chk "a stale key can still be cleared"      "$(MC_CONFIG="$CC" bash "$D/mc-config.sh" unset spawn.placement 2>&1)" "cleared"
+# Widening a spawned station's permissions is the user's call and must never be quiet.
+chk "bypassPermissions warns loudly"        "$(MC_CONFIG="$CC" bash "$D/mc-config.sh" set spawn.permissionMode bypassPermissions 2>&1)" "ALL permission checks bypassed"
+# Same rule the other two config writers follow.
+printf '{"_comment":"hand written","naming":{"coordinator":"HQ"}}' > "$CC"
+MC_CONFIG="$CC" bash "$D/mc-config.sh" set naming.stationStyle per-station >/dev/null 2>&1
+O=$(python3 -c "import json;d=json.load(open('$CC'));print(d.get('_comment',''),d['naming']['coordinator'],d['naming']['stationStyle'])")
+chk "other preferences survive the write"   "$O" "hand written HQ per-station"
+printf 'not json at all' > "$CC"; B=$(wc -c < "$CC")
+MC_CONFIG="$CC" bash "$D/mc-config.sh" set naming.coordinator HQ >/dev/null 2>&1
+[ "$(wc -c < "$CC")" = "$B" ] && ok "an unparseable config is left alone" || no "an unparseable config is left alone" "it was rewritten"
+chk "keys lists the valid values for asking" "$(MC_CONFIG="$CC" bash "$D/mc-config.sh" keys 2>&1)" "background | window"
+
 echo "── 6. the guards ──────────────────────────────────────────────────"
 chk "AppleScript injection refused"    "$(PATH="$STUB:$PATH" bash "$D/label-tab.sh" 'A"; do shell script "x' 2>&1)" "FAILED:"
 chk "shell injection refused"          "$(bash "$D/spawn-station.sh" 'A`whoami`' "$REPO" X --print 2>&1)" "FAILED:"

@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 6.78.0
+version: 6.79.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a visible window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1238,6 +1238,30 @@ to a deploy that has to run anyway and mean opposite things to you, and collapsi
 ask never happens. **Never detect it instead of asking** — `$TERM_PROGRAM` says where *Control* is
 running, not where the user wants their stations.
 
+**The answer is not a one-way door.** `/mc config` shows every preference and changes any of
+them in place — the same surface Claude Code's own `/config` gives, for this skill's file:
+
+```bash
+bash <skill-dir>/mc-config.sh show                     # what is set, and what each default does
+bash <skill-dir>/mc-config.sh set spawn.mode window    # change it
+bash <skill-dir>/mc-config.sh unset spawn.mode         # back to being asked
+```
+
+**Say this when you record the first answer.** A person who thinks a setting is permanent
+answers it differently from one who knows it takes a second to change — so tell them, in the
+same breath, that `/mc config` exists. *"Recorded. `/mc config` changes it any time."*
+
+On `/mc config`: run `mc-config.sh show`, put the table in front of them, and if they want a
+change, offer the valid values with `AskUserQuestion` (`mc-config.sh keys` lists each key's
+options) and then `set`. **Never hand-edit the JSON** — the scripts do read-modify-write with an
+atomic replace and refuse to touch a file they cannot parse; an inline edit does neither, and
+this file has hand-written prose in it that a careless write destroys.
+
+`show` also names any **stale keys** — things an older version wrote that nothing reads today,
+like `spawn.placement` from before 6.78.0. They are harmless where they sit, but a dead key that
+looks like live configuration is a question waiting to be asked, so it is labelled rather than
+silently ignored.
+
 **Window mode is fully automated too, and never puppetry.** It uses each terminal's own published
 API — iTerm2 `create tab`, Terminal.app `do script`, `tmux new-window`, kitty, WezTerm, Windows
 Terminal — so the window appears already in its worktree, already running, already identified.
@@ -1993,6 +2017,7 @@ everything a station needs on post. The rest loads only when the command in hand
 | `label-tab.sh` | called by the above — sets the tab title, and reads this session's own argv/env to report whether it will hold (`persists: YES/NO`) | every station |
 | `spawn-station.sh` | **only at deploy, and it requires `--deploy` to spawn at all** — starts the station (background by default, a visible window on request) and reads the fleet manifest back to check it really registered | Control |
 | `spawn-pref.sh` | first deploy on a machine — records whether this person wants stations in the background or in a visible window. Asked once, never detected | Control |
+| `mc-config.sh` | `/mc config` — shows every preference and changes any of them in place. **Delegates `spawn.mode` and `tour` to the scripts that own them** rather than writing those keys itself | Control |
 
 **`field-notes.md` is the one you should almost never open.** It holds the incidents behind the
 rules so that `SKILL.md` can keep the rule and a single clause. Read it when a rule looks
@@ -2017,6 +2042,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 | `/mission-control` | **Board** — who holds what, what's next, what needs attention — **and this session comes on watch as Control** while it reports, unless it already holds a post or a live one holds the coordinator's. **→ read `references/control-playbook.md` FIRST; the report's shape lives there** |
 | `/mission-control identify [call-sign]` | **Identify** — take a call-sign (**self-assigned if you omit one**), **move yourself into its workspace**, and go on the board |
 | `/mission-control board clear` | **Fresh board view** — re-render from `origin/main` showing only live stations, open items and the most urgent thing. **Archives done rows; never deletes a live one.** "Clear the board" defaults to this, never to wiping claims |
+| `/mission-control config` | **Preferences** — show every setting on this machine, and change any of them in place. Same idea as Claude Code's own `/config`: `spawn.mode` (background or a visible window), the launch command, the coordinator's name, the tour flag. **Changing a preference must never require making the tool forget you answered** |
 | `/mission-control sitrep` | **Sitrep** — every live station reports where it is, what it holds and what is blocking it, collected into one report |
 | `/mission-control silence` / `/mission-control speak` | **Radio silence** — go heads-down; Control holds non-urgent calls until you lift it. Mayday still reaches you |
 | `/mission-control state <normal\|sweep running\|mayday>` | **Fleet state** — set what the whole fleet is doing, so nobody has to infer it |

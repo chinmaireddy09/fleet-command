@@ -194,6 +194,7 @@ it, so four stations do not each carry procedure they will never run:
 | `label-tab.sh` | called by the above — sets the tab title, and reports whether this session's launch lets it hold | every station |
 | `spawn-station.sh` | at deploy — starts the station (background by default, a window on request) and reads the manifest back to check it really registered. Requires `--deploy`; starts nothing without it | Control |
 | `spawn-pref.sh` | records whether you want stations in the background or in a window. Asked once, on your first deploy | Control |
+| `mc-config.sh` | `/mc config` — shows every preference and changes any of them in place | Control |
 
 ---
 
@@ -250,6 +251,19 @@ any more, because there is nothing per-IDE to support.
 writes the answer to `~/.claude/mission-control.json`. After that it never asks again. It **asks
 rather than detects**: `$TERM_PROGRAM` says where *Control* is running, which is routinely not
 where you want your stations.
+
+**And the answer is not a one-way door.** `/mc config` shows everything that is set and changes
+any of it in place — the same idea as Claude Code's own `/config`:
+
+```
+/mc config                                   # what's set, and what each default does
+bash <skill>/mc-config.sh set spawn.mode window
+bash <skill>/mc-config.sh unset spawn.mode   # go back to being asked
+```
+
+It also flags **stale keys** — settings an older version wrote that nothing reads today. Harmless
+where they sit, but a dead key that looks like live configuration is a question waiting to be
+asked, so it gets labelled instead of silently ignored.
 
 **If you pick a visible window, that is fully automated too — and it is not puppetry.** Each
 terminal is driven through its own published API (iTerm2 `create tab`, Terminal.app `do script`,

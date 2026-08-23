@@ -76,6 +76,16 @@ Then `spawn-pref.sh set <answer>` and carry on. **Never ask again** — and a de
 unrecorded machine says so in its own output, so a skipped ask is visible rather than passing
 silently for a preference.
 
+**Tell them it is changeable in the same breath as recording it.** A person who believes a
+setting is permanent answers it differently from one who knows it takes a second to change:
+
+> Recorded. `/mc config` changes it any time.
+
+`/mc config` (`mc-config.sh show`) lists every preference with its current value and what each
+default actually does, and `set`/`unset` change them in place. **A preference you can only change
+by making the tool forget you answered is not a setting, it is a fresh install** — which is what
+`spawn-pref.sh reset` alone amounted to before 6.79.0.
+
 **Detection is not consent.** `$TERM_PROGRAM` says where *Control* happens to be running. It
 does not say where the user wants their stations, and the two differ routinely — Control in an
 IDE terminal, stations wanted in real windows, or the reverse.
