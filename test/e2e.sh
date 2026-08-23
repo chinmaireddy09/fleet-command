@@ -412,14 +412,30 @@ echo
 # latent here rather than live, and it is being closed while it is still cheap.
 cd "$REPO" || exit 1
 echo "── 7. identity surfaces ───────────────────────────────────────────"
-O=$(bash "$D/mc-init.sh" me 2>&1)
-if printf '%s' "$O" | grep -q "ME_PID: unknown"; then
-  sk "identity checks — not running inside a registered session"
-else
-  chk "own name readable locally, no radio call" "$O" "ME_NAME:"
-  chk "ref pointed at the ListAgents self-line"  "$O" "self-line carries it"
-  chk "self-line NAME marked do-not-use"         "$O" "DO NOT USE"
-fi
+# BUILD THE REGISTRY, DO NOT DEPEND ON HAVING ONE. These three checks used to be
+# wrapped in a skip that fired whenever no session registry entry could be found by
+# walking up from this shell -- so they ran on the author's machine and silently
+# vanished anywhere else, which is the worst of both: green locally, uncovered in the
+# environment you actually wanted to test. Measured 2026-08-23 in a fresh-user
+# simulation: 119 checks here, 116 + 1 skip under an empty $HOME.
+#
+# mc-init.sh's find_me() walks up from its own shell looking for
+# $HOME/.claude/sessions/<pid>.json, and its parent is THIS script -- so an entry
+# written for $$ is found on the second hop, with no claude ancestor required.
+IDH="$WORK/idhome"; mkdir -p "$IDH/.claude/sessions"
+printf '{"pid":%s,"name":"TESTSTATION","cwd":"%s"}' "$$" "$REPO" > "$IDH/.claude/sessions/$$.json"
+O=$(HOME="$IDH" bash "$D/mc-init.sh" me 2>&1)
+chk "own name readable locally, no radio call" "$O" "ME_NAME: TESTSTATION"
+chk "the pid it resolved is reported"          "$O" "ME_PID: $$"
+chk "ref pointed at the ListAgents self-line"  "$O" "self-line carries it"
+chk "self-line NAME marked do-not-use"         "$O" "DO NOT USE"
+
+# AND the degraded path, which was previously the reason to skip rather than a thing
+# that was tested: no registry at all must say so plainly, not guess a name.
+IDH2="$WORK/idhome-empty"; mkdir -p "$IDH2/.claude"
+O=$(HOME="$IDH2" bash "$D/mc-init.sh" me 2>&1)
+chk "no registry says unknown, not a guess"    "$O" "ME_PID: unknown"
+chk "and says why, not just that it failed"    "$O" "no registry entry found"
 # The tab surface, WITHOUT touching a tab. This test used to call the real label-tab.sh
 # with a VALID call-sign -- so it passed the guards, walked the parent chain to the live
 # tty, and osascript'd `set custom title` onto THE TESTER'S OWN Terminal tab. A field

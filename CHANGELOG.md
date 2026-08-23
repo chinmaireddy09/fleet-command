@@ -9,6 +9,33 @@ repo as a whole.
 
 ---
 
+## 6.67.0 — 2026-08-23
+
+**Three identity checks ran on the author's machine and silently vanished everywhere else.** They
+sat behind a skip that fired whenever no session registry entry could be found by walking up from
+the shell — so on this machine the suite reported `119 passed · 0 skipped`, and in a fresh-user
+simulation with an empty `$HOME` it reported `116 passed · 1 skipped`. **The same suite, the same
+commit, three fewer assertions**, and the environment that lost them is the one you actually want
+to be sure about.
+
+**Green locally and uncovered where it matters is the worst of both**, and a skip is how it hides:
+it reads as *"not applicable here"* when it means *"this went untested"*.
+
+The fix is the technique already used for the rename and tour checks — **build the registry, do not
+depend on having one.** `find_me()` walks up from `mc-init.sh`'s own shell looking for
+`$HOME/.claude/sessions/<pid>.json`, and its parent is the test script, so an entry written for
+`$$` is found on the second hop **with no `claude` ancestor required**.
+
+**And the degraded path is now a test rather than the excuse for not having one.** No registry at
+all must say `ME_PID: unknown` *and say why* — it must not guess a name. That branch was previously
+the reason the block was skipped; it is now two assertions.
+
+`test/e2e.sh` 119 → **122**, and — the point of the change — **it reports the same 122 under a real
+`$HOME` and under an empty one.** A suite whose count depends on whose machine it runs on cannot
+tell you what it covers.
+
+---
+
 ## 6.66.0 — 2026-08-23
 
 **The tour's closing named the wrong verb, and a real project's name had leaked into the skill.**
