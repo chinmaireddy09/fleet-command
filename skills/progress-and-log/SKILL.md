@@ -1,6 +1,6 @@
 ---
 name: progress-and-log
-version: 4.1.0
+version: 4.1.2
 description: Lightweight, user-owned progress checkpoint — self-contained, no init or preamble. Detects whatever progress, status or backlog document a project already keeps, by content and purpose rather than a fixed filename list, asks once how to split updates when several exist, remembers that mapping, and creates a new file only when none exists at all. Writes what happened and why so it survives the session that learned it. Runs only when explicitly invoked — never on generic "save progress" phrasing.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -89,8 +89,30 @@ Before searching, check whether this project already has a saved decision
 from a prior run:
 
 ```bash
+# TWO ROOTS, AND INSIDE A WORKTREE THEY ARE NOT THE SAME PLACE.
+#
+# WRITE ROOT — where entries are written. `--show-toplevel` is correct here and must
+# stay: a linked worktree has its own copy of the tracked files and its own branch, so a
+# station edits ITS OWN checkout. Pointing writes at the main repo instead would have one
+# station editing the shared checkout out from under whoever is sitting in it, and would
+# put a bootstrapped file outside the branch it belongs to.
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-CONFIG="$PROJECT_ROOT/.claude/progress-and-log.config.json"
+
+# SHARED ROOT — where the mapping is remembered, and ONLY that. `--show-toplevel` returns
+# the WORKTREE root, so a config keyed to it landed in .../worktrees/<name>/.claude/ and
+# "ask once and remember" degraded to ask once PER WORKTREE, with the mapping deleted when
+# the worktree was removed — exactly what retiring a station does. Every station re-answered
+# the same question forever and none benefited from another's answer. Measured 2026-08-23.
+# `--git-common-dir` resolves to the MAIN repo's .git from inside any linked worktree.
+# Plain form + `cd` rather than `--path-format=absolute`: same answer on every git version.
+CDIR=$(git rev-parse --git-common-dir 2>/dev/null)
+[ -n "$CDIR" ] && CDIR=$(cd "$CDIR" 2>/dev/null && pwd)
+case "$CDIR" in
+  */.git) SHARED_ROOT=$(dirname "$CDIR") ;;  # normal repo, or a linked worktree
+  *)      SHARED_ROOT="$PROJECT_ROOT" ;;     # bare repo (dirname would escape it), or not git
+esac
+
+CONFIG="$SHARED_ROOT/.claude/progress-and-log.config.json"
 [ -f "$CONFIG" ] && cat "$CONFIG"
 ```
 
@@ -107,14 +129,53 @@ If `$CONFIG` exists, `Read` it. It has this shape:
 }
 ```
 
-Verify every listed `path` still exists. If all still exist, **use this
-mapping directly — do not re-detect, do not re-ask.** Skip to Step 4, using
-this mapping. Only re-run detection (Step 3) if:
+Verify every listed `path` still exists — the paths are repo-relative, so resolve
+them against `$PROJECT_ROOT` (the checkout you are in), never `$SHARED_ROOT`. If all still exist, **use this
+mapping directly — do not re-detect, do not re-ask** *which file gets what*.
+Skip to Step 4, using this mapping.
+
+**But a saved mapping settles WHAT goes where. It does not settle WHICH REPO,
+and it must never suppress that.** See Step 2b — always run it. Only re-run detection (Step 3) if:
 - the config file is missing, OR
 - a listed file no longer exists, OR
 - detection (Step 3) surfaces a plausible new candidate file not already in
   the config (in which case, tell the user what's new and ask whether to add
   it to the mapping, update the mapping file, then continue).
+
+### Step 2b: Say where you are about to write, before you write
+
+**This skill takes a TITLE, not a path. Its target comes entirely from the current
+directory, and there is no way to point it somewhere else.** So the blast radius is
+decided by where the session happens to be — and a session cannot always change that
+(`EnterWorktree` refuses a cross-repo worktree, so a station is stuck in the repo it was
+launched in). One missing `cd` and the natural, correct-looking invocation edits live
+documents in the wrong repository.
+
+**A saved mapping makes this silent, which is why this step is not optional.** Step 2
+short-circuits detection *and* the ask. On a repo that already has a config — which is
+every repo where this has been used once — the run would otherwise go straight from
+"invoked" to "editing three live documents", with no question asked at any point.
+
+Before any edit, state plainly:
+
+```
+About to write to <PROJECT_ROOT>:
+  docs/PROGRESS-LOG.md            (narrative-log)
+  docs/WORK-LOCKS.md              (current-claims)
+  docs/PROJECT-STATUS-AND-BACKLOG.md  (status-and-backlog)
+```
+
+**Stop and confirm if any of these is true:**
+- `PROJECT_ROOT` is not the repository the user has been talking about
+- the session's registered cwd and `PROJECT_ROOT` are different repositories
+- you are a station in a fleet and this is not your own repository
+- the user named a project by name and it is not this one
+
+**Naming the target is cheap; writing into the wrong repository's live history is not.**
+An entry written to the wrong PROGRESS-LOG is not a wrong answer sitting in a scratch
+file — it is a durable, dated, plausible-looking record in someone else's project.
+
+---
 
 ### Step 3: Detect the project's progress/status document(s) — by purpose, not filename
 
@@ -162,12 +223,13 @@ find . -maxdepth 2 -type f -iname "*.md" \
   needed):
 
   ```bash
-  mkdir -p "$PROJECT_ROOT/.claude"
+  mkdir -p "$SHARED_ROOT/.claude"
   # write the JSON shape above to $CONFIG
   ```
 
   Then remind the user once: "Add `.claude/progress-and-log.config.json` to
-  `.gitignore`?" — only add it if they say yes.
+  `.gitignore`?" — only add it if they say yes. It lives in the MAIN repository,
+  not the current worktree, so one entry covers every worktree.
 
 ### Step 4: Write the entry/entries
 
@@ -212,6 +274,9 @@ Entry shape (adapt wording/headings to the target file's own voice):
 simple file — don't clone any other project's structure:
 
 ```bash
+# PROJECT_ROOT, not SHARED_ROOT, and deliberately: a newly created progress file belongs
+# in the checkout you are working in, so it lands on your branch and is committed with it.
+# Only the remembered MAPPING is shared across worktrees.
 if [ -d "$PROJECT_ROOT/docs" ]; then
   TARGET="$PROJECT_ROOT/docs/PROGRESS.md"
 else
@@ -256,6 +321,10 @@ list it.
 - **Ask once for multi-file projects, then remember.** Save the mapping to
   `.claude/progress-and-log.config.json` so future runs in that project
   don't re-ask — only re-confirm if the file set actually changes.
+  **Store it in the MAIN repository (`git rev-parse --git-common-dir`), never in the
+  current worktree** — keying it to `--show-toplevel` makes every linked worktree
+  re-ask and discards the answer when that worktree is removed. The mapping is the
+  only thing that is shared; entries are always written to the current checkout.
 - **Own only the section/line you write, per file, using vocabulary
   consistent with the rest of that document.** Never edit, reorder, or
   remove content outside your own entry.
