@@ -423,5 +423,5 @@ in a file nobody opens.
 unavoidable for any custom licence. And condition 2 is an added restriction, so this **cannot
 be combined into GPL-licensed projects**.
 
-See [`ATTRIBUTION.md`](ATTRIBUTION.md) for the conditions in plain words, and
-[`VOCABULARY.md`](VOCABULARY.md) for the full legend.
+The full terms are in [`LICENSE`](LICENSE); [`VOCABULARY.md`](VOCABULARY.md) is the legend for
+every word this uses.
