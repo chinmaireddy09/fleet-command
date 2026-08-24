@@ -159,6 +159,14 @@ else
     echo "tab title: skipped — could not match this tty"
 fi
 
+# WINDOW OR TAB, recorded here so a HAND-STARTED station is coloured like a deployed one.
+# The deploy log only knows about stations `deploy` opened; identify is the one moment
+# every station passes through, however it was started. Best-effort and never fatal --
+# a missing record costs one colour on the status line and nothing else.
+if [ -f "$HERE/window-probe.sh" ]; then
+  bash "$HERE/window-probe.sh" 2>&1 | sed "s/^/window: /" || true
+fi
+
 echo "NOTE: every peer keeps seeing your OLD handle on the \`@\` header -- not only the ones with a"
 echo "      channel already open. That name is your SESSION'S START-TIME name, stamped on everything"
 echo "      you send; there is one socket per session and no per-channel handshake, so a channel"

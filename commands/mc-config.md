@@ -14,14 +14,28 @@ bash ~/.claude/skills/mission-control/mc-config.sh show
 ```
 
 Its first lines give the current mode. Then **one `AskUserQuestion`**, modelled on `/model`:
-**one short line per option, no paragraphs**, and the value in force marked `(current)`.
+**one short line per option, no paragraphs**, and the value in force marked with a **`✓`** —
+the same signal `/model` puts against the model you are on.
 
 | Label | description — keep it to one line |
 |---|---|
 | `Default (recommended)` | Background · nothing opens, works in every IDE and CLI |
+| `Background — pinned` | Stays background even if the default changes |
 | `Tab` | A new tab in this Terminal window |
 | `Window` | Each station in its own window |
-| `Background — pinned` | Stays background even if the default changes |
+
+**Append ` ✓` to the label of whichever one is in force** — `Tab ✓`, not `Tab (current)`. Keep
+the order above fixed so the row a person is looking for does not move between runs.
+
+*The rest of what `/model` shows — green on the selected row, the two-column layout, the
+`s to use this session only` footer — is Claude Code's own picker chrome and a skill cannot
+produce it; `AskUserQuestion` renders a plain numbered list, and options 5 and 6 in it are the
+harness's free-text and "chat about this", not ours. The `✓` and the wording are the parts that
+are ours, so they are the parts that match.*
+
+**A one-off, without changing the standing setting**, is `spawn-pref.sh once <mode>` — the
+equivalent of `/model`'s `s to use this session only`. Offer it in words if someone asks for
+"just this once"; it is a separate key and is cleared after the next deploy uses it.
 
 Write it with **one** command, then stop:
 

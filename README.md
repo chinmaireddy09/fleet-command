@@ -122,10 +122,12 @@ Each session boxes its own call-sign — reverse video, filled with that station
 the box moves with the tab rather than being one more hue to learn. It joins the `session_id` on
 the status line's stdin to the registry's `sessionId`, so there is nothing to configure.
 
-**And label the tab itself.** On a plain `claude` session Claude Code writes the *turn summary*
-into the tab title on every status change, so any label lapses at the next turn boundary — that is
-the "tab name keeps changing" everyone hits. Type `/rename <CALLSIGN>` in that tab and it holds. A
-station `deploy` spawned never has the problem: `--name` puts the call-sign in every title write.
+**Tab vs window is measured, not assumed.** Nothing Claude Code records distinguishes them — `kind`
+is only `bg` or `interactive`, and no environment variable carries it either. So `window-probe.sh`
+asks the terminal once, at identify, which window this session sits in, and the line **groups** live
+stations by that: two sharing a window are tabs, one alone in its window has it to itself. Grouping
+re-derives on every render, so closing a tab promotes the survivor — and a station you started **by
+hand** is coloured exactly like a deployed one, which a deploy-time record could never manage.
 
 That distinction is **measured, not configured.** It reads `kind` from the session registry, never
 the spawn preference — the preference describes *future deploys*, and a hybrid fleet (`spawn.once`)

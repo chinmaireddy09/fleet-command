@@ -125,6 +125,19 @@ CS_BG, CS_TAB, CS_WIN = 141, 80, 218
 # A station started by hand has no record and falls back to the tab colour: it is visible
 # somewhere, which is all this can honestly claim about it.
 me = (os.environ.get("MYSESSION") or "").strip()
+
+# WHICH TERMINAL WINDOW EACH SESSION SITS IN, recorded by window-probe.sh at identify.
+# Nothing Claude Code writes distinguishes a tab from a window, and no env var carries it
+# either (measured: Terminal.app's TERM_SESSION_ID is a per-session UUID, not w0t0p0), so
+# the terminal is asked once per station and the answer is grouped here.
+windows = {}
+try:
+    wf = os.environ.get("MC_WINDOWS") or os.path.expanduser("~/.claude/mission-control-windows.json")
+    with open(wf) as fh:
+        windows = (json.load(fh).get("sessions", {}) or {})
+except Exception:
+    pass
+
 spawns = {}
 try:
     f = os.environ.get("MC_SPAWNLOG") or os.path.expanduser("~/.claude/mission-control-spawns.json")
@@ -209,6 +222,16 @@ def order(d):
             d.get("nameSince") or d.get("startedAt") or 0,
             n)
 
+# GROUPING, NOT A STORED COUNT. Two stations reporting the same window id are tabs in one
+# window; a station alone in its window has that window to itself. Derived on every render,
+# so it re-answers itself as stations come and go -- a tab count taken at identify would be
+# true for exactly as long as nobody opened or closed anything.
+seen_windows = {}
+for d in named:
+    w = windows.get(d.get("sessionId"))
+    if w:
+        seen_windows[w] = seen_windows.get(w, 0) + 1
+
 parts = []
 for d in sorted(named, key=order):
     # NO `(bg)` SUFFIX ANY MORE. It shipped as `·bg`, became `(bg)` when the first form
@@ -220,7 +243,14 @@ for d in sorted(named, key=order):
     if is_bg(d):
         c = CS_BG
     else:
-        c = CS_WIN if spawns.get(d.get("name")) == "window" else CS_TAB
+        w = windows.get(d.get("sessionId"))
+        if w:
+            # MEASURED FROM THE TERMINAL, so it works for a station somebody started by
+            # hand -- which the deploy log below can never know about.
+            c = CS_WIN if seen_windows.get(w, 0) == 1 else CS_TAB
+        else:
+            # No probe: fall back to what the deploy recorded, then to "visible somewhere".
+            c = CS_WIN if spawns.get(d.get("name")) == "window" else CS_TAB
     # IDLE IS THE ONLY RESTING STATE; EVERYTHING ELSE IS WORK. This tested `== "busy"`
     # until 6.94.0 and so rendered `status: "shell"` -- a station running a shell command,
     # seen live on 2026-08-24 -- as though it were resting. Claude Code is free to add more

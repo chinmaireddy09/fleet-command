@@ -490,13 +490,13 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
             [ "${3:-live}" = "live" ] && : > "$SLS/$1.sock"; }
   # MC_CONFIG points at nothing, so the coordinator falls back to CONTROL rather than
   # reading the tester's own machine-level naming.
-  slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SPAWNLOG="$SLH/spawns.json" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
+  slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SPAWNLOG="$SLH/spawns.json" MC_WINDOWS="$SLH/windows.json" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
   slplain(){ slrender "${1:-}" | sed $'s/\033\[[0-9;]*m//g'; }
   # Renders as a specific session would see it -- stdin carries session_id, the same value
   # the registry stores as sessionId, so the two join with nothing to configure.
   slas(){ (cd "$SLR" && printf '{"cwd":"%s","session_id":"%s"}' "$SLR" "$1" \
            | HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SPAWNLOG="$SLH/spawns.json" \
-             MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" 2>/dev/null); }
+             MC_WINDOWS="$SLH/windows.json" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" 2>/dev/null); }
   slsid(){ printf '{"pid":%s,"sessionId":"%s","name":"%s","cwd":"%s","kind":"interactive","status":"%s","nameSince":%s}' \
              "$1" "$2" "$3" "$SLR" "${4:-idle}" "$1" > "$SLH/.claude/sessions/$1.json"; : > "$SLS/$1.sock"; }
 
@@ -584,6 +584,31 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   for p in 9020 9021 9022; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
   slsess 9001 CONTROL live interactive busy; slsess 9002 FRONTEND; slsess 9003 CHANNELS live bg idle
 
+  # WINDOW vs TAB IS GROUPED FROM THE PROBE, not stored as a count. Two stations reporting
+  # the same window id are tabs in one window; one alone in its window has it to itself.
+  # This is what makes a HAND-STARTED station colour correctly -- the deploy log can only
+  # know about stations `deploy` opened.
+  for p in 9001 9002 9003; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
+  slsid 9060 sid-t1 TABBED-A idle
+  slsid 9061 sid-t2 TABBED-B idle
+  slsid 9062 sid-w1 ALONE    idle
+  printf '{"sessions":{"sid-t1":"w7","sid-t2":"w7","sid-w1":"w9"}}' > "$SLH/windows.json"
+  O=$(slrender)
+  case "$O" in *$'\033[2;38;5;80mTABBED-A'*) ok "two stations in one window are tabs" ;; *) no "two stations in one window are tabs" "$(printf '%s' "$O" | cat -v)" ;; esac
+  case "$O" in *$'\033[2;38;5;80mTABBED-B'*) ok "and so is the other one" ;; *) no "and so is the other one" "$(printf '%s' "$O" | cat -v)" ;; esac
+  case "$O" in *$'\033[2;38;5;218mALONE'*) ok "a station alone in its window is pink" ;; *) no "a station alone in its window is pink" "$(printf '%s' "$O" | cat -v)" ;; esac
+  # The grouping RE-DERIVES: close one tab and the survivor now owns that window.
+  rm -f "$SLH/.claude/sessions/9061.json" "$SLS/9061.sock"
+  case "$(slrender)" in *$'\033[2;38;5;218mTABBED-A'*) ok "the survivor of a window becomes a window" ;; *) no "the survivor of a window becomes a window" "$(slrender | cat -v)" ;; esac
+  # No probe record falls back to the deploy log, then to tab -- never guessed into a window.
+  : > "$SLH/windows.json"
+  printf '{"stations":{"%s":{"ALONE":"window"}}}' "$SLR" > "$SLH/spawns.json"
+  case "$(slrender)" in *$'\033[2;38;5;218mALONE'*) ok "no probe falls back to the deploy log" ;; *) no "no probe falls back to the deploy log" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;80mTABBED-A'*) ok "and to tab when neither knows" ;; *) no "and to tab when neither knows" "$(slrender | cat -v)" ;; esac
+  for p in 9060 9062; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
+  rm -f "$SLH/windows.json" "$SLH/spawns.json"
+  slsess 9001 CONTROL live interactive busy; slsess 9002 FRONTEND; slsess 9003 CHANNELS live bg idle
+
   # YOUR OWN STATION IS BOXED, so a screen of identical tabs still tells you where you are
   # standing. Reverse video (7) fills the call-sign's own colour behind it -- a different
   # SHAPE, not one more hue to learn.
@@ -624,6 +649,27 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   else sk "worktree could not be created here"; fi
 fi
 
+echo "── 5m. the window probe is best-effort and never fatal ───────────"
+WP="$D/window-probe.sh"
+if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else
+  # It runs at every identify, so a failure here would break identify itself. Every
+  # unknown must be a clean exit 0 with a reason, never an error.
+  O=$(MC_WINDOWS="$WORK/win.json" timeout 10 bash "$WP" 2>&1); RC=$?
+  [ $RC -eq 0 ] && ok "the probe always exits clean" || no "the probe always exits clean" "exit $RC: $O"
+  chk "and says what it found or why not"  "$O" "WINDOW:"
+  # An unparseable record is left alone, exactly like every other file this skill owns.
+  printf 'not json' > "$WORK/win.json"; BEFORE=$(wc -c < "$WORK/win.json")
+  MC_WINDOWS="$WORK/win.json" timeout 10 bash "$WP" >/dev/null 2>&1
+  [ "$(wc -c < "$WORK/win.json")" = "$BEFORE" ] && ok "an unparseable window file is not rewritten" \
+    || no "an unparseable window file is not rewritten" "it was rewritten"
+  # It must never shell out to claude, for the same reason the status line must not.
+  case "$(grep -vE '^\s*#' "$WP")" in
+    *"claude agents"*) no "the probe never shells out to claude" "claude agents present" ;;
+    *) ok "the probe never shells out to claude" ;;
+  esac
+fi
+
+echo
 echo "── 5c. the scope rule: automation only under an explicit deploy ───"
 # The spawn automation exists for ONE job -- open a station and get it identified -- and
 # is triggered by ONE thing. The rule is enforced by a required flag rather than by a
