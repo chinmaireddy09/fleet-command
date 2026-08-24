@@ -48,8 +48,8 @@ goes wrong in practice.
 A wrong `@` header can only ever appear in **somebody else's** tab. The station that has the fault
 cannot see it; the station that can see it does not have it. So the instinct on reading
 `@ wrong-name` in FINANCE's tab — *something is wrong with FINANCE* — is exactly backwards. Read
-the body: if it opens `CONTROL TO FINANCE`, the envelope is CONTROL's and CONTROL is what needs
-relaunching.
+the body: if it opens `CONTROL TO FINANCE`, the envelope is CONTROL's — so CONTROL is the station
+that must publish it, and FINANCE is not broken.
 
 **Observed 2026-08-24**, on the fleet in the table below: the receiving station was restarted
 instead of the sending one. It was relaunched correctly, with `--name`, so nothing broke — but it
@@ -85,32 +85,51 @@ opened `CONTROL TO FINANCE`.
 messages are the ones stations reply *to* — so a stale envelope on the coordinator costs a bounce
 on the fleet's busiest edge, and it costs it every time.
 
-`/mc identify CONTROL` fixes Control's **address** and prints the relaunch line unprompted. It
-cannot fix the envelope, and no amount of re-identifying will.
+`/mc identify CONTROL` fixes Control's **address**. It cannot fix the envelope, and no amount of
+re-identifying will.
 
-### The cheapest moment is *before* the call-sign, not after
+### Control cannot be launched with `--name`, so stop treating that as the fix
 
 `set-callsign.sh` is not merely unable to fix the envelope — **it is what breaks it.** Until that
 rename, a bare session is internally consistent: its address and its envelope are both the derived
 handle, and replies land. The rename moves one and freezes the other.
 
-So the preamble now reports the launch *before* step 1, and Control offers the relaunch there:
+**But the repair that follows from that is unavailable to Control, by construction.** Control is
+*whoever runs `/mc`* — the post is taken, not deployed — so at launch that session had no call-sign
+to pass. `--name CONTROL` requires a decision that had not been made yet, and `deploy` never
+launches Control. Two releases asked anyway (7.9.0 before the rename, 7.10.0 again at the first
+deploy) and a user who hand-starts Control — the only way Control ever starts — was asked twice per
+fleet for something nobody could have done.
+
+**So the envelope is PUBLISHED, not repaired.** The preamble still reports the launch before step 1,
+and the relaunch line is still computed — for `fix-header.sh`, and for a user who asks — but it is
+**never volunteered**:
 
 ```
 ME_LAUNCH: bare        # NO --name on this process
-ME_ENVELOPE: repo-12   # CORRECT RIGHT NOW, and taking a call-sign is what breaks it
-ME_RELAUNCH: cd '<cwd>' && claude --name 'CONTROL' --resume <sessionId>
+ME_ENVELOPE: repo-12   # frozen here for the life of the process
+ME_RELAUNCH: cd '<cwd>' && claude --name 'CONTROL' --resume <sessionId>   # DO NOT VOLUNTEER
 ```
 
-Taken there it costs one relaunch. Taken after the row is written it costs the same relaunch
-**plus** a second identify, a board-row rewrite, and a dead `[ref]` in between that peers may
-read as a death. Declining stays a legitimate choice — the cost is bounded to "address `CONTROL`,
-not the name on its envelope" — but it is the user's choice, made where it is cheapest.
+Two writes, both of which you are making anyway, and they cost nothing:
 
-**Observed twice on one fleet, 2026-08-24.** Control was relaunched without `--name` and
-re-identified, twice, and came back stale each time under a fresh birth name (`…-54`, then
-`…-7d`). Both relaunches were the user acting on a correct notice that simply arrived after the
-rename instead of before it. `--name` is the half that does the work.
+1. **Control's own board row** — `CONTROL · envelope repo-12`.
+2. **One line in each station's first order** — *"address `CONTROL`; the name on my envelope is not
+   my call-sign — do not spend a transmission reporting it back."* `spawn-station.sh` prints it at
+   the first spawn.
+
+**What that buys is the only cost the mismatch ever had.** Measured 2026-08-24 on a fleet where it
+went unpublished: the next two stations each spent part of their **first transmission** reporting
+the stale envelope back to Control — a fact none of them could act on. Three sessions paid for it,
+and nothing bounced.
+
+**Observed twice on one fleet, 2026-08-24, and it is the clearest argument against asking at
+all.** Control was relaunched without `--name` and re-identified, twice, and came back stale each
+time under a fresh birth name (`…-54`, then `…-7d`). Both relaunches were the user acting in good
+faith on a notice that was correct about the fault. **Each one bought a new instance of it** —
+because a relaunch that does not carry `--name` cannot help, and Control has no call-sign to carry
+until `/mc` has run. Three relaunches later the envelope was still stale. Publishing it would have
+cost one line the first time.
 
 ---
 
