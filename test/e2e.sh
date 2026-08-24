@@ -497,8 +497,26 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   chk "and so is the next one"                 "$O" "FRONTEND"
   chk "separated the way the footer separates" "$O" "CONTROL · FRONTEND"
   # Busy and idle must be distinguishable, or the line reports presence and calls it status.
-  case "$(slrender)" in *$'\033[1;36mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[36mFRONTEND'*) ok "an idle one is not" ;; *) no "an idle one is not" "$(slrender | cat -v)" ;; esac
+  # BRIGHTNESS, NEVER WEIGHT: bold changes the letterforms, so a station starting work
+  # reflowed the whole line -- near-constant movement under the prompt with three stations.
+  case "$(slrender)" in *$'\033[38;5;'*'mCONTROL'*) ok "a busy station is at full colour" ;; *) no "a busy station is at full colour" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;'*'mFRONTEND'*) ok "an idle one is the same hue, dimmed" ;; *) no "an idle one is the same hue, dimmed" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[1;'*) no "nothing on the line is bold" "$(slrender | cat -v)" ;; *) ok "nothing on the line is bold" ;; esac
+
+  # ONE HUE PER CALL-SIGN, and two stations may never share one -- sharing defeats the only
+  # thing per-station colour is for. A bare hash collided on its first real run (BACKEND and
+  # FE-GATE both landed on 121), so collisions are resolved by scanning to the next free hue.
+  slsess 9010 BACKEND; slsess 9011 FE-GATE; slsess 9012 CHANNELS live background idle
+  HUES=$(slrender | grep -o '38;5;[0-9]*' | sort)
+  if [ "$(printf '%s\n' "$HUES" | wc -l)" = "$(printf '%s\n' "$HUES" | sort -u | wc -l)" ]
+    then ok "no two stations share a colour"; else no "no two stations share a colour" "$HUES"; fi
+
+  # NOT `hash()`: Python randomises string hashing per process, so a call-sign would change
+  # colour on EVERY render -- the flicker this replaced, made worse. Two separate processes
+  # must agree byte for byte.
+  [ "$(slrender)" = "$(slrender)" ] && ok "colours are stable across processes" \
+    || no "colours are stable across processes" "two renders differed"
+  for p in 9010 9011 9012; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
   # `(bg)`, not `·bg`: separators on this line are `·`, so a marker built from one reads
   # by eye as a broken separator and turns "bg" into a third station.
   slsess 9003 CHANNELS live background idle

@@ -8,8 +8,9 @@
 #                     "command": "bash ~/.claude/skills/mission-control/statusline.sh" } }
 #
 # CALL-SIGNS LOOK LIKE `1 shell`. Claude Code puts its own live values in the footer as
-# cyan text between dim separators, and a station call-sign is exactly that kind of value:
-# live, countable, yours. So the fleet line borrows that grammar rather than inventing one.
+# coloured text between dim separators, and a station call-sign is exactly that kind of
+# value: live, countable, yours. So the fleet line borrows that grammar rather than
+# inventing one -- except that every station gets its OWN colour, see PALETTE below.
 #
 # COLOUR IS FOR IDENTITY, DIM TEXT IS FOR THE RESIDUE. A generated handle is an ADDRESS,
 # not a name (VOCABULARY.md), so it can never be printed -- but the session is still real
@@ -69,12 +70,49 @@ root = os.environ.get("ROOT", "").rstrip("/")
 if not root:
     raise SystemExit(0)
 
-# CYAN TEXT, NOT A REVERSE-VIDEO BLOCK. `1 shell` in the footer below is inverted only
-# while it is SELECTED; at rest -- which is how a status line spends its whole life -- it
-# is plain cyan between dim separators. An always-inverted call-sign would sit there
-# reading as a permanent alert, which is the opposite of what an idle station is.
+# ONE HUE PER CALL-SIGN, STABLE FOREVER. Painting every station the same colour made the
+# line something you READ; giving each its own colour makes it something you RECOGNISE --
+# CONTROL is always this colour, FE-GATE always that one, so an arrival or a disappearance
+# registers without parsing any words. The palette is hand-picked rather than generated:
+# every entry is legible on a dark terminal, mutually distinguishable, and none of them is
+# the footer's own yellow sitting directly underneath.
+PALETTE = (209, 117, 141, 121, 214, 176, 78, 218)
+
+# NOT `hash()`. Python randomises string hashing per process (PYTHONHASHSEED), so a
+# call-sign would change colour on every single render -- the exact flicker this replaced,
+# made worse. crc32 is stable across processes, machines and versions.
+def seed(name):
+    import zlib
+    return zlib.crc32(name.encode()) % len(PALETTE)
+
+# COLLISIONS ARE RESOLVED, NOT TOLERATED. With 8 hues and 5 stations a bare hash collides
+# most of the time (BACKEND and FE-GATE both landed on 121 on the first run), and two
+# stations sharing a colour defeats the only thing per-station colour is for. So a taken
+# hue scans forward to the next free one.
+#
+# THE TRADE-OFF, STATED: a station's colour is stable while the FLEET is stable, not
+# forever. A new call-sign that collides can shift one other station one slot along. That
+# is rare -- call-signs are initiated per job, not per render -- and being able to tell two
+# stations apart every second beats a colour that never moves but is shared.
+def assign(names):
+    out, taken = {}, set()
+    for n in names:                       # caller passes them already sorted, so the
+        i = seed(n)                       # result depends on the SET, never on arrival
+        for step in range(len(PALETTE)):  # order or on dict iteration.
+            c = PALETTE[(i + step) % len(PALETTE)]
+            if c not in taken:
+                break
+        taken.add(c)
+        if len(taken) == len(PALETTE):
+            taken.clear()                 # more stations than hues: start reusing rather
+        out[n] = c                        # than looping forever on a full palette.
+    return out
+
+# BUSY IS FULL COLOUR, IDLE IS THE SAME COLOUR DIMMED -- never bold. Bold changes the
+# LETTERFORMS, so a station starting work reflowed the whole line; with three stations
+# working that is near-constant movement under the prompt. Brightness changes nothing
+# about the glyphs, so the line holds still while it updates.
 DIM, RESET = "\033[2m", "\033[0m"
-CS, CS_HOT = "\033[36m", "\033[1;36m"
 socks = os.environ.get("MC_SOCK_DIR") or "/tmp/cc-socks"
 here = os.path.basename(root)
 
@@ -112,14 +150,19 @@ for d in rows:
 if not named and len(rows) < 2:
     raise SystemExit(0)
 
+ordered = sorted(named, key=lambda x: (x.get("kind") != "background", (x.get("name") or "")))
+hues = assign([d.get("name") for d in ordered])
+
 parts = []
-for d in sorted(named, key=lambda x: (x.get("kind") != "background", (x.get("name") or ""))):
+for d in ordered:
     # `(bg)`, NOT the `·bg` this first shipped with. Separators on this line are `·`, so a
     # marker built from one read as a broken separator: `CHANNELS·bg · FRONTEND` parses by
     # eye as three items, one of them called "bg".
     bg = f"{DIM} (bg){RESET}" if d.get("kind") == "background" else ""
-    hot = d.get("status") == "busy"
-    parts.append(f"{CS_HOT if hot else CS}{d.get('name')}{RESET}{bg}")
+    name = d.get("name")
+    c = hues[name]
+    lit = "" if d.get("status") == "busy" else "2;"
+    parts.append(f"\033[{lit}38;5;{c}m{name}{RESET}{bg}")
 if unnamed:
     parts.append(f"{DIM}+{unnamed} unidentified{RESET}")
 
