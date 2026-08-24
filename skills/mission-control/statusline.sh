@@ -62,9 +62,14 @@ set -u
 # waits for input that never arrives. It wedged a build here on 2026-08-24.
 # A status line that can hang is worse than no status line: it hangs the prompt.
 CWD=""
+MYSESSION=""   # `set -u` is on: this must exist even when stdin was a tty.
 if [ ! -t 0 ]; then
   IN=$( { timeout 0.3 cat 2>/dev/null || true; } 2>/dev/null )
   CWD=$(printf '%s' "$IN" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+  # WHICH ROW IS *ME*. Claude Code puts session_id on this stdin, and the registry stores
+  # the same value as sessionId, so the two join without asking anything. Without it a
+  # station has to read its own call-sign off a line of four to know where it is standing.
+  MYSESSION=$(printf '%s' "$IN" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
 fi
 [ -n "$CWD" ] || CWD="$PWD"
 ROOT=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$CWD")
@@ -76,7 +81,7 @@ case "$ROOT" in */.claude/worktrees/*) ROOT="${ROOT%%/.claude/worktrees/*}" ;; e
 # MC_SOCK_DIR exists for the test harness ONLY. The suite must never write a fake liveness
 # marker into the real /tmp/cc-socks -- a test that mutates live state to prove a point is
 # worse than an untested line (6.51.0). Unset in every real render.
-ROOT="$ROOT" MC_SOCK_DIR="${MC_SOCK_DIR:-}" python3 - <<'PY' 2>/dev/null || true
+ROOT="$ROOT" MYSESSION="${MYSESSION:-}" MC_SOCK_DIR="${MC_SOCK_DIR:-}" python3 - <<'PY' 2>/dev/null || true
 import json, os, glob
 
 root = os.environ.get("ROOT", "").rstrip("/")
@@ -119,6 +124,7 @@ CS_BG, CS_TAB, CS_WIN = 141, 80, 218
 # `interactive` and nothing finer -- so the deploy writes it down and this reads it back.
 # A station started by hand has no record and falls back to the tab colour: it is visible
 # somewhere, which is all this can honestly claim about it.
+me = (os.environ.get("MYSESSION") or "").strip()
 spawns = {}
 try:
     f = os.environ.get("MC_SPAWNLOG") or os.path.expanduser("~/.claude/mission-control-spawns.json")
@@ -223,6 +229,15 @@ for d in sorted(named, key=order):
     # A record with no status at all stays dim: absence of evidence is not evidence of work.
     st = (d.get("status") or "idle").strip().lower()
     lit = "2;" if st in ("idle", "") else "1;"
+    # YOUR OWN STATION IS BOXED. Colour answers "how visible is that station"; it cannot
+    # answer "which one am I looking at right now", and on a screen of identical-looking
+    # tabs that is the question you actually have. Reverse video fills the call-sign's own
+    # colour behind it, so the box is a different SHAPE rather than one more hue to learn.
+    # Never dimmed: the box is about where you are standing, not what you are doing, and a
+    # dim box on an idle station is the case that has to stay readable.
+    if me and d.get("sessionId") == me:
+        parts.append(f"\033[7;38;5;{c}m {d.get('name')} {RESET}")
+        continue
     parts.append(f"\033[{lit}38;5;{c}m{d.get('name')}{RESET}")
 if unnamed:
     parts.append(f"{DIM}+{unnamed} unidentified{RESET}")

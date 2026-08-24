@@ -116,6 +116,17 @@ is a reminder rather than a discovery.
 The three are roughly a third of the colour wheel apart, on purpose. An analogous triad was tried
 first and failed the only test that matters: adjacent hues read as one colour at 12px.
 
+**Your own station is boxed.** Colour tells you how visible a station is; it cannot tell you which
+tab you are *in*, and on a screen of identical-looking tabs that is the question you actually have.
+Each session boxes its own call-sign — reverse video, filled with that station's own colour — so
+the box moves with the tab rather than being one more hue to learn. It joins the `session_id` on
+the status line's stdin to the registry's `sessionId`, so there is nothing to configure.
+
+**And label the tab itself.** On a plain `claude` session Claude Code writes the *turn summary*
+into the tab title on every status change, so any label lapses at the next turn boundary — that is
+the "tab name keeps changing" everyone hits. Type `/rename <CALLSIGN>` in that tab and it holds. A
+station `deploy` spawned never has the problem: `--name` puts the call-sign in every title write.
+
 That distinction is **measured, not configured.** It reads `kind` from the session registry, never
 the spawn preference — the preference describes *future deploys*, and a hybrid fleet (`spawn.once`)
 can disagree with it right now.

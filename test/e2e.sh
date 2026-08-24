@@ -492,6 +492,13 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # reading the tester's own machine-level naming.
   slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SPAWNLOG="$SLH/spawns.json" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
   slplain(){ slrender "${1:-}" | sed $'s/\033\[[0-9;]*m//g'; }
+  # Renders as a specific session would see it -- stdin carries session_id, the same value
+  # the registry stores as sessionId, so the two join with nothing to configure.
+  slas(){ (cd "$SLR" && printf '{"cwd":"%s","session_id":"%s"}' "$SLR" "$1" \
+           | HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SPAWNLOG="$SLH/spawns.json" \
+             MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" 2>/dev/null); }
+  slsid(){ printf '{"pid":%s,"sessionId":"%s","name":"%s","cwd":"%s","kind":"interactive","status":"%s","nameSince":%s}' \
+             "$1" "$2" "$3" "$SLR" "${4:-idle}" "$1" > "$SLH/.claude/sessions/$1.json"; : > "$SLS/$1.sock"; }
 
   # THE SILENT CASE. One unidentified session and nothing else is not a fleet -- it is the
   # tool describing the reader to themselves, in a word that sounds like a fault. That is
@@ -575,6 +582,24 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   slsess 9022 ALPHA   live bg          busy 3000
   chk "the coordinator leads, then identification order" "$(slplain)" "fleet · CONTROL · ZEBRA · ALPHA"
   for p in 9020 9021 9022; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
+  slsess 9001 CONTROL live interactive busy; slsess 9002 FRONTEND; slsess 9003 CHANNELS live bg idle
+
+  # YOUR OWN STATION IS BOXED, so a screen of identical tabs still tells you where you are
+  # standing. Reverse video (7) fills the call-sign's own colour behind it -- a different
+  # SHAPE, not one more hue to learn.
+  for p in 9001 9002 9003; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
+  slsid 9050 sid-aaa MINE  idle
+  slsid 9051 sid-bbb THEIRS busy
+  case "$(slas sid-aaa)" in *$'\033[7;38;5;80m MINE '*) ok "your own station is boxed" ;; *) no "your own station is boxed" "$(slas sid-aaa | cat -v)" ;; esac
+  case "$(slas sid-aaa)" in *$'\033[7;38;5;80m THEIRS '*) no "nobody else is boxed" "$(slas sid-aaa | cat -v)" ;; *) ok "nobody else is boxed" ;; esac
+  # The box moves with the tab: the same fleet, read from the other session.
+  case "$(slas sid-bbb)" in *$'\033[7;38;5;80m THEIRS '*) ok "the box follows the reader" ;; *) no "the box follows the reader" "$(slas sid-bbb | cat -v)" ;; esac
+  # A box is never dimmed -- it says where you are, not what you are doing, and an idle
+  # station is exactly when you most need to find your own row.
+  case "$(slas sid-aaa)" in *$'\033[2;7'*|*$'\033[7;2'*) no "the box is never dimmed" "$(slas sid-aaa | cat -v)" ;; *) ok "the box is never dimmed" ;; esac
+  # No session_id on stdin (a tty, a pipeline, an older host) must box nothing, not guess.
+  case "$(slrender)" in *$'\033[7;'*) no "no session_id boxes nothing" "$(slrender | cat -v)" ;; *) ok "no session_id boxes nothing" ;; esac
+  for p in 9050 9051; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
   slsess 9001 CONTROL live interactive busy; slsess 9002 FRONTEND; slsess 9003 CHANNELS live bg idle
 
   # A generated handle is an ADDRESS (VOCABULARY.md). It is counted, never printed --
