@@ -199,6 +199,12 @@ already holds. `/rename` fixes the **tab title**, a different surface. Neither t
 bash ~/.claude/skills/mission-control/fix-header.sh <CALLSIGN>
 ```
 
+**Three steps, not two: quit, relaunch, `/mc identify <CALLSIGN>`.** `--resume` keeps the
+conversation and the session id, but the relaunched *process* gets a new `[ref]` (measured: a
+station came back as `[307fd2]` where it had been `[3f7d8c]`). The board's row still carries the
+old one, and a row pointing at a dead ref is exactly how Control concludes a station has died and
+reassigns its work. `identify` rewrites the row in place.
+
 It prints the exact line, session id filled in so nothing can be mistyped:
 `claude --name '<CALLSIGN>' --resume <sessionId>`. `--name` sets the identity at the one moment it
 is read; `--resume` reopens *that* conversation rather than starting a new one. The tab title is

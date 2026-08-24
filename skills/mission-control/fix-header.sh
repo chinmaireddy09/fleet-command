@@ -95,6 +95,18 @@ What each half does, so nothing here is cargo:
 It also fixes the tab title for free: --name puts the call-sign in every title write
 Claude Code makes, so the turn summary never displaces it again.
 
+THEN RUN  /mc identify $CALLSIGN  IN THE NEW SESSION. THIS STEP IS NOT OPTIONAL.
+--resume keeps the conversation and the sessionId, but the RELAUNCHED PROCESS GETS A NEW
+[ref] -- measured 2026-08-24: a station resumed with the same session id came back as
+[307fd2] where it had been [3f7d8c]. The board's row still carries the old one, and a row
+pointing at a dead ref is how Control concludes a station is DEAD and reassigns its work
+to somebody else. That happened to this fleet before the repair existed.
+
+identify rewrites the row in place with the new ref -- it does not duplicate it -- so the
+sequence is: quit, relaunch, identify. Two out of three leaves you correct on every
+surface a peer can see and dead on the board, which is worse than the header you started
+with.
+
 AFTER RELAUNCHING, say nothing about the header being fixed until you have seen it: send
 one message to a peer and have them read back the name on it. The value you are changing
 is one you cannot observe from in here.
