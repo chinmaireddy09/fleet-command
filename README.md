@@ -102,10 +102,10 @@ fleet · BACKEND · CHANNELS (bg) · FRONTEND · +1 unidentified
 Built from the same pieces as Claude Code's own `auto mode on · 1 shell · ← 1 agent` below it:
 dim label, dim `·` separators, colour for the live values. `(bg)` is a background station.
 
-**Every station gets its own colour, and keeps it.** One hue per call-sign, picked from a
-hand-chosen palette by a stable checksum of the name — so you stop *reading* the line and start
-*recognising* it. Two stations can never share a hue; a collision scans forward to the next free
-one, which means a colour is stable while the fleet is stable rather than forever.
+**Violet, for every call-sign.** It is the one hue a terminal carries no convention for — not
+error, not warning, not success, not information. A call-sign is *identity*, not status, so it
+borrows no status colour. (A per-station palette was built and reverted: a colour only tells you
+something once you have learned what it means, and its meaning moved whenever the fleet did.)
 
 **Busy is full colour, idle is the same hue dimmed** — brightness, never weight. Bold changes the
 letterforms, so a station starting work reflowed the whole line; with three stations that is

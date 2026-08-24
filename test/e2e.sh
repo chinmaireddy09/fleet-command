@@ -503,19 +503,21 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   case "$(slrender)" in *$'\033[2;38;5;'*'mFRONTEND'*) ok "an idle one is the same hue, dimmed" ;; *) no "an idle one is the same hue, dimmed" "$(slrender | cat -v)" ;; esac
   case "$(slrender)" in *$'\033[1;'*) no "nothing on the line is bold" "$(slrender | cat -v)" ;; *) ok "nothing on the line is bold" ;; esac
 
-  # ONE HUE PER CALL-SIGN, and two stations may never share one -- sharing defeats the only
-  # thing per-station colour is for. A bare hash collided on its first real run (BACKEND and
-  # FE-GATE both landed on 121), so collisions are resolved by scanning to the next free hue.
+  # ONE COLOUR FOR EVERY CALL-SIGN. A per-station palette was built and reverted: it made
+  # the line prettier and less readable, because a colour only says something once the
+  # reader has learned what it means, and its meaning moved whenever the fleet did.
   slsess 9010 BACKEND; slsess 9011 FE-GATE; slsess 9012 CHANNELS live background idle
-  HUES=$(slrender | grep -o '38;5;[0-9]*' | sort)
-  if [ "$(printf '%s\n' "$HUES" | wc -l)" = "$(printf '%s\n' "$HUES" | sort -u | wc -l)" ]
-    then ok "no two stations share a colour"; else no "no two stations share a colour" "$HUES"; fi
-
-  # NOT `hash()`: Python randomises string hashing per process, so a call-sign would change
-  # colour on EVERY render -- the flicker this replaced, made worse. Two separate processes
-  # must agree byte for byte.
-  [ "$(slrender)" = "$(slrender)" ] && ok "colours are stable across processes" \
-    || no "colours are stable across processes" "two renders differed"
+  HUES=$(slrender | grep -o '38;5;[0-9]*' | sort -u)
+  [ "$HUES" = "38;5;141" ] && ok "every call-sign is the same violet" \
+    || no "every call-sign is the same violet" "$HUES"
+  # Violet on purpose: the one terminal hue carrying no convention -- not error, warning,
+  # success or information. A call-sign is identity, so it borrows no status colour.
+  case "$(slrender)" in *$'\033[31m'*|*$'\033[32m'*|*$'\033[33m'*|*$'\033[36m'*)
+       no "no status colour is borrowed" "$(slrender | cat -v)" ;;
+     *) ok "no status colour is borrowed" ;; esac
+  # The render must not depend on anything that varies per process.
+  [ "$(slrender)" = "$(slrender)" ] && ok "two renders agree byte for byte" \
+    || no "two renders agree byte for byte" "they differed"
   for p in 9010 9011 9012; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
   # `(bg)`, not `·bg`: separators on this line are `·`, so a marker built from one reads
   # by eye as a broken separator and turns "bg" into a third station.
