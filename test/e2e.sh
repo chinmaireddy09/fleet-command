@@ -463,6 +463,68 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # An off-fleet repo must render nothing rather than somebody else's sessions.
   O=$(cd "$WORK" && timeout 10 bash "$SL" </dev/null 2>/dev/null)
   [ -z "$O" ] && ok "an unrelated directory shows no fleet" || no "an unrelated directory shows no fleet" "$O"
+
+  # WHAT IT PRINTS, against a registry built here. Never the live one: a test that reads
+  # real state drew the tester's own session out of the registry and failed on it (6.51.0),
+  # and MC_SOCK_DIR keeps the fake liveness markers out of the real /tmp/cc-socks.
+  SLH="$WORK/slhome"; SLS="$WORK/slsocks"; SLR=$(newrepo)
+  # The PHYSICAL path, because that is what the script's own `git rev-parse` returns. On
+  # macOS $TMPDIR lives under /var -> /private/var, so a registry holding the symlinked
+  # path never matches the resolved one and the line renders empty for the wrong reason.
+  SLR=$(cd "$SLR" && git rev-parse --show-toplevel)
+  mkdir -p "$SLH/.claude/sessions" "$SLS"
+  slsess(){ printf '{"pid":%s,"name":"%s","cwd":"%s","kind":"%s","status":"%s"}' \
+              "$1" "$2" "$SLR" "${4:-interactive}" "${5:-idle}" > "$SLH/.claude/sessions/$1.json"
+            [ "${3:-live}" = "live" ] && : > "$SLS/$1.sock"; }
+  slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
+  slplain(){ slrender "${1:-}" | sed $'s/\033\[[0-9;]*m//g'; }
+
+  # THE SILENT CASE. One unidentified session and nothing else is not a fleet -- it is the
+  # tool describing the reader to themselves, in a word that sounds like a fault. That is
+  # the line a solo user actually saw ("fleet +1 unidentified") and it must print nothing.
+  slsess 9001 "${SLR##*/}-fd"
+  O=$(slrender)
+  [ -z "$O" ] && ok "a solo unidentified session is silent" || no "a solo unidentified session is silent" "$O"
+  # But a session that HAS identified renders alone -- the chip IS the confirmation that
+  # identifying worked, and suppressing it would hide the one thing worth confirming.
+  slsess 9001 CONTROL live interactive busy
+  chk "a solo IDENTIFIED station still shows"  "$(slplain)" "fleet · CONTROL"
+
+  # Call-signs, in the footer's own grammar: dim label, dim `·` separators, cyan names.
+  slsess 9002 FRONTEND
+  O=$(slplain)
+  chk "each station is named by call-sign"     "$O" "CONTROL"
+  chk "and so is the next one"                 "$O" "FRONTEND"
+  chk "separated the way the footer separates" "$O" "CONTROL · FRONTEND"
+  # Busy and idle must be distinguishable, or the line reports presence and calls it status.
+  case "$(slrender)" in *$'\033[1;36mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[36mFRONTEND'*) ok "an idle one is not" ;; *) no "an idle one is not" "$(slrender | cat -v)" ;; esac
+  # `(bg)`, not `·bg`: separators on this line are `·`, so a marker built from one reads
+  # by eye as a broken separator and turns "bg" into a third station.
+  slsess 9003 CHANNELS live background idle
+  chk "a background station is marked"         "$(slplain)" "CHANNELS (bg)"
+  case "$(slplain)" in *"CHANNELS·bg"*) no "the bg marker cannot look like a separator" "$(slplain)" ;; *) ok "the bg marker cannot look like a separator" ;; esac
+
+  # A generated handle is an ADDRESS (VOCABULARY.md). It is counted, never printed --
+  # BOTH shapes: `<repo>-<hex>` from a hand-started session, and a bare hex id.
+  slsess 9004 "${SLR##*/}-fd"
+  slsess 9005 fb7b47a7
+  O=$(slplain)
+  chk "generated handles are counted, not named" "$O" "+2 unidentified"
+  case "$O" in *-fd*|*fb7b47a7*) no "no address reaches the line" "$O" ;; *) ok "no address reaches the line" ;; esac
+  # The residue is dim: highlighting it would emphasise the one item carrying no information.
+  case "$(slrender)" in *$'\033[2m+2 unidentified'*) ok "the unidentified count stays dim" ;; *) no "the unidentified count stays dim" "$(slrender | cat -v)" ;; esac
+
+  # A registry file outlives the session that wrote it, so the socket is the liveness test.
+  slsess 9006 GHOST dead
+  case "$(slplain)" in *GHOST*) no "a dead station is not shown" "$(slplain)" ;; *) ok "a dead station is not shown" ;; esac
+  # A station edits inside <repo>/.claude/worktrees/<name>; that must fold back to the repo,
+  # or four stations read as four unrelated repositories and the line is empty in exactly
+  # the fleet it describes.
+  WT="$SLR/.claude/worktrees/BACKEND"
+  if git -C "$SLR" worktree add -q "$WT" -b sl-wt >/dev/null 2>&1; then
+    chk "a worktree still sees its own fleet" "$(slplain "$WT")" "CONTROL"
+  else sk "worktree could not be created here"; fi
 fi
 
 echo "── 5c. the scope rule: automation only under an explicit deploy ───"

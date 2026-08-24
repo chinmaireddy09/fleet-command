@@ -87,8 +87,8 @@ found.*
 
 ### See your fleet under the prompt
 
-Claude Code's footer counts shells; it can't show your stations. `statusLine` can — add this to
-`~/.claude/settings.json`:
+Claude Code's footer counts shells; it can't show your stations. `statusLine` can — add
+this to `~/.claude/settings.json`:
 
 ```json
 { "statusLine": { "type": "command",
@@ -96,13 +96,21 @@ Claude Code's footer counts shells; it can't show your stations. `statusLine` ca
 ```
 
 ```
-fleet  BACKEND  CHANNELS·bg  FRONTEND  +1 unidentified
+fleet · BACKEND · CHANNELS (bg) · FRONTEND · +1 unidentified
 ```
 
-Bold is busy, dim is idle, `·bg` is a background station. **Only this repo's sessions** — the
-registry holds every Claude session on the machine, and a status line showing an unrelated
-project as if it were your fleet is the worst possible place for that confusion. A session with
-a generated handle is counted, never named: an address is not a call-sign.
+Built from the same pieces as Claude Code's own `auto mode on · 1 shell · ← 1 agent` below it:
+dim label, dim `·` separators, **cyan for the live values**. Bold is busy, plain is idle,
+`(bg)` is a background station.
+
+**Only this repo's sessions** — the registry holds every Claude session on the machine, and a
+status line showing an unrelated project as if it were your fleet is the worst possible place
+for that confusion. A session with a generated handle is **counted, never named**: an address is
+not a call-sign.
+
+**One unidentified session on its own prints nothing.** That case is not a fleet, it is the tool
+describing you to yourself in a word that sounds like a fault. A station that *has* identified
+always shows, even alone — the call-sign on screen is the confirmation it worked.
 
 **It spawns nothing.** The obvious build shells out to `claude agents --json`; that costs ~0.21s
 per render *and* starts a background service that inherits the caller's stdout — it hung a shell
