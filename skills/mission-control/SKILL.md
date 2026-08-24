@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.11.2
+version: 7.12.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2959,6 +2959,38 @@ measured its stale working copy, and one stale file read twice arrived as two co
  Done rows move to `docs/WORK-LOCKS-ARCHIVE.md` **at standdown**, not at some later
 tidy-up. **A row is who · what · where · status · a pointer** — the reasoning belongs in
 `PROGRESS-LOG.md`; one row measured ~6,000 words in a single table cell.
+
+#### Succession archives the predecessor too — this is where the growth actually comes from
+
+**Standdown archives a *done* row, and that covers the case nobody hits.** The common case is
+**succession**: a post whose holder died, taken by somebody new. That is not a standdown, so
+nothing archives anything — and the arriving station, correctly refusing to destroy provenance,
+**nests the dead holder's record inside the live cell.** The next holder nests theirs inside that.
+Nobody does anything wrong and the cell grows forever.
+
+**Measured 2026-08-24.** A board at **75,594 bytes / 362 lines**, on a post reaching its
+**twentieth holder**. The growth was verbatim predecessor records nested inside station cells; the
+arriving Control rewrote its own row rather than adding beside the dead one and the cell went
+**4,489 → 2,519 chars** in a single edit, with nothing lost — the history was already in
+`git log -p`.
+
+**So when you take over a post:**
+
+1. **Move** the predecessor's record to `docs/WORK-LOCKS-ARCHIVE.md`.
+2. **Leave one line** in the cell pointing at it — *"succeeds CONTROL [ecabb7], archived 08-24"*.
+3. **Write your own row fresh.** Do not inherit the cell's accumulated text and add to it.
+
+**MOVE is the operative word, and it is why this does not contradict the rule above.** *"Do not
+collapse rows that merely look duplicated"* forbids **merging** and **deleting** a retired holder's
+record, because that destroys the provenance it is kept for. Archiving destroys nothing — the
+record survives in full, in a file with no ceiling, and the board keeps a pointer to it. **Refusing
+to merge and refusing to archive are not the same refusal**, and a station that conflates them is
+the one whose cell reaches four thousand characters.
+
+**You do not have to notice this yourself.** The preamble prints `BOARD_CEILING` as a percentage
+and `BOARD_BIGGEST` naming the fattest rows in chars, so an accreting cell is visible on a board
+you were reading anyway — and it shows up while the row is fat and the file is still small, which
+is the only moment fixing it is cheap.
 
 **Edit your own row, never reformat anyone else's, push immediately, and start again from the
 new `origin/main` on rejection.**

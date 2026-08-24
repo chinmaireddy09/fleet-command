@@ -163,6 +163,53 @@ O=$(bash "$D/mc-init.sh" 2>&1)
 chk "board found in a common location"  "$O" "BOARD: docs/WORK-LOCKS.md"
 chk "board measured at origin/main"     "$O" "BOARD_BYTES:"
 
+# A NUMBER IS NOT A DIAGNOSIS. BOARD_BYTES shipped for releases and the board still reached the
+# ceiling twice: a coordinator reading "75594" cannot tell that is three quarters of the way to a
+# board `Read` refuses to open, nor WHICH row is eating it. Measured 2026-08-24: 75,594 bytes /
+# 362 lines, growth was predecessor records nested in station cells, one cell 4,489 chars.
+chk "a small board is called healthy"   "$O" "BOARD_CEILING:"
+case "$O" in *"BOARD_CEILING: "[0-9]"% -- healthy"*|*"BOARD_CEILING: "[0-9][0-9]"% -- healthy"*)
+    ok "and a healthy board says so" ;;
+  *) no "and a healthy board says so" "$O" ;; esac
+# Silent on a healthy board: naming a "biggest row" on a 3-row board is noise, and noise in the
+# preamble is what gets the preamble skimmed.
+case "$O" in *BOARD_BIGGEST*) no "and does not name a biggest row when none is fat" "$O";;
+             *) ok "and does not name a biggest row when none is fat";; esac
+
+# THE ROW GOES BAD LONG BEFORE THE FILE DOES, which is the only moment fixing it is cheap.
+python3 -c '
+rows = "| CONTROL | the watch %s | shared | on watch |\n" % ("predecessor [abc123] retired ... " * 90)
+rows += "| FINANCE | Epic D | lane/finance | manned |\n"
+open("docs/WORK-LOCKS.md","w").write("| Station | Task | Where | Status |\n|---|---|---|---|\n" + rows)'
+git add -A; git commit -qm fatrow; git update-ref refs/remotes/origin/main HEAD
+O=$(bash "$D/mc-init.sh" 2>&1)
+chk "a fat row is named even on a small board" "$O" "BOARD_BIGGEST: CONTROL"
+chk "and it is still called healthy overall"   "$O" "-- healthy"
+chk "and it says to archive, not merge or delete" "$O" "Do NOT merge or"
+# The markdown separator row is not a station and must never be reported as the fattest one.
+case "$O" in *"BOARD_BIGGEST: ---"*|*"BOARD_BIGGEST: :--"*) no "the separator row is not a station" "$O";;
+             *) ok "the separator row is not a station";; esac
+
+# Past the ceiling the verdict has to change, and say why it matters: Read refuses the file, so
+# the skill's own first instruction fails.
+python3 -c '
+rows = "".join("| ST%03d | filler %s | lane/x | manned |\n" % (i, "x"*500) for i in range(160))
+open("docs/WORK-LOCKS.md","w").write("| Station | Task | Where | Status |\n|---|---|---|---|\n" + rows)'
+git add -A; git commit -qm bigboard; git update-ref refs/remotes/origin/main HEAD
+O=$(bash "$D/mc-init.sh" 2>&1)
+chk "a board past the ceiling says so"      "$O" "AT THE CEILING"
+chk "and says why that matters"             "$O" "UNREADABLE"
+
+# It runs on every /mc, so it must never be able to break the preamble.
+printf 'not a table at all\n\x00binary\n' > docs/WORK-LOCKS.md
+git add -A; git commit -qm junkboard; git update-ref refs/remotes/origin/main HEAD
+O=$(bash "$D/mc-init.sh" 2>&1); RC=$?
+[ $RC -eq 0 ] && ok "a junk board cannot fail the preamble" || no "a junk board cannot fail the preamble" "exit $RC"
+chk "and the rest of the preamble still prints" "$O" "COORDINATOR:"
+
+printf '| station | status |\n|---|---|\n| CONTROL | on watch |\n' > docs/WORK-LOCKS.md
+git add -A; git commit -qm restoreboard; git update-ref refs/remotes/origin/main HEAD
+
 echo
 echo "── 3. a project that names its own board and coordinator ──────────"
 printf 'Board: docs/claims.md\nCoordinator: HQ\n' > docs/MISSION-CONTROL.md

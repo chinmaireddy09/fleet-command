@@ -451,6 +451,54 @@ if git -C "$ROOT" cat-file -e "$BASE:$BOARD" 2>/dev/null; then
   echo "BOARD: $BOARD"
   echo "BOARD_BYTES: $(git -C "$ROOT" show "$BASE:$BOARD" | wc -c | tr -d ' ')   # at $BASE, NOT the working copy"
   echo "BOARD_LINES: $(git -C "$ROOT" show "$BASE:$BOARD" | wc -l | tr -d ' ')"
+  # A NUMBER IS NOT A DIAGNOSIS. BOARD_BYTES has been printed for releases and the board still
+  # reached the ceiling twice, because a coordinator reading "75594" has no way to know that is
+  # three quarters of the way to a board `Read` will refuse to open -- and no way to know WHICH
+  # row is eating it. Measured 2026-08-24: 75,594 bytes / 362 lines, and the growth was verbatim
+  # predecessor records nested inside station cells; one cell held 4,489 chars and one row has
+  # been measured at ~6,000 words. Control found that by hand, every time, on a board it had to
+  # read anyway. So say the fraction, and name the offender.
+  git -C "$ROOT" show "$BASE:$BOARD" 2>/dev/null | python3 -c '
+import sys
+try: t = sys.stdin.read()
+except Exception: raise SystemExit(0)
+b = len(t.encode("utf-8", "replace")); n = t.count("\n")
+CB, CR = 100_000, 150          # ~100 KB or ~150 rows, and never past what Read accepts
+pct = int(round(100.0 * max(b / CB, n / CR)))
+verdict = "healthy" if pct < 60 else ("WATCH" if pct < 85 else "AT THE CEILING")
+print(f"BOARD_CEILING: {pct}% -- {verdict}   # ~100 KB or ~150 rows, whichever comes first")
+if pct >= 85:
+    print("               # A board past this has been measured UNREADABLE -- Read refused it,")
+    print("               # so the skill\x27s own first instruction fails. Archive before you write.")
+# Name the fattest rows. A row is who - what - where - status - a pointer; anything in the
+# thousands is carrying reasoning or a predecessor record that belongs in the archive file.
+rows = []
+for ln in t.splitlines():
+    s = ln.strip()
+    if not s.startswith("|"): continue
+    cells = [c.strip() for c in s.strip("|").split("|")]
+    if not cells: continue
+    # STRIP THE MARKUP BEFORE NAMING IT. A real board writes its first cell as
+    # `**STATION `CHANNELS`** —`, so a raw slice reports "**STATION `CHANNELS`** —" and the
+    # coordinator has to squint to find the call-sign it is being told about. Measured against a
+    # live 362-line board 2026-08-24.
+    name = cells[0] or "?"
+    for ch in "*`_#": name = name.replace(ch, " ")
+    name = " ".join(name.split()).strip(" -:\u2014")
+    for lead in ("STATION ", "Station ", "station "):
+        if name.startswith(lead): name = name[len(lead):]
+    name = (name or "?")[:24]
+    if set(name) <= set("-: "): continue          # the table separator row
+    rows.append((len(ln), name))
+rows.sort(reverse=True)
+if rows and rows[0][0] >= 800:
+    top = "  ".join(f"{nm} {sz}" for sz, nm in rows[:3])
+    print(f"BOARD_BIGGEST: {top}   # chars per row")
+    print("               # A row is who - what - where - status - a POINTER. A cell in the")
+    print("               # thousands is nested predecessor records or reasoning: archive the")
+    print("               # predecessor and leave one line pointing at it. Do NOT merge or")
+    print("               # delete a retired holder record -- moving it keeps the provenance.")
+' 2>/dev/null || true
 else
   echo "BOARD: none at $BASE   # no board yet -- Step 0 offers to write one"
 fi
