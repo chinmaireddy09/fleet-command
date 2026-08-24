@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.10.0
+version: 7.10.1
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1273,8 +1273,13 @@ lie, not a station.
 If you took the post in a bare session and skipped [step 0](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command),
 `spawn-station.sh` prints a block headed **`ENVELOPE_COST: NOW`** on the deploy that puts the
 *first* station on this fleet. **Relay it to the user in one short exchange, exactly as step 0 did,
-then drop it for good** — it is printed once per fleet and never again, because the condition it
-measures (no live peer yet) can only be true once.
+then drop it for good** — it is printed **once per Control session**, so a two-station
+`/mc deploy CHANNELS FINANCE` prints it on the first spawn and not the second.
+
+**Do not re-derive it per station.** Deploy spawns back-to-back and verifies the fleet afterwards,
+so at station two, station one may not be in the registry yet — "no live peer yet" is briefly true
+twice. The script latches on Control's own `sessionId` for exactly that reason. A *later* fleet is a
+new Control session and is offered it again, correctly.
 
 **It is not a warning and not a gate.** The deploy proceeds either way; a station is going on post
 regardless of what they answer. Do not hold the spawn waiting for a reply.

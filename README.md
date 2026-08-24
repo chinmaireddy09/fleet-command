@@ -210,7 +210,8 @@ Declining is free only because nobody is reading your envelope yet, and that sto
 the first peer comes up. Measured on a live fleet: Control declined, and the next two stations each
 spent part of their **first transmission** reporting the stale envelope back — three sessions
 paying for it, and none of them able to fix it. So `spawn-station.sh` prints `ENVELOPE_COST: NOW`
-on the first station of that fleet, once, and never again. Declining a second time is still fine;
+on the first station of that fleet — **once per Control session**, so a two-station deploy prints
+it on the first spawn and not the second. Declining a second time is still fine;
 one line in the new station's first order — *"address `CONTROL`; the name on my envelope is not my
 call-sign"* — is what actually stops the round-trip.
 

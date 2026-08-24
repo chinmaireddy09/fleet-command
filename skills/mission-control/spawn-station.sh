@@ -243,11 +243,25 @@ fi
 # So the cost does not arrive when the choice is offered. It arrives HERE, at the first
 # peer, and 7.9.0 had explicitly forbidden mentioning it at the only moment it becomes real.
 #
-# ONCE, AND DERIVED -- NEVER A REMEMBERED FLAG. The condition is "this fleet has no live
-# peer yet", which is measured from the registry at the instant of the spawn. So it fires
-# on the first station and is silent on every one after it, with nothing to write down,
-# nothing to go stale, and nothing to reset. A failed first deploy that gets retried is
-# still the first station, and is still the truth: no peer has read the envelope yet.
+# ONCE PER CONTROL SESSION. Two conditions, and they answer different questions:
+#
+#   1. DERIVED -- "this fleet has no live peer yet", measured from the registry at the
+#      instant of the spawn. Nothing to go stale, and a retried first deploy is still
+#      honestly the first station: no peer has read the envelope yet.
+#   2. LATCHED, keyed by CONTROL'S OWN sessionId -- because condition 1 alone double-prints
+#      on `/mc deploy A B`. A list is not a loop: deploy spawns every station back-to-back
+#      and verifies the whole fleet afterwards (see "Deploying SEVERAL at once"), and the
+#      script's own output admits the gap -- "the launch returned cleanly but HANDLE is not
+#      in the manifest yet. It registers a moment after start." So station B's spawn can run
+#      while station A is still un-registered, both see zero live peers, and the notice
+#      prints twice on one deploy. Caught 2026-08-24 by reading the batch path, before the
+#      user ran the two-station deploy that would have shown it.
+#
+# THE LATCH IS KEYED BY SESSION, NOT BY REPO, and that is the whole reason it is safe. The
+# notice is about THIS Control's envelope, and its own last line promises "this is the LAST
+# time it is raised" -- a promise scoped to a session. A new fleet means a new Control with a
+# new sessionId, so it is offered again exactly when it is true again. Keyed by repo it would
+# fire once per checkout ever and go silent for good; keyed by session it cannot.
 #
 # Silent for a station launched with --name (nameSource absent) -- which is every station
 # `deploy` itself starts. In practice this only ever fires for Control, because Control is
@@ -268,7 +282,9 @@ find_caller() {
 if [ -d "$SESSIONS" ] && CALLER=$(find_caller); then
   EN_ROOT=$(git -C "$WT" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$WT")
   case "$EN_ROOT" in */.claude/worktrees/*) EN_ROOT="${EN_ROOT%%/.claude/worktrees/*}" ;; esac
-  MC_SESS="$SESSIONS" MC_ME="$CALLER" MC_ROOT="$EN_ROOT" MC_CS="$CALLSIGN" python3 - <<'PY' 2>/dev/null || true
+  MC_SESS="$SESSIONS" MC_ME="$CALLER" MC_ROOT="$EN_ROOT" MC_CS="$CALLSIGN" \
+  MC_LATCH="${MC_ENVELOPE_LATCH:-$HOME/.claude/mission-control-envelope.json}" \
+  python3 - <<'PY' 2>/dev/null || true
 import glob, json, os
 
 sess = os.environ["MC_SESS"]; me = os.environ["MC_ME"]
@@ -281,6 +297,21 @@ except Exception:
 
 # nameSource absent == launched with --name: address and envelope agree and always will.
 if d.get("nameSource") is None:
+    raise SystemExit(0)
+
+# CONDITION 2, checked before the expensive scan. An unreadable or missing latch FAILS OPEN
+# -- printing a notice twice is a smaller harm than swallowing the only one that matters,
+# and this file is ours alone, so an unparseable one is corruption rather than somebody's
+# hand-written config to preserve.
+latch = os.environ.get("MC_LATCH") or ""
+sid = d.get("sessionId") or ""
+seen = {}
+try:
+    with open(latch) as fh: seen = json.load(fh)
+    if not isinstance(seen, dict): seen = {}
+except Exception:
+    seen = {}
+if sid and sid in (seen.get("told") or {}):
     raise SystemExit(0)
 
 def under(p):
@@ -338,6 +369,29 @@ ENVELOPE_COST: NOW   # {newcs} is the first peer on this fleet, and it is about 
   "address {mine}; the name on my envelope is not my call-sign" -- and then only a reply
   sent to the envelope bounces.
 """)
+
+# LATCH IT, and never let this fail a deploy. Written AFTER the print, so a crash here costs
+# a duplicate notice rather than a swallowed one. Keyed by Control's sessionId, which
+# `--resume` preserves -- so a Control that takes the relaunch does NOT get asked again by
+# the fleet it goes on to raise, which is correct: it is fixed, and nameSource is gone anyway.
+if sid:
+    try:
+        told = seen.get("told")
+        if not isinstance(told, dict): told = {}
+        told[sid] = {"root": root, "at_station": newcs}
+        # Cheap bound: this file is append-only in practice and nothing ever prunes it, so
+        # keep only the most recent entries rather than growing a record per session forever.
+        if len(told) > 200:
+            told = dict(list(told.items())[-200:])
+        seen["told"] = told
+        seen.setdefault("_comment", "written by mission-control spawn-station.sh: which Control sessions have already been shown ENVELOPE_COST")
+        os.makedirs(os.path.dirname(latch), exist_ok=True)
+        import tempfile
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(latch)); os.close(fd)
+        with open(tmp, "w") as fh: json.dump(seen, fh, indent=2)
+        os.replace(tmp, latch)                 # atomic; never a torn latch
+    except Exception:
+        pass
 PY
 fi
 

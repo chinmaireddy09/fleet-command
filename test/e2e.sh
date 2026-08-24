@@ -46,6 +46,10 @@ WORK=$(mktemp -d); trap 'cd /; rm -rf "$WORK"' EXIT
 # live config file on the machine. Caught in the field on 2026-08-24, one release after
 # the recording shipped. A suite that writes to $HOME is not a suite, it is a side effect.
 export MC_SPAWNLOG="$WORK/spawns.json"
+# Same reasoning, same file-in-$HOME hazard: spawn-station.sh latches which Control
+# sessions have already been shown ENVELOPE_COST, and its default is the tester's real
+# ~/.claude/mission-control-envelope.json.
+export MC_ENVELOPE_LATCH="$WORK/envelope-latch.json"
 STUB="$WORK/stub"; mkdir -p "$STUB"
 for b in tmux wt.exe; do
   printf '#!/bin/bash\nexit ${STUB_RC:-0}\n' > "$STUB/$b"; chmod +x "$STUB/$b"
@@ -829,7 +833,13 @@ import json,os,sys
 d={"pid":int(os.environ["CE_P"]),"sessionId":"sid-ctl","cwd":os.environ["CE_CWD"],"name":"CONTROL"}
 d.update(json.loads(os.environ["CE_EXTRA"]))
 json.dump(d,open(sys.argv[1],"w"))' "$ENS/$$.json"; }
-enrun(){ HOME="$ENH" MC_SESSIONS="$ENS" timeout 20 bash "$D/spawn-station.sh" CHANNELS "$ENR" CHANNELS --print 2>&1; }
+ENLATCH="$ENH/latch.json"
+# Every assertion below is an INDEPENDENT scenario, so the latch starts clean for each --
+# otherwise the first print silences every check after it, since they share a sessionId.
+# The batch case at the end is the one that deliberately does not clear it.
+enrun(){ rm -f "$ENLATCH"; enrun_keep "$@"; }
+enrun_keep(){ CS="${1:-CHANNELS}"; HOME="$ENH" MC_SESSIONS="$ENS" MC_ENVELOPE_LATCH="$ENLATCH" \
+  timeout 20 bash "$D/spawn-station.sh" "$CS" "$ENR" "$CS" --print 2>&1; }
 
 # BARE Control, no peer yet: this is the moment, and it must say so.
 enreg '{"nameSource":"user","formerNames":["proj-cc"]}'
@@ -875,6 +885,27 @@ chk "another repo's live session is not a peer here" "$(enrun)" "ENVELOPE_COST: 
 rm -f "$ENS/1.json"
 enreg '{"nameSource":"user","formerNames":["proj-cc"],"kind":"bg"}'
 chk "a bg Control's relaunch keeps --bg" "$(enrun)" "claude --bg --name 'CONTROL'"
+
+# `/mc deploy A B` SPAWNS BACK-TO-BACK AND VERIFIES AFTERWARDS -- a list is not a loop --
+# and the script's own output admits the gap: "the launch returned cleanly but HANDLE is not
+# in the manifest yet." So B's spawn can run while A is still unregistered and BOTH see zero
+# live peers. On the live-peer check alone this printed the whole notice twice on one deploy.
+enreg '{"nameSource":"user","formerNames":["proj-cc"]}'
+rm -f "$ENLATCH"
+O=$(enrun_keep CHANNELS)
+chk "the first station of a batch deploy is told" "$O" "ENVELOPE_COST: NOW"
+O=$(enrun_keep FINANCE)
+case "$O" in *ENVELOPE_COST*) no "and the second station in the SAME deploy is not" "$O";;
+             *) ok "and the second station in the SAME deploy is not";; esac
+chk "and that second station still goes on post" "$O" "STATION FINANCE"
+
+# A DIFFERENT Control -- a new fleet later -- must be told again. Keyed by repo instead of
+# by session, this would fire once per checkout ever and then go silent for good.
+CE_P="$$" python3 -c '
+import json,os,sys
+json.dump({"pid":int(os.environ["CE_P"]),"sessionId":"sid-ctl-LATER","cwd":sys.argv[1],
+           "name":"CONTROL","nameSource":"user","formerNames":["proj-9f"]},open(sys.argv[2],"w"))' "$ENR" "$ENS/$$.json"
+chk "a later Control session is told again" "$(enrun_keep CHANNELS)" "ENVELOPE_COST: NOW"
 
 # It must never be able to break a deploy. An unreadable registry is a clean silence.
 printf 'not json' > "$ENS/$$.json"
