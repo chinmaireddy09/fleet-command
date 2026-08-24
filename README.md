@@ -222,7 +222,11 @@ default shape of a correctly-run fleet is every deployed station right and the c
 a stale envelope — on the station that sends the most messages and is replied to the most.
 
 **A peer can print the repair for a station that cannot see its own fault.** The envelope is only
-visible to the *receiver*, so the station that notices is almost never the station that has it:
+visible to the *receiver*, so the station that notices is almost never the station that has it —
+**the wrong name belongs to the sender, not to the tab you are reading it in.** Reading
+`@ wrong-name` in FINANCE's tab on a message whose body opens `CONTROL TO FINANCE` means CONTROL is
+what needs relaunching; restarting FINANCE costs a new `[ref]` and leaves the fault in place
+(observed in the field). Audit before restarting anything:
 
 ```bash
 # by call-sign, by the stale name you read on the `@` header, or by pid

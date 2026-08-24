@@ -40,6 +40,25 @@ you only via the `[ref]`, which survives every rename.
 That is why a station with a stale envelope ends up writing *"resolve me through ListAgents"* into
 every message it sends. It is not being fussy; it is routing around a real delivery failure.
 
+### The wrong name belongs to the SENDER, not to the tab you are reading it in
+
+This is the one sentence everything else here depends on, and it is the step where this actually
+goes wrong in practice.
+
+A wrong `@` header can only ever appear in **somebody else's** tab. The station that has the fault
+cannot see it; the station that can see it does not have it. So the instinct on reading
+`@ wrong-name` in FINANCE's tab — *something is wrong with FINANCE* — is exactly backwards. Read
+the body: if it opens `CONTROL TO FINANCE`, the envelope is CONTROL's and CONTROL is what needs
+relaunching.
+
+**Observed 2026-08-24**, on the fleet in the table below: the receiving station was restarted
+instead of the sending one. It was relaunched correctly, with `--name`, so nothing broke — but it
+cost a new `[ref]` (and so a `/mc identify` that would not otherwise have been needed), and it left
+the actual fault exactly where it was.
+
+*Before restarting anything, run `fix-header.sh --audit`.* It names the station by pid, from the
+registry, and does not care which tab you are sitting in.
+
 ---
 
 ## Control is the station this bites, and it is not an edge case
