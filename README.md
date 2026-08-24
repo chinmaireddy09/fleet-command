@@ -185,6 +185,11 @@ A session's own advertised name — the `@` header on every message it sends, an
 `set-callsign.sh SKILLDEV`, the registry said `SKILLDEV` while that session's own self-line still
 said `fleet-command-fd`; the same registry, read for a *peer*, was live and correct.
 
+**It costs delivery, not just tidiness.** A peer replying to the name it received gets
+*"No agent named … is reachable"* — measured — and reaches you only via the `[ref]`, which survives
+every rename. That is why a station with a stale envelope ends up writing "resolve me through
+ListAgents" into every message: it is routing around a real failure.
+
 So `set-callsign.sh` fixes the address peers **resolve**, and cannot reach the value the process
 already holds. `/rename` fixes the **tab title**, a different surface. Neither touches this.
 

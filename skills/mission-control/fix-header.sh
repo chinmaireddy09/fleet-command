@@ -15,6 +15,14 @@
 # mechanism, and fixes nothing here. No file write, no command, and no amount of
 # re-identifying changes it. Only a launch does.
 #
+# IT IS NOT COSMETIC. A PEER THAT REPLIES TO THE NAME IT RECEIVED GETS A BOUNCE.
+# Measured 2026-08-24 by a station asked to read back an envelope: this session had renamed
+# to SKILLDEV, its message arrived stamped `fleet-command-fd`, and the peer's reply to that
+# name failed with "No agent named 'fleet-command-fd' is reachable". It reached us only by
+# resolving the [ref], which survives every rename. So a stale envelope costs delivery, not
+# just tidiness -- which is why stations with one end up writing "resolve me through
+# ListAgents" into every message they send. They are routing around a real failure.
+#
 # THE REPAIR IS THEREFORE A RELAUNCH -- but a relaunch does NOT have to cost the
 # conversation. `--resume <sessionId>` brings the whole session back, and `--name` sets the
 # advertised identity at the one moment it is read. Together they are a rename that sticks:
@@ -90,4 +98,8 @@ Claude Code makes, so the turn summary never displaces it again.
 AFTER RELAUNCHING, say nothing about the header being fixed until you have seen it: send
 one message to a peer and have them read back the name on it. The value you are changing
 is one you cannot observe from in here.
+
+UNTIL THEN, PEERS CANNOT REPLY TO YOU BY NAME -- a reply addressed to the stale handle
+bounces, and only the [ref] resolves. Open every transmission with "<CALLSIGN> TO
+<CALLSIGN>" and expect to be answered by ref, not by envelope.
 TXT

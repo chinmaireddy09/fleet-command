@@ -672,6 +672,17 @@ if [ ! -f "$FH" ]; then sk "fix-header.sh not shipped in this copy"; else
   esac
   # The call-sign lands in a shell command the human pastes, so it is allowlisted.
   chk "a call-sign with metacharacters is refused"  "$(bash "$FH" 'X; rm -rf /' 2>&1)" "letters, digits"
+  # A BACKGROUND station must be relaunched as one. The repair line is pasted verbatim, so
+  # dropping --bg on a bg session would quietly convert it into a tab session.
+  case "$(grep -vE '^\s*#' "$D/set-callsign.sh")" in
+    *'BGFLAG="--bg "'*) ok "a bg station's repair line keeps --bg" ;;
+    *) no "a bg station's repair line keeps --bg" "no --bg branch" ;;
+  esac
+  # identify must HAND OVER the fix, not describe it -- and only when it is actually needed.
+  case "$(grep -vE '^\s*#' "$D/set-callsign.sh")" in
+    *'grep -q -- "--name"'*) ok "identify only warns when --name is absent" ;;
+    *) no "identify only warns when --name is absent" "no argv check" ;;
+  esac
 fi
 
 echo

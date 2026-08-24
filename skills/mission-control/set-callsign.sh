@@ -171,6 +171,30 @@ if [ -f "$HERE/window-probe.sh" ]; then
   bash "$HERE/window-probe.sh" --all 2>&1 | sed "s/^/window: /" || true
 fi
 
+# HAND OVER THE REPAIR, DO NOT DESCRIBE IT. identify is where somebody learns their header
+# is wrong, so it is where the fix belongs -- asked as "why should i paste? why not trying
+# identify?", which is the right question: identify cannot perform this repair (the value
+# is read at launch), but it can stop making the human go and find the command.
+# Only printed when this session actually lacks --name; a deployed station needs nothing.
+if ! ps -o args= -p "$CLAUDE_PID" 2>/dev/null | grep -q -- "--name"; then
+  echo ""
+  echo "YOUR @ HEADER IS WRONG AND THIS COMMAND IS THE ONLY FIX. Launched without --name, so"
+  echo "every message you send is stamped with your start-time handle -- and a peer replying"
+  echo "to that name gets \"No agent named ... is reachable\" (measured). Quit Claude in THIS"
+  echo "tab and paste this; --resume keeps the whole conversation, --name fixes the envelope"
+  echo "and the tab title together:"
+  echo ""
+  MYSID=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('sessionId',''))" "$REG" 2>/dev/null)
+  MYCWD=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('cwd',''))" "$REG" 2>/dev/null)
+  MYKIND=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('kind',''))" "$REG" 2>/dev/null)
+  BGFLAG=""; [ "$MYKIND" = "bg" ] && BGFLAG="--bg "
+  echo "  cd '$MYCWD' && claude ${BGFLAG}--name '$CALLSIGN' --resume $MYSID"
+  echo ""
+  echo "  (fix-header.sh prints this again any time. Do NOT report the header as fixed until a"
+  echo "   peer has read the envelope back to you -- it is the one value you cannot see.)"
+  echo ""
+fi
+
 echo "NOTE: every peer keeps seeing your OLD handle on the \`@\` header -- not only the ones with a"
 echo "      channel already open. That name is your SESSION'S START-TIME name, stamped on everything"
 echo "      you send; there is one socket per session and no per-channel handshake, so a channel"
