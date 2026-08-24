@@ -98,7 +98,7 @@ Claude Code makes, so the turn summary never displaces it again.
 THEN RUN  /mc identify $CALLSIGN  IN THE NEW SESSION. THIS STEP IS NOT OPTIONAL.
 --resume keeps the conversation and the sessionId, but the RELAUNCHED PROCESS GETS A NEW
 [ref] -- measured 2026-08-24: a station resumed with the same session id came back as
-[307fd2] where it had been [3f7d8c]. The board's row still carries the old one, and a row
+[7f0b93] where it had been [a1c4e2]. The board's row still carries the old one, and a row
 pointing at a dead ref is how Control concludes a station is DEAD and reassigns its work
 to somebody else. That happened to this fleet before the repair existed.
 

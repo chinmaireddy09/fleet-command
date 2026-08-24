@@ -86,8 +86,8 @@ in was launched without `--name`.
 *process still gets a new `[ref]`*:
 
 ```
-before relaunch   CHANNELS [3f7d8c]
-after  relaunch   CHANNELS [307fd2]     same sessionId, same conversation
+before relaunch   CHANNELS [a1c4e2]
+after  relaunch   CHANNELS [7f0b93]     same sessionId, same conversation
 ```
 
 `identify` rewrites the board row in place with the new ref. It does not duplicate it.

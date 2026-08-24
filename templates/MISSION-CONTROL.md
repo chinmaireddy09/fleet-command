@@ -174,14 +174,15 @@ WT=$(git rev-parse --show-toplevel)/.claude/worktrees/$LANE
 
 docker compose run --rm --entrypoint "" \
   -v "$WT":/app \
-  -e DB_NAME=nexus_$LANE \
+  -e DB_NAME=${DB_PREFIX:-app}_$LANE \
   celery-worker bash -lc \
   "pip install -q -r requirements/dev.txt && python -m pytest <paths> -q --no-cov"
 ```
 
 - `-v "$WT":/app` mounts **your** worktree, so another session's branch switch cannot change the
   source under a running test.
-- `-e DB_NAME=nexus_$LANE` gives you `test_nexus_channels`, isolated from every other lane.
+- `-e DB_NAME=${DB_PREFIX:-app}_$LANE` gives you `test_app_channels` (set `DB_PREFIX` to your own
+  project's prefix), isolated from every other lane.
   **Four lanes can now gate concurrently** — the old "one pytest run at a time" rule is gone
   *provided both flags are used*. Omit either and you are back to colliding.
 - First run in a new lane pays a one-time cost to build its database.
