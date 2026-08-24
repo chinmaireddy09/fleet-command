@@ -592,14 +592,20 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   slsid 9060 sid-t1 TABBED-A idle
   slsid 9061 sid-t2 TABBED-B idle
   slsid 9062 sid-w1 ALONE    idle
-  printf '{"sessions":{"sid-t1":"w7","sid-t2":"w7","sid-w1":"w9"}}' > "$SLH/windows.json"
+  # tabs=2 for the pair, tabs=1 for the one that owns its window -- the shape the probe writes.
+  printf '{"sessions":{"sid-t1":{"window":"w7","tabs":2},"sid-t2":{"window":"w7","tabs":2},"sid-w1":{"window":"w9","tabs":1}}}' > "$SLH/windows.json"
   O=$(slrender)
   case "$O" in *$'\033[2;38;5;80mTABBED-A'*) ok "two stations in one window are tabs" ;; *) no "two stations in one window are tabs" "$(printf '%s' "$O" | cat -v)" ;; esac
   case "$O" in *$'\033[2;38;5;80mTABBED-B'*) ok "and so is the other one" ;; *) no "and so is the other one" "$(printf '%s' "$O" | cat -v)" ;; esac
   case "$O" in *$'\033[2;38;5;218mALONE'*) ok "a station alone in its window is pink" ;; *) no "a station alone in its window is pink" "$(printf '%s' "$O" | cat -v)" ;; esac
-  # The grouping RE-DERIVES: close one tab and the survivor now owns that window.
+  # A STALE COUNT MUST NOT OVER-CLAIM. Close one of the pair and the grouping now sees one
+  # station in w7 -- but the recorded count still says 2 tabs, and a tab that holds no
+  # station is still a tab. Both must agree before the line calls it a window.
   rm -f "$SLH/.claude/sessions/9061.json" "$SLS/9061.sock"
-  case "$(slrender)" in *$'\033[2;38;5;218mTABBED-A'*) ok "the survivor of a window becomes a window" ;; *) no "the survivor of a window becomes a window" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;80mTABBED-A'*) ok "a stale tab count is not over-claimed" ;; *) no "a stale tab count is not over-claimed" "$(slrender | cat -v)" ;; esac
+  # Re-probed (tabs now 1) it becomes a window, which is what a fresh probe would record.
+  printf '{"sessions":{"sid-t1":{"window":"w7","tabs":1}}}' > "$SLH/windows.json"
+  case "$(slrender)" in *$'\033[2;38;5;218mTABBED-A'*) ok "and a re-probe promotes it" ;; *) no "and a re-probe promotes it" "$(slrender | cat -v)" ;; esac
   # No probe record falls back to the deploy log, then to tab -- never guessed into a window.
   : > "$SLH/windows.json"
   printf '{"stations":{"%s":{"ALONE":"window"}}}' "$SLR" > "$SLH/spawns.json"
@@ -662,6 +668,11 @@ if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else
   MC_WINDOWS="$WORK/win.json" timeout 10 bash "$WP" >/dev/null 2>&1
   [ "$(wc -c < "$WORK/win.json")" = "$BEFORE" ] && ok "an unparseable window file is not rewritten" \
     || no "an unparseable window file is not rewritten" "it was rewritten"
+  # --all backfills every live session in one pass, so a fleet that is already up gets
+  # colours without each station being made to re-identify. Same contract: never fatal.
+  O=$(MC_WINDOWS="$WORK/win2.json" timeout 20 bash "$WP" --all 2>&1); RC=$?
+  [ $RC -eq 0 ] && ok "--all always exits clean" || no "--all always exits clean" "exit $RC: $O"
+  chk "and reports what it did"            "$O" "WINDOW:"
   # It must never shell out to claude, for the same reason the status line must not.
   case "$(grep -vE '^\s*#' "$WP")" in
     *"claude agents"*) no "the probe never shells out to claude" "claude agents present" ;;

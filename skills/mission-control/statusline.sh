@@ -228,7 +228,8 @@ def order(d):
 # true for exactly as long as nobody opened or closed anything.
 seen_windows = {}
 for d in named:
-    w = windows.get(d.get("sessionId"))
+    rec = windows.get(d.get("sessionId")) or {}
+    w = rec.get("window") if isinstance(rec, dict) else rec
     if w:
         seen_windows[w] = seen_windows.get(w, 0) + 1
 
@@ -243,11 +244,17 @@ for d in sorted(named, key=order):
     if is_bg(d):
         c = CS_BG
     else:
-        w = windows.get(d.get("sessionId"))
+        rec = windows.get(d.get("sessionId")) or {}
+        w = rec.get("window") if isinstance(rec, dict) else rec
+        tabs = rec.get("tabs", 0) if isinstance(rec, dict) else 0
         if w:
-            # MEASURED FROM THE TERMINAL, so it works for a station somebody started by
-            # hand -- which the deploy log below can never know about.
-            c = CS_WIN if seen_windows.get(w, 0) == 1 else CS_TAB
+            # TWO MEASURES, WHICHEVER SAYS "TAB" WINS. `tabs` was counted by the terminal
+            # and sees tabs that hold no station at all -- which is what a person means by
+            # "its own window". The grouping re-derives live and catches a count that went
+            # stale when somebody dragged a tab out. A station is called a window only when
+            # BOTH agree it is alone, so the line never over-claims.
+            alone = (tabs <= 1) and (seen_windows.get(w, 0) == 1)
+            c = CS_WIN if alone else CS_TAB
         else:
             # No probe: fall back to what the deploy recorded, then to "visible somewhere".
             c = CS_WIN if spawns.get(d.get("name")) == "window" else CS_TAB

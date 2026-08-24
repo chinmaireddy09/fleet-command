@@ -123,11 +123,21 @@ the box moves with the tab rather than being one more hue to learn. It joins the
 the status line's stdin to the registry's `sessionId`, so there is nothing to configure.
 
 **Tab vs window is measured, not assumed.** Nothing Claude Code records distinguishes them — `kind`
-is only `bg` or `interactive`, and no environment variable carries it either. So `window-probe.sh`
-asks the terminal once, at identify, which window this session sits in, and the line **groups** live
-stations by that: two sharing a window are tabs, one alone in its window has it to itself. Grouping
-re-derives on every render, so closing a tab promotes the survivor — and a station you started **by
-hand** is coloured exactly like a deployed one, which a deploy-time record could never manage.
+is only `bg` or `interactive`, and no environment variable carries it either (Terminal.app's
+`TERM_SESSION_ID` is a per-*session* UUID, not a window index). So `window-probe.sh` asks the
+terminal, and the line uses **two measures that must agree**: the tab count that window reported,
+and how many live stations share it. A station is called a *window* only when both say it is alone,
+so a count that went stale when you dragged a tab out never over-claims.
+
+Run once per station at identify, or **backfill the whole fleet from any session**:
+
+```bash
+bash ~/.claude/skills/mission-control/window-probe.sh --all
+```
+
+That joins every live session's tty to a window in one pass, so a fleet that is already up gets its
+colours without every station being made to re-identify — and a station you started **by hand** is
+coloured exactly like a deployed one, which a deploy-time record could never manage.
 
 That distinction is **measured, not configured.** It reads `kind` from the session registry, never
 the spawn preference — the preference describes *future deploys*, and a hybrid fleet (`spawn.once`)
