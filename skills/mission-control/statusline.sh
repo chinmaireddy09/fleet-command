@@ -87,14 +87,16 @@ if not root:
 #
 #   violet (141)      BACKGROUND -- no window anywhere. This line is the ONLY evidence it
 #                     exists, which is the whole reason the line exists.
-#   cornflower (111)  A TAB in some window. Visible, but buried behind whichever tab is
-#                     forward, so the line still tells you something.
-#   aqua (115)        ITS OWN WINDOW. The most visible a station gets; the row is a
+#   turquoise (80)    A TAB in some window. Visible, but behind whichever tab is forward,
+#                     so the line still tells you something.
+#   pink (218)        ITS OWN WINDOW. The most visible a station gets; the row is a
 #                     reminder, not a discovery.
 #
-# The three are an ANALOGOUS TRIAD -- even hue steps across purple, blue, teal, all in one
-# lightness band. They belong to each other at a glance and still separate when every one
-# of them is dimmed, which a softer set did not manage.
+# WIDE HUE STEPS ON PURPOSE. The first attempt was an analogous triad -- purple 141, blue
+# 111, aqua 115 -- which is prettier on a swatch and useless on a status line: 141 and 111
+# are adjacent hues and read as ONE colour at 12px, reported as "i dont see any difference
+# with colors". These three are roughly a third of the wheel apart and stay separable when
+# every station is dimmed, which is the case that actually has to work.
 #
 # A per-station palette was built before this and reverted: a colour that means "which
 # station" has to be LEARNED, and its meaning moved whenever the fleet did. A colour that
@@ -111,7 +113,7 @@ if not root:
 # NEITHER IS A STATUS COLOUR -- not error (red), warning (yellow), success (green) or
 # information (cyan). A call-sign is identity, and the second signal is visibility; neither
 # is a health claim. Both are also far from the footer's own yellow directly below.
-CS_BG, CS_TAB, CS_WIN = 141, 111, 115
+CS_BG, CS_TAB, CS_WIN = 141, 80, 218
 
 # WHICH MODE A STATION GOT is not in the session registry -- `kind` says `bg` or
 # `interactive` and nothing finer -- so the deploy writes it down and this reads it back.

@@ -39,6 +39,13 @@ sk(){ printf '  %sSKIP%s  %s\n' "$Y" "$Z" "$1"; SKIP=$((SKIP+1)); }
 chk(){ case "$2" in *"$3"*) ok "$1";; *) no "$1" "$2";; esac; }
 
 WORK=$(mktemp -d); trap 'cd /; rm -rf "$WORK"' EXIT
+# SUITE-WIDE, LIKE THE osascript STUB, AND FOR THE SAME REASON. spawn-station.sh records
+# which mode each deploy opened, and it defaults to ~/.claude/mission-control-spawns.json
+# -- the tester's REAL one. Every --deploy test below wrote into it until this line
+# existed, including the AppleScript-injection fixtures, whose repo paths then sat in a
+# live config file on the machine. Caught in the field on 2026-08-24, one release after
+# the recording shipped. A suite that writes to $HOME is not a suite, it is a side effect.
+export MC_SPAWNLOG="$WORK/spawns.json"
 STUB="$WORK/stub"; mkdir -p "$STUB"
 for b in tmux wt.exe; do
   printf '#!/bin/bash\nexit ${STUB_RC:-0}\n' > "$STUB/$b"; chmod +x "$STUB/$b"
@@ -511,15 +518,15 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # `shell` IS WORK. This tested `== "busy"` until 6.94.0, so a station running a shell
   # command -- status "shell", seen live -- rendered as resting. Only `idle` rests now.
   slsess 9040 SHELLED live interactive shell 9040
-  case "$(slrender)" in *$'\033[1;38;5;111mSHELLED'*) ok "a station running a shell is working" ;; *) no "a station running a shell is working" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[1;38;5;80mSHELLED'*) ok "a station running a shell is working" ;; *) no "a station running a shell is working" "$(slrender | cat -v)" ;; esac
   # ...but a record with no status at all must not be promoted to working.
   printf '{"pid":9041,"name":"NOSTATUS","cwd":"%s","kind":"interactive","nameSince":9041}' "$SLR" > "$SLH/.claude/sessions/9041.json"; : > "$SLS/9041.sock"
-  case "$(slrender)" in *$'\033[2;38;5;111mNOSTATUS'*) ok "a station with no status stays dim" ;; *) no "a station with no status stays dim" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;80mNOSTATUS'*) ok "a station with no status stays dim" ;; *) no "a station with no status stays dim" "$(slrender | cat -v)" ;; esac
   for p in 9040 9041; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
 
   # Bold marks the busy station -- removed in 6.91.0, asked for again after seeing both.
-  case "$(slrender)" in *$'\033[1;38;5;111mCONTROL'*|*$'\033[1;38;5;141mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[1;38;5;111mFRONTEND'*|*$'\033[1;38;5;141mFRONTEND'*) no "an idle one is never bold" "$(slrender | cat -v)" ;; *) ok "an idle one is never bold" ;; esac
+  case "$(slrender)" in *$'\033[1;38;5;80mCONTROL'*|*$'\033[1;38;5;141mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[1;38;5;80mFRONTEND'*|*$'\033[1;38;5;141mFRONTEND'*) no "an idle one is never bold" "$(slrender | cat -v)" ;; *) ok "an idle one is never bold" ;; esac
 
   # ONE COLOUR FOR EVERY CALL-SIGN. A per-station palette was built and reverted: it made
   # the line prettier and less readable, because a colour only says something once the
@@ -527,7 +534,7 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   slsess 9010 BACKEND; slsess 9011 PAYMENTS; slsess 9012 CHANNELS live bg idle
   HUES=$(slrender | grep -o '38;5;[0-9]*' | sort -u | tr '\n' ' ')
   case "$HUES" in *38\;5\;1[14]*) : ;; *) no "only the visibility triad is used" "$HUES"; false ;; esac 2>/dev/null
-  BAD=$(printf '%s' "$HUES" | tr ' ' '\n' | grep -v '^$' | grep -vE '^38;5;(141|111|115)$' || true)
+  BAD=$(printf '%s' "$HUES" | tr ' ' '\n' | grep -v '^$' | grep -vE '^38;5;(141|80|218)$' || true)
   [ -z "$BAD" ] && ok "only the visibility triad is used" || no "only the visibility triad is used" "$BAD"
   # Violet on purpose: the one terminal hue carrying no convention -- not error, warning,
   # success or information. A call-sign is identity, so it borrows no status colour.
@@ -543,18 +550,18 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # fleet (spawn.once) can disagree with it right now.
   slsess 9003 CHANNELS live bg idle
   case "$(slrender)" in *$'\033[2;38;5;141mCHANNELS'*) ok "a background station is violet" ;; *) no "a background station is violet" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[2;38;5;111mFRONTEND'*) ok "a tab station is cornflower" ;; *) no "a tab station is cornflower" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;80mFRONTEND'*) ok "a tab station is turquoise" ;; *) no "a tab station is turquoise" "$(slrender | cat -v)" ;; esac
   # A WINDOW is not distinguishable from a TAB in the session registry -- `kind` says only
   # bg or interactive -- so the deploy records which it opened and the line reads it back.
   printf '{"stations":{"%s":{"WINDOWED":"window","FRONTEND":"tab"}}}' "$SLR" > "$SLH/spawns.json"
   slsess 9030 WINDOWED live interactive idle 9030
-  case "$(slrender)" in *$'\033[2;38;5;115mWINDOWED'*) ok "a windowed station is aqua" ;; *) no "a windowed station is aqua" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;218mWINDOWED'*) ok "a windowed station is pink" ;; *) no "a windowed station is pink" "$(slrender | cat -v)" ;; esac
   # MEASURED BEATS RECORDED: a session reporting bg is background whatever the log says.
   printf '{"stations":{"%s":{"CHANNELS":"window"}}}' "$SLR" > "$SLH/spawns.json"
   case "$(slrender)" in *$'\033[2;38;5;141mCHANNELS'*) ok "the live registry outranks the spawn log" ;; *) no "the live registry outranks the spawn log" "$(slrender | cat -v)" ;; esac
   # A hand-started session has no record and must not be guessed into a window.
   : > "$SLH/spawns.json"
-  case "$(slrender)" in *$'\033[2;38;5;115mWINDOWED'*) no "an unrecorded station falls back to tab" "$(slrender | cat -v)" ;; *) ok "an unrecorded station falls back to tab" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;218mWINDOWED'*) no "an unrecorded station falls back to tab" "$(slrender | cat -v)" ;; *) ok "an unrecorded station falls back to tab" ;; esac
   rm -f "$SLH/.claude/sessions/9030.json" "$SLS/9030.sock" "$SLH/spawns.json"
   # The old `(bg)` suffix is gone: colour says it without spending four characters a station.
   case "$(slplain)" in *"(bg)"*|*"·bg"*) no "no bg suffix survives" "$(slplain)" ;; *) ok "no bg suffix survives" ;; esac
