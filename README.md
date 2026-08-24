@@ -178,6 +178,29 @@ per render *and* starts a background service that inherits the caller's stdout �
 for two minutes during development. It reads `~/.claude/sessions/*.json` and `/tmp/cc-socks/`
 instead: microseconds, cannot hang, cannot start a daemon.
 
+### The `@` header, and the one thing that fixes it
+
+A session's own advertised name — the `@` header on every message it sends, and the name on its own
+`ListAgents` self-line — is read into the process **at launch and never again**. Measured: after
+`set-callsign.sh SKILLDEV`, the registry said `SKILLDEV` while that session's own self-line still
+said `fleet-command-fd`; the same registry, read for a *peer*, was live and correct.
+
+So `set-callsign.sh` fixes the address peers **resolve**, and cannot reach the value the process
+already holds. `/rename` fixes the **tab title**, a different surface. Neither touches this.
+
+**The repair is a relaunch — but it does not cost you the conversation:**
+
+```bash
+bash ~/.claude/skills/mission-control/fix-header.sh <CALLSIGN>
+```
+
+It prints the exact line, session id filled in so nothing can be mistyped:
+`claude --name '<CALLSIGN>' --resume <sessionId>`. `--name` sets the identity at the one moment it
+is read; `--resume` reopens *that* conversation rather than starting a new one. The tab title is
+fixed in the same move, since `--name` puts the call-sign in every title write.
+
+Stations from `/mc deploy` never need this — they launch with `--name` already.
+
 ### Speed
 
 `/mc` starts in **~0.3s**. It was 1.4s until 2026-08-24, and `git fetch` was 1.12s of that — a

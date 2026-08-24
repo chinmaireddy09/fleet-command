@@ -655,6 +655,26 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   else sk "worktree could not be created here"; fi
 fi
 
+echo "── 5n. the @ header repair prints a line that cannot be mistyped ──"
+FH="$D/fix-header.sh"
+if [ ! -f "$FH" ]; then sk "fix-header.sh not shipped in this copy"; else
+  # A session's own advertised name is read at LAUNCH and never re-read (measured), so the
+  # only repair is a relaunch -- and it must not cost the conversation, hence --resume.
+  O=$(timeout 10 bash "$FH" TESTSIGN 2>&1)
+  chk "it names the launch flag that sets identity" "$O" "--name 'TESTSIGN'"
+  chk "and resumes rather than starting fresh"      "$O" "--resume"
+  chk "and says why the session is not lost"        "$O" "reopens THIS conversation"
+  # It must NEVER run the command: a process cannot replace itself, and trying would kill
+  # the session that asked.
+  case "$(grep -vE '^\s*#' "$FH")" in
+    *"exec "*|*"eval "*) no "it never executes the relaunch" "exec/eval present" ;;
+    *) ok "it never executes the relaunch" ;;
+  esac
+  # The call-sign lands in a shell command the human pastes, so it is allowlisted.
+  chk "a call-sign with metacharacters is refused"  "$(bash "$FH" 'X; rm -rf /' 2>&1)" "letters, digits"
+fi
+
+echo
 echo "── 5m. the window probe is best-effort and never fatal ───────────"
 WP="$D/window-probe.sh"
 if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else
