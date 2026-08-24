@@ -348,9 +348,13 @@ it, so four stations do not each carry procedure they will never run:
 | `preflight.sh` | **before a gate, a standdown, a baseline diff, or addressing a peer** — the four checks that were got wrong by hand | anyone |
 | `set-callsign.sh` | **step 1 of identify — every station runs it, always, before the board.** Makes the call-sign the address peers see | every station |
 | `label-tab.sh` | called by the above — sets the tab title, and reports whether this session's launch lets it hold | every station |
+| `tour-state.sh` | owns the first-run flag — offered, taken or declined. `reset` makes the tour appear again | the tour only |
 | `spawn-station.sh` | at deploy — starts the station (background by default, a window on request) and reads the manifest back to check it really registered. Requires `--deploy`; starts nothing without it | Control |
 | `spawn-pref.sh` | records whether you want stations in the background or in a window. Asked once, on your first deploy | Control |
 | `mc-config.sh` | `/mc-config` — the preference picker, and it keeps `settings.json` in agreement with the skill's own file | Control |
+| `statusline.sh` | optional, user-level — puts this repo's live stations under your prompt. Reads the session registry and the sockets; **spawns nothing** | anyone |
+| `window-probe.sh` | asks the terminal which **window** each session sits in, so the line can tell a tab from its own window. `--all` refreshes the whole fleet. macOS Terminal.app; skips cleanly elsewhere | runs itself, at identify and deploy |
+| `fix-header.sh` | prints the one line that repairs a wrong `@` header — `claude --name <CALLSIGN> --resume <sessionId>`, then `/mc identify` | a station whose envelope is stale |
 
 ---
 

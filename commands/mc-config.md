@@ -58,25 +58,16 @@ beneath the label, and its options 5 and 6 — "type something" and "chat about 
 harness's, not ours. The `✓`, the wording, the fixed order and the second question are the parts
 that are ours, so they are the parts that match.*
 
-**A one-off, without changing the standing setting**, is `spawn-pref.sh once <mode>` — the
-equivalent of `/model`'s `s to use this session only`. Offer it in words if someone asks for
-"just this once"; it is a separate key and is cleared after the next deploy uses it.
-
-Write it with **one** command, then stop:
-
-```bash
-bash ~/.claude/skills/mission-control/mc-config.sh set spawn.mode <default|tab|window|background>
-```
-
 Reply in **one sentence**: what it is now, and that `/mc-config` changes it any time.
 
 **Never explain precedence, `env.MC_SPAWN_MODE`, `settings.json` or one-shot semantics in the
 options.** The script keeps both places in agreement, so there is nothing for the user to know.
 Those explanations are what turned four choices into four paragraphs nobody could read.
 
-**`/mc-config once <mode>`** arms a one-shot for the next deploy only — run
-`mc-config.sh set spawn.once <mode>` and say one sentence. This is the equivalent of `/model`'s
-*use this session only*; it is not a second question, and the picker must not ask it.
+**`/mc-config once <mode>` typed directly** arms a one-shot without showing the picker at all —
+run `spawn-pref.sh once <mode>` and say one sentence. It is the same thing Question 2's *"Just
+this once"* records; this form just skips the two questions for somebody who already knows what
+they want.
 
 **Any other key** — `spawn.launchCommand`, `spawn.permissionMode`, `naming.coordinator`,
 `naming.stationStyle`, `tour` — is set only when the user names it: `mc-config.sh set <key>

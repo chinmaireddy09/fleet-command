@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.7.0
+version: 7.7.1
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2106,6 +2106,7 @@ everything a station needs on post. The rest loads only when the command in hand
 | `references/field-notes.md` | a rule looks arbitrary and you want to know what it cost — the incidents, not the procedure | anyone, rarely |
 | `set-callsign.sh` | **step 1 of identify — every station runs it, always, before the board.** Makes the call-sign the address peers resolve | every station |
 | `label-tab.sh` | called by the above — sets the tab title, and reads this session's own argv/env to report whether it will hold (`persists: YES/NO`) | every station |
+| `tour-state.sh` | owns the first-run flag — whether the walkthrough has been offered, taken or declined. One key, so nothing else in the config can be disturbed by it | the tour only |
 | `spawn-station.sh` | **only at deploy, and it requires `--deploy` to spawn at all** — starts the station (background by default, a visible window on request) and reads the fleet manifest back to check it really registered | Control |
 | `spawn-pref.sh` | first deploy on a machine — records whether this person wants stations in the background or in a visible window. Asked once, never detected | Control |
 | `fix-header.sh` | prints the one line that repairs a wrong `@` header — `claude --name <CALLSIGN> --resume <sessionId>`. The advertised name is read at launch and never re-read, so no in-session command can fix it; `--resume` means the relaunch costs nothing | any station whose header is wrong |
