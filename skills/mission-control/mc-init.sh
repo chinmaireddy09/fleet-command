@@ -81,7 +81,7 @@ find_me() {
 
 emit_me() {
   local mypid; mypid=$(find_me) || { echo "ME_PID: unknown"; echo "ME_NAME: unknown  # no registry entry found walking up from this shell"; return; }
-  MYPID="$mypid" python3 - <<'PY'
+  MYPID="$mypid" MC_COORD="${RESOLVED_COORD:-}" python3 - <<'PY'
 import json,os
 pid=os.environ["MYPID"]
 d=json.load(open(os.path.expanduser(f"~/.claude/sessions/{pid}.json")))
@@ -94,6 +94,34 @@ print("                      it cost a station a radio round-trip for a fact sit
 print(f"ME_CWD: {d.get('cwd','?')}")
 print("ME_REF: run ListAgents -- your own self-line carries it, and that ref is CORRECT")
 print("ME_SELFLINE_NAME: DO NOT USE   # the name on that self-line is a start-time snapshot: false after any rename")
+
+# HOW THIS PROCESS WAS LAUNCHED, reported BEFORE a call-sign is taken rather than after.
+# The `@` envelope freezes at launch, so `set-callsign.sh` -- step 1 of coming on watch --
+# is itself what splits a bare session's address from its envelope. Reported twice on one
+# fleet, 2026-08-24: both times Control was relaunched WITHOUT --name and re-identified,
+# and both times the fault came back with a fresh birth name. Repairing after the rename
+# costs a relaunch AND a second identify AND a board-row rewrite AND leaves a dead [ref]
+# in between; repairing before it costs the relaunch alone, because no row exists yet.
+ns = d.get("nameSource")
+coord = os.environ.get("MC_COORD") or ""
+if ns is None:
+    print("ME_LAUNCH: --name   # launched with --name. Address and @ envelope agree and will stay agreeing.")
+else:
+    sid = d.get("sessionId", "")
+    bg = "--bg " if d.get("kind") == "bg" else ""
+    former = (d.get("formerNames") or [None])[0]
+    print("ME_LAUNCH: bare   # NO --name on this process. The @ envelope FROZE at launch and no")
+    print("           #      file write, command or re-identify can reach it. Only a launch can.")
+    if ns == "user" and former:
+        print(f"ME_ENVELOPE: {former}   # ALREADY STALE -- this is what peers see on everything you send,")
+        print("             #           not your call-sign. A peer replying to it gets a bounce.")
+    else:
+        print(f"ME_ENVELOPE: {d.get('name')}   # CORRECT RIGHT NOW, and taking a call-sign is what breaks it:")
+        print("             #           the rename moves your address and leaves the envelope here.")
+    print(f"ME_RELAUNCH: cd '{d.get('cwd','?')}' && claude {bg}--name '{coord or '<CALLSIGN>'}' --resume {sid}")
+    print("             # OFFER THIS BEFORE TAKING A CALL-SIGN, NOT AFTER. --resume keeps the whole")
+    print("             # conversation. Declining is legitimate -- see the skill's step 1 -- but it")
+    print("             # is the user's call to make, and it is cheapest to make it here.")
 PY
 }
 
@@ -277,6 +305,7 @@ emit_coordinator() {
   fi
   [ -z "$name" ] && name="CONTROL"
   [ -n "$tmpf" ] && rm -f "$tmpf"
+  RESOLVED_COORD="$name"
   echo "COORDINATOR: $name"
 }
 

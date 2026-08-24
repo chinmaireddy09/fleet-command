@@ -198,7 +198,15 @@ ListAgents" into every message: it is routing around a real failure.
 So `set-callsign.sh` fixes the address peers **resolve**, and cannot reach the value the process
 already holds. `/rename` fixes the **tab title**, a different surface. Neither touches this.
 
-**The repair is a relaunch — but it does not cost you the conversation:**
+**Better: never take the damage.** `/mc` now reports how the session was launched *before* it
+takes a call-sign, because `set-callsign.sh` is what splits the two surfaces apart — until it runs,
+a bare session's address and envelope agree. Control offers the `--name … --resume` line at that
+point, where it costs one relaunch instead of a relaunch plus a second identify plus a board-row
+rewrite plus a dead `[ref]` in between. Declining is fine and bounded; it is just cheaper to decide
+early.
+
+**The repair, when a station already has the fault, is a relaunch — and it does not cost you the
+conversation:**
 
 ```bash
 bash ~/.claude/skills/mission-control/fix-header.sh <CALLSIGN>

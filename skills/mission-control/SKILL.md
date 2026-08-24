@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.8.1
+version: 7.9.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -357,6 +357,41 @@ whichever you prefer on the radio.
 
 So the order is **bind, then report**, and the binding is two steps, not a project:
 
+**0. If the preamble printed `ME_LAUNCH: bare`, offer the relaunch BEFORE step 1.** Taking a
+call-sign in a bare session is *what creates* a stale `@` envelope: `set-callsign.sh` moves your
+address and leaves the envelope frozen at the handle you were born with. The session was
+internally consistent until that moment, and step 1 is the moment.
+
+**The whole reason this is step 0 and not a repair afterwards is cost.** Here it is one relaunch,
+and `--resume` keeps the entire conversation. After step 2 it is the same relaunch **plus** a
+second identify, **plus** a board-row rewrite, **plus** a dead `[ref]` in between that peers are
+entitled to read as a death — because a row pointing at a dead ref is exactly how a coordinator
+concludes a station is gone and reassigns its work. Nothing is saved by deferring it; the bill
+only grows.
+
+Put the preamble's `ME_RELAUNCH` line to the user in one short exchange. Not a menu, not a gate
+you enforce:
+
+```
+Your session was launched without --name, so taking CONTROL here leaves every message you
+send stamped <ME_ENVELOPE>. One relaunch fixes it and keeps this conversation:
+
+  <ME_RELAUNCH>
+
+Say go and I will wait for you; say skip and I take the post now and we live with it.
+```
+
+**Both answers are correct, and neither is yours to pick.** Skipping is *bounded*, and say so
+plainly rather than warning: the address stays live, so peers reach you by call-sign normally —
+only a reply addressed to the envelope bounces, and the fix for that is "address `CONTROL`, not
+the name on the envelope." Then proceed to step 1 and **do not raise it again this session.**
+
+**Observed twice on one fleet, 2026-08-24.** Control was relaunched without `--name` and
+re-identified — twice — and the fault came back each time with a fresh birth name (`…-54`, then
+`…-7d`). Both relaunches were the user acting on a correct repair notice; the notice simply came
+after the rename instead of before it, so it bought a new instance of the fault. `--name` is the
+half that does the work, and step 0 is where it costs least.
+
 1. **Take the call-sign** — `bash <skill-dir>/set-callsign.sh <COORDINATOR>`. **Resolve
    `<COORDINATOR>` yourself, in this order, and do not ask:** this project's `MISSION-CONTROL.md`
    if it names one → the user's recorded preference in `~/.claude/mission-control.json` → plain
@@ -449,6 +484,12 @@ MISSION CONTROL — identify
 
   Not it?  /mc identify PAYMENTS  — the row is not pushed yet, so a change costs nothing.
 ```
+
+**A hand-started station hits the same trap as Control, and the same step 0 applies.** If the
+preamble printed `ME_LAUNCH: bare`, offer the `ME_RELAUNCH` line *before* taking the call-sign —
+see [step 1](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command) for the exchange
+and for why doing it afterwards costs strictly more. A `/mc deploy` station never sees this; it
+was launched with `--name` and its preamble says so.
 
 **That last line is the whole reason self-assigning is safe.** The call-sign is taken at step 1,
 and the row that publishes it does not land until step 5 — so between those two points a wrong

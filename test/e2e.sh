@@ -765,6 +765,53 @@ print(json.dumps(d))' "$@" > "$FHH/.claude/sessions/$1.json"; }
 fi
 
 echo
+echo "── 5p. the launch is reported BEFORE a call-sign is taken ────────"
+# `set-callsign.sh` is ITSELF what splits a bare session's address from its envelope, so a
+# repair notice printed after it has already bought the fault. Observed twice on one fleet
+# 2026-08-24: Control relaunched without --name and re-identified, twice, and came back
+# stale each time under a fresh birth name. The preamble runs BEFORE identify, so this is
+# where the launch has to be reported.
+MIH="$WORK/mihome"; mkdir -p "$MIH/.claude/sessions"
+mireg(){ printf '%s' "$1" > "$MIH/.claude/sessions/$$.json"; }
+
+# Launched with --name: nameSource is absent, and there is nothing to offer.
+mireg "$(printf '{"pid":%s,"sessionId":"sid-a","cwd":"/tmp/a","name":"DEPLOYED"}' "$$")"
+O=$(HOME="$MIH" timeout 10 bash "$D/mc-init.sh" me 2>&1)
+chk "a --name launch is reported as safe" "$O" "ME_LAUNCH: --name"
+case "$O" in *ME_RELAUNCH*) no "and no relaunch is offered" "$O";;
+             *) ok "and no relaunch is offered";; esac
+
+# Never named: the envelope is CORRECT right now, and the rename is what will break it.
+# Saying "stale" here would be false, and would spend the user's trust on a wrong alarm.
+mireg "$(printf '{"pid":%s,"sessionId":"sid-b","cwd":"/tmp/b","name":"repo-12","nameSource":"derived"}' "$$")"
+O=$(HOME="$MIH" timeout 10 bash "$D/mc-init.sh" me 2>&1)
+chk "a bare launch is flagged before identify"  "$O" "ME_LAUNCH: bare"
+chk "its envelope is named, not left abstract"  "$O" "ME_ENVELOPE: repo-12"
+chk "and called correct-for-now, not stale"     "$O" "CORRECT RIGHT NOW"
+chk "the relaunch line is ready to paste"       "$O" "--name '<CALLSIGN>' --resume sid-b"
+chk "and it says to offer it BEFORE the rename" "$O" "BEFORE TAKING A CALL-SIGN"
+
+# Already renamed: now it IS stale, and what peers see is the BIRTH name.
+mireg "$(printf '{"pid":%s,"sessionId":"sid-c","cwd":"/tmp/c","name":"CONTROL","nameSource":"user","formerNames":["repo-12"]}' "$$")"
+O=$(HOME="$MIH" timeout 10 bash "$D/mc-init.sh" me 2>&1)
+chk "an already-renamed session is called stale" "$O" "ALREADY STALE"
+chk "and peers' view is the birth name"          "$O" "ME_ENVELOPE: repo-12"
+
+# Pasted verbatim, so a bg station must be relaunched as one.
+mireg "$(printf '{"pid":%s,"sessionId":"sid-d","cwd":"/tmp/d","name":"repo-13","nameSource":"derived","kind":"bg"}' "$$")"
+chk "a bg session's relaunch line keeps --bg" \
+    "$(HOME="$MIH" timeout 10 bash "$D/mc-init.sh" me 2>&1)" "claude --bg --name"
+
+# The call-sign in that line must be the one this fleet actually uses -- a placeholder
+# would put the user back to typing it, which is the whole thing these scripts prevent.
+MIR=$(newrepo); cd "$MIR"
+mireg "$(printf '{"pid":%s,"sessionId":"sid-e","cwd":"%s","name":"repo-14","nameSource":"derived"}' "$$" "$MIR")"
+printf '# board\n\nCoordinator: FLEETLEAD\n' > MISSION-CONTROL.md
+git add -A && git commit -qm board
+O=$(HOME="$MIH" timeout 30 bash "$D/mc-init.sh" 2>&1)
+chk "the relaunch line carries the resolved coordinator" "$O" "--name 'FLEETLEAD'"
+
+echo
 echo "── 5m. the window probe is best-effort and never fatal ───────────"
 WP="$D/window-probe.sh"
 if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else

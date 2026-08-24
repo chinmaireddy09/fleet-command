@@ -88,6 +88,30 @@ on the fleet's busiest edge, and it costs it every time.
 `/mc identify CONTROL` fixes Control's **address** and prints the relaunch line unprompted. It
 cannot fix the envelope, and no amount of re-identifying will.
 
+### The cheapest moment is *before* the call-sign, not after
+
+`set-callsign.sh` is not merely unable to fix the envelope — **it is what breaks it.** Until that
+rename, a bare session is internally consistent: its address and its envelope are both the derived
+handle, and replies land. The rename moves one and freezes the other.
+
+So the preamble now reports the launch *before* step 1, and Control offers the relaunch there:
+
+```
+ME_LAUNCH: bare        # NO --name on this process
+ME_ENVELOPE: repo-12   # CORRECT RIGHT NOW, and taking a call-sign is what breaks it
+ME_RELAUNCH: cd '<cwd>' && claude --name 'CONTROL' --resume <sessionId>
+```
+
+Taken there it costs one relaunch. Taken after the row is written it costs the same relaunch
+**plus** a second identify, a board-row rewrite, and a dead `[ref]` in between that peers may
+read as a death. Declining stays a legitimate choice — the cost is bounded to "address `CONTROL`,
+not the name on its envelope" — but it is the user's choice, made where it is cheapest.
+
+**Observed twice on one fleet, 2026-08-24.** Control was relaunched without `--name` and
+re-identified, twice, and came back stale each time under a fresh birth name (`…-54`, then
+`…-7d`). Both relaunches were the user acting on a correct notice that simply arrived after the
+rename instead of before it. `--name` is the half that does the work.
+
 ---
 
 ## Getting it right: start correctly, repair nothing
