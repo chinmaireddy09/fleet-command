@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.6.1
+version: 7.7.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2176,7 +2176,7 @@ doing anything else — including before the board report they asked for.
   not a refused one, and it will be offered again next time. Only a finished or a refused
   walkthrough is settled.
 
-### The five steps
+### The six steps
 
 Run them in order, narrating what you are doing and why. **Confirm before every write, naming the
 exact file and repo.** This is somebody's first minute with the tool and the impression that lasts
@@ -2217,7 +2217,7 @@ did not ask for.
 
 Only on an explicit yes. **On no, that is not a failed tour** — say the command and move on.
 
-**4/5 — Let it go.** Release the claim from 2/4, so they end where they started and have seen a
+**4/5 — Let it go.** Release the claim from 2/6, so they end where they started and have seen a
 full cycle: `/mc checkin` put a row on, this takes it off. Then tell them the two words worth
 knowing:
 
@@ -2235,7 +2235,7 @@ Step 4 released a claim. That is `secure`, and it is the honest label for what t
 **it tells somebody who has just arrived how to leave** — a first run that ends on *"and now close
 everything"* has taught the exit before the job.
 
-**5/5 — How stations should appear.** **The one preference this tool has, asked once, here.**
+**5/6 — How stations should appear.** **The one preference this tool has, asked once, here.**
 A first run is the right moment for it: they have just watched a station open, so the question
 is concrete rather than hypothetical.
 
@@ -2259,12 +2259,49 @@ is the existing path. The tour is the better moment, not the only one.
 
 Then tell them it is changeable, in the same breath: ***"`/mc-config` changes it any time."***
 
+**6/6 — See your fleet under the prompt.** **Offer it. It writes to their settings, so it needs
+a yes.** This is the last step because it is the only one that changes something outside the repo,
+and because it only means anything once they have watched a station open in 3/6.
+
+> One last thing: I can put your fleet under your prompt — every station on this repo, coloured by
+> whether you can actually see it, with your own call-sign boxed. It's two keys in
+> `~/.claude/settings.json`. Want it?
+
+On yes, add both keys — **read the file, add, write back; never replace it** — and say what each
+one is for in a sentence:
+
+```json
+{ "statusLine": { "type": "command", "refreshInterval": 5,
+                  "command": "bash ~/.claude/skills/mission-control/statusline.sh" },
+  "hooks": { "UserPromptSubmit": [ { "hooks": [ { "type": "command", "async": true,
+    "command": "bash ~/.claude/skills/mission-control/window-probe.sh --all >/dev/null 2>&1" } ] } ] } }
+```
+
+- **`refreshInterval` is not decoration.** Claude Code re-runs a status line on *this* session's
+  events, and every station on that line is a *different* session. Without the timer it freezes at
+  whatever it last saw and shows a station working that finished ten minutes ago. That was a real
+  report, not a hypothetical.
+- **The hook** keeps tab-versus-window honest when they move a window or drag a tab, since nothing
+  else would notice.
+
+**Say the one limitation out loud rather than letting them find it.** On anything but macOS
+Terminal.app, telling a *tab* from its *own window* is not possible — those stations render in the
+tab colour and everything else on the line is still correct. A colour that silently never appears
+gets reported as a bug by the person it was never going to work for.
+
+**On no, that is not a failed tour.** Say it is in the README under *"See your fleet under the
+prompt"* and move on. It is a convenience, not part of the fleet.
+
 ### Finishing
 
 Run `tour-state.sh complete`. Then say plainly what just happened to their machine:
 
 > That won't appear again — I've noted it in `~/.claude/mission-control.json`, which lives with
 > your settings, not in this repo. `/mc tour` replays it any time.
+
+**If they took the status line in 6/6, name that file too** — it is a *different* file
+(`~/.claude/settings.json`) and the same rule applies: a tool that writes two things and mentions
+one has told a half-truth about somebody's machine. If they declined, say nothing about it.
 
 **Say where the flag went.** A tool that silently remembers something about a person is a tool
 they have to guess about later. One sentence removes the guessing, and it is the same sentence
