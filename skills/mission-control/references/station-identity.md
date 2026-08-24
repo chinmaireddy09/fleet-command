@@ -121,6 +121,22 @@ anyway, `--name` does both and `/rename` becomes unnecessary.
 
 ---
 
+## What works where
+
+Nothing in this document is macOS-only except one colour.
+
+| | |
+|---|---|
+| **The address, the `@` header, `--name`, `--resume`, `/mc identify`** | Every host. These are Claude Code's own mechanisms; no terminal is asked anything. |
+| **The status line** — call-signs, busy/idle, your own station boxed, the background colour | Every host. Read from the session registry alone. |
+| **Tab title labelling** (`label-tab.sh`) | Terminal.app. Elsewhere it skips cleanly and says so. `--name` still puts the call-sign in the title on iTerm2, Ghostty and tmux, because that is plain OSC. |
+| **Telling a tab from its own window** (`window-probe.sh`) | Terminal.app, via `osascript`. Anywhere else it prints `no osascript (not macOS)` and exits 0, and those stations render in the tab colour. |
+
+So on Linux, iTerm2 or tmux you lose **one of three colours** and nothing else. A station is still
+named, still coloured for background-vs-visible, still boxed when it is yours.
+
+---
+
 ## Quick diagnosis
 
 ```bash
