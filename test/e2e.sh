@@ -677,7 +677,11 @@ if [ ! -f "$FH" ]; then sk "fix-header.sh not shipped in this copy"; else
   chk "a call-sign with metacharacters is refused"  "$(bash "$FH" 'X; rm -rf /' 2>&1)" "letters, digits"
   # A BACKGROUND station must be relaunched as one. The repair line is pasted verbatim, so
   # dropping --bg on a bg session would quietly convert it into a tab session.
-  case "$(grep -vE '^\s*#' "$D/set-callsign.sh")" in
+  # CHECKED AGAINST fix-header.sh, NOT set-callsign.sh: 7.11.0 stopped set-callsign.sh from
+  # printing a repair line at all -- it publishes the envelope instead of volunteering a
+  # relaunch -- so fix-header.sh is now the only script that emits one. Both of its print
+  # sites (self and --for) must carry the flag; the --for path is also exercised live below.
+  case "$(grep -vE '^\s*#' "$D/fix-header.sh")" in
     *'BGFLAG="--bg "'*) ok "a bg station's repair line keeps --bg" ;;
     *) no "a bg station's repair line keeps --bg" "no --bg branch" ;;
   esac
@@ -1158,7 +1162,10 @@ else
   O=$(HOME="$TH" bash "$SC" GHOST 2>&1)
   chk "a dead session's call-sign is free"  "$O" "OLDNAME -> GHOST"
   chk "no label-tab.sh means a clean skip"  "$O" "tab title: skipped"
-  chk "the old handle is not claimed fixed" "$O" "ONLY A RESTART"
+  # The invariant, unchanged: this script must never imply the `@` header is now correct.
+  # Only the wording moved -- 7.11.0 stopped it shouting for a relaunch and made it publish.
+  chk "the old handle is not claimed fixed"  "$O" "Only a restart"
+  chk "and it does not volunteer a relaunch" "$O" "do not volunteer it"
   REGN=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d['name'],d.get('nameSource'),','.join(d.get('formerNames',[])))" "$TH/.claude/sessions/$CP.json")
   chk "the registry carries the new name"   "$REGN" "GHOST user"
   chk "the former name is kept"             "$REGN" "OLDNAME"

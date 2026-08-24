@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.11.0
+version: 7.11.1
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -499,11 +499,18 @@ MISSION CONTROL — identify
   Not it?  /mc identify PAYMENTS  — the row is not pushed yet, so a change costs nothing.
 ```
 
-**A hand-started station hits the same trap as Control, and the same step 0 applies.** If the
-preamble printed `ME_LAUNCH: bare`, offer the `ME_RELAUNCH` line *before* taking the call-sign —
-see [step 1](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command) for the exchange
-and for why doing it afterwards costs strictly more. A `/mc deploy` station never sees this; it
-was launched with `--name` and its preamble says so.
+**A hand-started station gets the same envelope mismatch, and the same answer: publish it, do not
+repair it.** If the preamble printed `ME_LAUNCH: bare`, take the call-sign and put your handle on
+your own row — `CHANNELS · envelope acme-shop-7d` — and say it once in your first transmission.
+**Do not ask the user to relaunch you.** See
+[step 0](#1--control-comes-on-watch--and-control-is-whoever-ran-the-command).
+
+**One thing here is genuinely unlike Control, and it does not change the answer.** Control could
+not have passed `--name`, because the call-sign did not exist until `/mc` ran. A station *can* — a
+person typing `/mc identify CHANNELS` already knows the name, so `claude --name CHANNELS` was
+available to them. So this is a real "next time" where Control's never is. **Mention it once, in
+passing, only if the user is already starting stations by hand** — `/mc deploy` passes `--name` for
+them and is the better answer anyway. Never stop to ask, and never re-raise it.
 
 **That last line is the whole reason self-assigning is safe.** The call-sign is taken at step 1,
 and the row that publishes it does not land until step 5 — so between those two points a wrong
@@ -1292,7 +1299,7 @@ script latches on Control's own `sessionId` for exactly that reason. A later fle
 Control session and is told again, correctly.
 
 **Do NOT offer a relaunch here.** Earlier releases did, and it was wrong for the same reason it is
-wrong at [step 0](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command): Control is
+wrong at [step 0](#1--control-comes-on-watch--and-control-is-whoever-ran-the-command): Control is
 whoever ran `/mc`, so it never had a call-sign to launch with. Asking at the deploy just moved the
 ask; it did not make it answerable.
 

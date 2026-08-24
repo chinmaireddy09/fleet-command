@@ -176,46 +176,47 @@ fi
 # identify?", which is the right question: identify cannot perform this repair (the value
 # is read at launch), but it can stop making the human go and find the command.
 # Only printed when this session actually lacks --name; a deployed station needs nothing.
+# THE ENVELOPE IS PUBLISHED, NOT REPAIRED, AND THIS IS WHERE THAT USED TO GO WRONG.
+# Through 7.10.1 this block printed "YOUR @ HEADER IS WRONG AND THIS COMMAND IS THE ONLY FIX"
+# and told the user to quit and relaunch. For CONTROL that instruction is unanswerable: the
+# post is TAKEN by whoever runs /mc, so the session had no call-sign to pass at launch --
+# `--name CONTROL` needs a decision that had not been made yet. Every hand-started Control
+# failed it, deploy never launches Control, and the user got the lecture on every fleet.
+# Reported 2026-08-24, twice in one evening, and it was right both times.
+#
+# What the mismatch actually costs is peers spending transmissions reporting a fault none of
+# them can fix -- measured: two stations, first transmission each. Publishing removes that for
+# one line. The relaunch still exists in fix-header.sh for anyone who asks for it.
 if ! ps -o args= -p "$CLAUDE_PID" 2>/dev/null | grep -q -- "--name"; then
+  MYENV=$(python3 -c "import json,sys
+d=json.load(open(sys.argv[1])); f=d.get('formerNames') or []
+print(f[0] if f else d.get('name',''))" "$REG" 2>/dev/null)
   echo ""
-  echo "YOUR @ HEADER IS WRONG AND THIS COMMAND IS THE ONLY FIX. Launched without --name, so"
-  echo "every message you send is stamped with your start-time handle -- and a peer replying"
-  echo "to that name gets \"No agent named ... is reachable\" (measured). Quit Claude in THIS"
-  echo "tab and paste this; --resume keeps the whole conversation, --name fixes the envelope"
-  echo "and the tab title together:"
+  echo "PUBLISH YOUR ENVELOPE -- DO NOT ASK TO BE RELAUNCHED."
+  echo "This session was launched without --name, so everything you send arrives stamped"
+  echo "  @ ${MYENV:-<your birth handle>}   -- not $CALLSIGN."
+  echo "That value froze at launch and nothing here can reach it. There is nothing to repair"
+  echo "and nothing to put to the user."
   echo ""
-  MYSID=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('sessionId',''))" "$REG" 2>/dev/null)
-  MYCWD=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('cwd',''))" "$REG" 2>/dev/null)
-  MYKIND=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('kind',''))" "$REG" 2>/dev/null)
-  BGFLAG=""; [ "$MYKIND" = "bg" ] && BGFLAG="--bg "
-  echo "  cd '$MYCWD' && claude ${BGFLAG}--name '$CALLSIGN' --resume $MYSID"
+  echo "TWO PLACES, AND YOU ARE WRITING BOTH ANYWAY:"
+  echo "  1. your board row -> $CALLSIGN · envelope ${MYENV:-<handle>}"
+  echo "  2. your first transmission, once ->"
+  echo "     \"address $CALLSIGN; the name on my envelope is not my call-sign --"
+  echo "      do not spend a transmission reporting it back.\""
   echo ""
-  echo "  ...and then run  /mc identify $CALLSIGN  in the new session. --resume keeps the"
-  echo "  conversation but the relaunched process gets a NEW [ref], so the board's row would"
-  echo "  otherwise point at a dead address -- which is how Control concludes a station died"
-  echo "  and hands its work to somebody else. identify rewrites the row in place."
-  echo ""
-  echo "  (fix-header.sh prints this again any time. Do NOT report the header as fixed until a"
-  echo "   peer has read the envelope back to you -- it is the one value you cannot see.)"
-  echo ""
-  echo "NEXT TIME, PUT THE FLAG ON THE FIRST LAUNCH. Hand-starting a station with a bare"
-  echo "  \`claude\` costs four things every time, and they compound: a NEW REF (so the board's"
-  echo "  row points at a dead address and Control reads the station as dead and reassigns its"
-  echo "  work), a stale envelope, a drifting tab title, and a row rewrite. Start it as"
-  echo ""
-  echo "    cd '$MYCWD' && claude ${BGFLAG}--name '$CALLSIGN'"
-  echo ""
-  echo "  and identify has nothing to repair. \`/mc deploy\` does exactly this for you."
+  echo "A reply addressed to the envelope is the one thing that fails, and it fails DEAD --"
+  echo "a former name does not resolve, and when the call-sign shares no characters with the"
+  echo "handle the bounce suggests nothing at all (measured 2026-08-24, both shapes). Published,"
+  echo "nobody addresses it. If the USER asks for the repair, fix-header.sh prints it."
   echo ""
 fi
 
 echo "NOTE: every peer keeps seeing your OLD handle on the \`@\` header -- not only the ones with a"
 echo "      channel already open. That name is your SESSION'S START-TIME name, stamped on everything"
 echo "      you send; there is one socket per session and no per-channel handshake, so a channel"
-echo "      opened after this rename carries the old name too (measured 2026-08-22). ONLY A RESTART"
-echo "      clears it -- BUT A RESTART NEED NOT COST THE CONVERSATION. Run fix-header.sh for the"
-echo "      exact relaunch line: \`claude --name <CALLSIGN> --resume <sessionId>\` reopens THIS"
-echo "      session with the right identity, and fixes the tab title in the same move."
+echo "      opened after this rename carries the old name too (measured 2026-08-22). Only a restart"
+echo "      clears it, and THAT IS NOT A TASK FOR YOU TO RAISE -- publish the handle instead (above)."
+echo "      fix-header.sh prints the relaunch line if the USER asks for it; do not volunteer it."
 echo "      Do not report the \`@\` header as changed, and do not reopen a channel"
 echo "      expecting a fresh one. Open every transmission with \"<CALLSIGN> TO <CALLSIGN>\" -- the"
 echo "      body is the only correct identity your peer receives."

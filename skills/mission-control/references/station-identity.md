@@ -126,6 +126,14 @@ If you hand-start a station, do what deploy does:
 cd '<the station's worktree>' && claude --name '<CALLSIGN>'
 ```
 
+**That advice is for STATIONS, and CONTROL is the one post it cannot reach.** Control is whoever
+runs `/mc` — the post is taken, not deployed — so at launch there was no call-sign to pass.
+`--name CONTROL` needs a decision that had not been made yet. **Never tell a hand-started Control
+it should have used `--name`, and never ask it to relaunch;** publish the envelope handle on its
+board row and in each station's first order instead. A person hand-starting a *station* already
+knows the call-sign, so for them this genuinely is a next-time — mention it once, in passing, and
+only if they are starting stations by hand.
+
 **A bare `claude` costs four things, every time, and they compound:**
 
 1. **A new `[ref]`.** The board's row for that call-sign now points at a dead address, so Control
