@@ -70,19 +70,36 @@ root = os.environ.get("ROOT", "").rstrip("/")
 if not root:
     raise SystemExit(0)
 
-# ONE COLOUR, VIOLET (256-colour 141), FOR EVERY CALL-SIGN. A per-station palette was
-# built and reverted: it made the line prettier and less readable, because a reader has to
-# learn what each colour MEANS before it tells them anything, and the meaning changes the
-# moment a station joins or leaves. Violet is the choice because it is the one hue in a
-# terminal that carries NO convention -- not error (red), not warning (yellow), not success
-# (green), not information (blue/cyan). A call-sign is identity, not status, so it should
-# borrow no status colour. It is also furthest from the footer's own yellow directly below.
-CS = 141
+# TWO COLOURS, AND EACH ONE MEANS EXACTLY ONE THING: can you see this station or not.
+#
+#   violet (141)      BACKGROUND -- no window anywhere. This line is the ONLY evidence it
+#                     exists, which is the whole reason the line exists.
+#   steel blue (111)  INTERACTIVE -- it has a tab or a window on your screen already. The
+#                     row is a reminder, not a discovery.
+#
+# A per-station palette was built before this and reverted: a colour that means "which
+# station" has to be LEARNED, and its meaning moved whenever the fleet did. A colour that
+# means "visible or not" is read at a glance and never changes meaning.
+#
+# WHY IT IS MEASURED, NOT CONFIGURED. The obvious build gated the whole line on the spawn
+# preference -- show it only when stations are set to background. That is wrong for a
+# HYBRID fleet, and hybrids are a supported case: `spawn.once` exists precisely so one
+# station can open in a window while the standing preference stays background. The
+# preference describes FUTURE DEPLOYS; `kind` in the session registry describes what is
+# actually running. Gating a live readout on a default is 6.89.0's bug in a new costume:
+# reading a stale proxy instead of the state itself.
+#
+# NEITHER IS A STATUS COLOUR -- not error (red), warning (yellow), success (green) or
+# information (cyan). A call-sign is identity, and the second signal is visibility; neither
+# is a health claim. Both are also far from the footer's own yellow directly below.
+CS_BG, CS_VIS = 141, 111
 
-# BUSY IS FULL COLOUR, IDLE IS THE SAME COLOUR DIMMED -- never bold. Bold changes the
-# LETTERFORMS, so a station starting work reflowed the whole line; with three stations
-# working that is near-constant movement under the prompt. Brightness changes nothing
-# about the glyphs, so the line holds still while it updates.
+# BUSY IS BOLD AND FULL COLOUR; IDLE IS THE SAME COLOUR DIMMED. Bold was removed in
+# 6.91.0 because it changes the LETTERFORMS, so a station starting work nudges the rest of
+# the line -- and it was asked for again, deliberately, after seeing both. It is the right
+# call: on a proportional-width terminal font the shift is slight, and a station actually
+# working is the one thing on this line worth catching your eye from across the desk.
+# Idle stays dim and unbolded, so the contrast between the two is now two signals wide.
 DIM, RESET = "\033[2m", "\033[0m"
 socks = os.environ.get("MC_SOCK_DIR") or "/tmp/cc-socks"
 here = os.path.basename(root)
@@ -121,14 +138,46 @@ for d in rows:
 if not named and len(rows) < 2:
     raise SystemExit(0)
 
+# `bg`, NOT `background`. Claude Code writes kind="bg" for a background session; this
+# compared against "background" from 6.89.0 to 6.92.0 and so NEVER MATCHED ONE. It went
+# unseen because the suite's own fixture wrote "background" -- a value the real registry
+# does not produce. A test fixture that invents its input tests the fixture.
+def is_bg(d):
+    return (d.get("kind") or "") in ("bg", "background")
+
+# ORDER: THE COORDINATOR FIRST, THEN BY WHEN EACH STATION TOOK ITS CALL-SIGN. Alphabetical
+# was the old order and it is meaningless here -- a fleet is not a dictionary. Control is
+# leftmost because it is the one post that is always the same post, so the eye starts from
+# a fixed point; everyone else follows in the order they identified, which is the order you
+# deployed them and therefore the order you already think of them in.
+#
+# `nameSince` is written by Claude Code when a session takes a name, so it is the real
+# identification moment. NOT the file's mtime: that is rewritten on every status change, so
+# ordering by it would reshuffle the whole line every time anybody went busy or idle.
+COORD = "CONTROL"
+try:
+    cfg = os.environ.get("MC_CONFIG") or os.path.expanduser("~/.claude/mission-control.json")
+    with open(cfg) as fh:
+        c = (json.load(fh).get("naming", {}) or {}).get("coordinator", "")
+    if c.strip():
+        COORD = c.strip()
+except Exception:
+    pass  # a project that never named its coordinator uses the default, like mc-init does.
+
+def order(d):
+    n = d.get("name") or ""
+    return (0 if n.upper() == COORD.upper() else 1,
+            d.get("nameSince") or d.get("startedAt") or 0,
+            n)
+
 parts = []
-for d in sorted(named, key=lambda x: (x.get("kind") != "background", (x.get("name") or ""))):
-    # `(bg)`, NOT the `·bg` this first shipped with. Separators on this line are `·`, so a
-    # marker built from one read as a broken separator: `CHANNELS·bg · FRONTEND` parses by
-    # eye as three items, one of them called "bg".
-    bg = f"{DIM} (bg){RESET}" if d.get("kind") == "background" else ""
-    lit = "" if d.get("status") == "busy" else "2;"
-    parts.append(f"\033[{lit}38;5;{CS}m{d.get('name')}{RESET}{bg}")
+for d in sorted(named, key=order):
+    # NO `(bg)` SUFFIX ANY MORE. It shipped as `·bg`, became `(bg)` when the first form
+    # read as a broken separator, and is now gone entirely: colour carries the same fact
+    # without spending four characters per station on a line with no room to waste.
+    c = CS_BG if is_bg(d) else CS_VIS
+    lit = "1;" if d.get("status") == "busy" else "2;"
+    parts.append(f"\033[{lit}38;5;{c}m{d.get('name')}{RESET}")
 if unnamed:
     parts.append(f"{DIM}+{unnamed} unidentified{RESET}")
 

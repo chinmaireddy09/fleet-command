@@ -473,10 +473,17 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # path never matches the resolved one and the line renders empty for the wrong reason.
   SLR=$(cd "$SLR" && git rev-parse --show-toplevel)
   mkdir -p "$SLH/.claude/sessions" "$SLS"
-  slsess(){ printf '{"pid":%s,"name":"%s","cwd":"%s","kind":"%s","status":"%s"}' \
-              "$1" "$2" "$SLR" "${4:-interactive}" "${5:-idle}" > "$SLH/.claude/sessions/$1.json"
+  # kind is "bg" HERE BECAUSE THAT IS WHAT CLAUDE CODE WRITES. The fixture said
+  # "background" until 6.93.0 and the script compared against "background" too, so both
+  # agreed with each other and neither agreed with reality: no real background station was
+  # ever recognised, for four releases. A fixture that invents its input tests the fixture.
+  # nameSince is the identification moment, and the line orders by it.
+  slsess(){ printf '{"pid":%s,"name":"%s","cwd":"%s","kind":"%s","status":"%s","nameSince":%s}' \
+              "$1" "$2" "$SLR" "${4:-interactive}" "${5:-idle}" "${6:-$1}" > "$SLH/.claude/sessions/$1.json"
             [ "${3:-live}" = "live" ] && : > "$SLS/$1.sock"; }
-  slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
+  # MC_CONFIG points at nothing, so the coordinator falls back to CONTROL rather than
+  # reading the tester's own machine-level naming.
+  slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
   slplain(){ slrender "${1:-}" | sed $'s/\033\[[0-9;]*m//g'; }
 
   # THE SILENT CASE. One unidentified session and nothing else is not a fleet -- it is the
@@ -499,17 +506,19 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # Busy and idle must be distinguishable, or the line reports presence and calls it status.
   # BRIGHTNESS, NEVER WEIGHT: bold changes the letterforms, so a station starting work
   # reflowed the whole line -- near-constant movement under the prompt with three stations.
-  case "$(slrender)" in *$'\033[38;5;'*'mCONTROL'*) ok "a busy station is at full colour" ;; *) no "a busy station is at full colour" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;141mCONTROL'*) no "a busy station is never dimmed" "$(slrender | cat -v)" ;; *) ok "a busy station is never dimmed" ;; esac
   case "$(slrender)" in *$'\033[2;38;5;'*'mFRONTEND'*) ok "an idle one is the same hue, dimmed" ;; *) no "an idle one is the same hue, dimmed" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[1;'*) no "nothing on the line is bold" "$(slrender | cat -v)" ;; *) ok "nothing on the line is bold" ;; esac
+  # Bold marks the busy station -- removed in 6.91.0, asked for again after seeing both.
+  case "$(slrender)" in *$'\033[1;38;5;111mCONTROL'*|*$'\033[1;38;5;141mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[1;38;5;111mFRONTEND'*|*$'\033[1;38;5;141mFRONTEND'*) no "an idle one is never bold" "$(slrender | cat -v)" ;; *) ok "an idle one is never bold" ;; esac
 
   # ONE COLOUR FOR EVERY CALL-SIGN. A per-station palette was built and reverted: it made
   # the line prettier and less readable, because a colour only says something once the
   # reader has learned what it means, and its meaning moved whenever the fleet did.
-  slsess 9010 BACKEND; slsess 9011 FE-GATE; slsess 9012 CHANNELS live background idle
-  HUES=$(slrender | grep -o '38;5;[0-9]*' | sort -u)
-  [ "$HUES" = "38;5;141" ] && ok "every call-sign is the same violet" \
-    || no "every call-sign is the same violet" "$HUES"
+  slsess 9010 BACKEND; slsess 9011 PAYMENTS; slsess 9012 CHANNELS live bg idle
+  HUES=$(slrender | grep -o '38;5;[0-9]*' | sort -u | tr '\n' ' ')
+  case "$HUES" in "38;5;111 38;5;141 "|"38;5;141 "|"38;5;111 ") ok "only the two visibility colours are used" ;;
+                  *) no "only the two visibility colours are used" "$HUES" ;; esac
   # Violet on purpose: the one terminal hue carrying no convention -- not error, warning,
   # success or information. A call-sign is identity, so it borrows no status colour.
   case "$(slrender)" in *$'\033[31m'*|*$'\033[32m'*|*$'\033[33m'*|*$'\033[36m'*)
@@ -519,11 +528,25 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   [ "$(slrender)" = "$(slrender)" ] && ok "two renders agree byte for byte" \
     || no "two renders agree byte for byte" "they differed"
   for p in 9010 9011 9012; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
-  # `(bg)`, not `·bg`: separators on this line are `·`, so a marker built from one reads
-  # by eye as a broken separator and turns "bg" into a third station.
-  slsess 9003 CHANNELS live background idle
-  chk "a background station is marked"         "$(slplain)" "CHANNELS (bg)"
-  case "$(slplain)" in *"CHANNELS·bg"*) no "the bg marker cannot look like a separator" "$(slplain)" ;; *) ok "the bg marker cannot look like a separator" ;; esac
+  # VISIBILITY IS THE SECOND SIGNAL, and it is MEASURED from the registry's `kind`, never
+  # read from the spawn preference -- the preference describes future deploys, and a hybrid
+  # fleet (spawn.once) can disagree with it right now.
+  slsess 9003 CHANNELS live bg idle
+  case "$(slrender)" in *$'\033[2;38;5;141mCHANNELS'*) ok "a background station is violet" ;; *) no "a background station is violet" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;111mFRONTEND'*) ok "a visible one is steel blue" ;; *) no "a visible one is steel blue" "$(slrender | cat -v)" ;; esac
+  # The old `(bg)` suffix is gone: colour says it without spending four characters a station.
+  case "$(slplain)" in *"(bg)"*|*"·bg"*) no "no bg suffix survives" "$(slplain)" ;; *) ok "no bg suffix survives" ;; esac
+
+  # ORDER: coordinator leftmost, then by when each station took its call-sign. Alphabetical
+  # was the old order; a fleet is not a dictionary. ZEBRA identified before ALPHA, so ZEBRA
+  # comes first -- an alphabetical sort would put ALPHA there and a test would not notice.
+  for p in 9001 9002 9003; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
+  slsess 9020 ZEBRA   live bg          idle 1000
+  slsess 9021 CONTROL live interactive busy 2000
+  slsess 9022 ALPHA   live bg          busy 3000
+  chk "the coordinator leads, then identification order" "$(slplain)" "fleet · CONTROL · ZEBRA · ALPHA"
+  for p in 9020 9021 9022; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
+  slsess 9001 CONTROL live interactive busy; slsess 9002 FRONTEND; slsess 9003 CHANNELS live bg idle
 
   # A generated handle is an ADDRESS (VOCABULARY.md). It is counted, never printed --
   # BOTH shapes: `<repo>-<hex>` from a hand-started session, and a bare hex id.

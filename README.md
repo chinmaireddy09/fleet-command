@@ -96,20 +96,28 @@ this to `~/.claude/settings.json`:
 ```
 
 ```
-fleet · BACKEND · CHANNELS (bg) · FRONTEND · +1 unidentified
+fleet · CONTROL · BACKEND · CHANNELS · FRONTEND · +1 unidentified
 ```
 
 Built from the same pieces as Claude Code's own `auto mode on · 1 shell · ← 1 agent` below it:
-dim label, dim `·` separators, colour for the live values. `(bg)` is a background station.
+dim label, dim `·` separators, colour for the live values.
 
-**Violet, for every call-sign.** It is the one hue a terminal carries no convention for — not
-error, not warning, not success, not information. A call-sign is *identity*, not status, so it
-borrows no status colour. (A per-station palette was built and reverted: a colour only tells you
-something once you have learned what it means, and its meaning moved whenever the fleet did.)
+**Colour says whether you can see the station.** Violet is a **background** station — no window
+anywhere, so this line is the only evidence it exists. Steel blue is **interactive** — it already
+has a tab or a window on your screen, so the row is a reminder rather than a discovery. Neither is
+a status colour: not error, warning, success or information. A call-sign is identity, and
+visibility is not a health claim.
 
-**Busy is full colour, idle is the same hue dimmed** — brightness, never weight. Bold changes the
-letterforms, so a station starting work reflowed the whole line; with three stations that is
-constant movement in the one place you cannot look away from.
+That distinction is **measured, not configured.** It reads `kind` from the session registry, never
+the spawn preference — the preference describes *future deploys*, and a hybrid fleet (`spawn.once`)
+can disagree with it right now.
+
+**Bold is busy; idle is the same colour dimmed.** Two signals wide, so the station actually working
+is the one your eye lands on from across the desk.
+
+**Order: the coordinator leftmost, then whoever identified next, and next.** The eye starts from a
+fixed point and the rest follow in the order you deployed them. (It was alphabetical until 6.93.0.
+A fleet is not a dictionary.)
 
 **Only this repo's sessions** — the registry holds every Claude session on the machine, and a
 status line showing an unrelated project as if it were your fleet is the worst possible place
@@ -275,6 +283,10 @@ ls ~/.claude/skills/mission-control/SKILL.md ~/.claude/commands/mc.md
 
 Take only the ones you want; each skill directory is self-contained. To update later, `git pull`
 and copy again.
+
+**Optional, and worth it:** [the fleet status line](#see-your-fleet-under-the-prompt) puts this
+repo's live stations under your prompt. It is a **user-level** setting — one `statusLine` key in
+`~/.claude/settings.json`, applying to every project — not something a repo can turn on for you.
 
 ### Nothing to configure — `deploy` asks you once
 
