@@ -117,9 +117,12 @@ for sid in [k for k in sess if k not in live]:
     del sess[sid]
     pruned += 1
 
-# A PASS THAT SAW NOTHING WRITES NOTHING. If the terminal told us about no tabs at all,
-# the safe conclusion is that this probe failed, not that the fleet has no windows.
+# A PASS THAT SAW NOTHING WRITES NOTHING -- but it must still SAY SO. The first cut of
+# this exited silently, which made the probe indistinguishable from a probe that had not
+# run, and broke the one test asserting it always reports what it did. Silence is not a
+# result; "I saw nothing" is.
 if n == 0 and sess == {}:
+    print("WINDOW: nothing recorded — no live session matched a terminal tab")
     raise SystemExit(0)
 
 t = tempfile.NamedTemporaryFile("w", dir=os.path.dirname(f) or ".", delete=False)

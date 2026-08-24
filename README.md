@@ -108,10 +108,10 @@ fleet · CONTROL · BACKEND · CHANNELS · FRONTEND · +1 unidentified
 Built from the same pieces as Claude Code's own `auto mode on · 1 shell · ← 1 agent` below it:
 dim label, dim `·` separators, colour for the live values.
 
-**Colour says how visible the station is.** **Purple** — a *background* station, no window
-anywhere, so this line is the only evidence it exists. **Turquoise** — a *tab*, visible but behind
-whichever tab is forward. **Gold** — its *own window*, the most visible a station gets, so the row
-is a reminder rather than a discovery.
+**Colour says how visible the station is.** **Gold** — a *background* station, no window anywhere,
+so this line is the only evidence it exists. **Purple** — a *tab*, visible but behind whichever tab
+is forward. **Turquoise** — its *own window*, the most visible a station gets, so the row is a
+reminder rather than a discovery.
 
 The three are roughly a third of the colour wheel apart, on purpose. An analogous triad was tried
 first and failed the only test that matters: adjacent hues read as one colour at 12px.

@@ -90,13 +90,13 @@ if not root:
 
 # TWO COLOURS, AND EACH ONE MEANS EXACTLY ONE THING: can you see this station or not.
 #
-#   violet (141)      BACKGROUND -- no window anywhere. This line is the ONLY evidence it
-#                     exists, which is the whole reason the line exists.
-#   turquoise (80)    A TAB in some window. Visible, but behind whichever tab is forward,
+#   gold (179)        BACKGROUND -- no window anywhere. This line is the ONLY evidence it
+#                     exists, which is the whole reason the line exists, so it gets the
+#                     warmest of the three.
+#   purple (141)      A TAB in some window. Visible, but behind whichever tab is forward,
 #                     so the line still tells you something.
-#   gold (179)        ITS OWN WINDOW. The most visible a station gets; the row is a
-#                     reminder, not a discovery. Muted rather than bright, so it does not
-#                     compete with the footer's own yellow directly beneath it.
+#   turquoise (80)    ITS OWN WINDOW. The most visible a station gets; the row is a
+#                     reminder, not a discovery.
 #
 # WIDE HUE STEPS ON PURPOSE. The first attempt was an analogous triad -- purple 141, blue
 # 111, aqua 115 -- which is prettier on a swatch and useless on a status line: 141 and 111
@@ -119,7 +119,7 @@ if not root:
 # NEITHER IS A STATUS COLOUR -- not error (red), warning (yellow), success (green) or
 # information (cyan). A call-sign is identity, and the second signal is visibility; neither
 # is a health claim. Both are also far from the footer's own yellow directly below.
-CS_BG, CS_TAB, CS_WIN = 141, 80, 179
+CS_BG, CS_TAB, CS_WIN = 179, 141, 80
 
 # WHICH MODE A STATION GOT is not in the session registry -- `kind` says `bg` or
 # `interactive` and nothing finer -- so the deploy writes it down and this reads it back.
