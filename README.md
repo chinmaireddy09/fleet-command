@@ -108,13 +108,15 @@ fleet · CONTROL · BACKEND · CHANNELS · FRONTEND · +1 unidentified
 Built from the same pieces as Claude Code's own `auto mode on · 1 shell · ← 1 agent` below it:
 dim label, dim `·` separators, colour for the live values.
 
-**Colour says how visible the station is.** **Gold** — a *background* station, no window anywhere,
-so this line is the only evidence it exists. **Purple** — a *tab*, visible but behind whichever tab
-is forward. **Turquoise** — its *own window*, the most visible a station gets, so the row is a
-reminder rather than a discovery.
+**Colour says how visible the station is.** **Magenta** — a *background* station, no window
+anywhere, so this line is the only evidence it exists and it gets the most arresting hue.
+**Orange** — a *tab*, visible but behind whichever tab is forward. **Cyan** — its *own window*,
+already the most visible thing you own, so it gets the calm one.
 
-The three are roughly a third of the colour wheel apart, on purpose. An analogous triad was tried
-first and failed the only test that matters: adjacent hues read as one colour at 12px.
+They are the print primaries, ~120° apart — as far as three vibrant colours can get from each
+other, which is what makes them memorable rather than merely bright. Two earlier sets failed the
+same test, and it is always the *dimmed* one: an analogous triad read as a single colour at
+terminal size, and a softer pastel set converged the moment every station went idle.
 
 **Your own station is boxed.** Colour tells you how visible a station is; it cannot tell you which
 tab you are *in*, and on a screen of identical-looking tabs that is the question you actually have.

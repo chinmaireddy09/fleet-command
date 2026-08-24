@@ -90,19 +90,26 @@ if not root:
 
 # TWO COLOURS, AND EACH ONE MEANS EXACTLY ONE THING: can you see this station or not.
 #
-#   gold (179)        BACKGROUND -- no window anywhere. This line is the ONLY evidence it
-#                     exists, which is the whole reason the line exists, so it gets the
-#                     warmest of the three.
-#   purple (141)      A TAB in some window. Visible, but behind whichever tab is forward,
-#                     so the line still tells you something.
-#   turquoise (80)    ITS OWN WINDOW. The most visible a station gets; the row is a
-#                     reminder, not a discovery.
+#   magenta (201)     BACKGROUND -- no window anywhere. This line is the ONLY evidence it
+#                     exists, so it gets the most arresting hue of the three: it is the one
+#                     station you cannot find by looking at your screen.
+#   orange (208)      A TAB in some window. Visible, but behind whichever tab is forward.
+#   cyan (51)         ITS OWN WINDOW. Already the most visible thing you own, so it gets
+#                     the calm one -- the row is a reminder, not a discovery.
 #
-# WIDE HUE STEPS ON PURPOSE. The first attempt was an analogous triad -- purple 141, blue
-# 111, aqua 115 -- which is prettier on a swatch and useless on a status line: 141 and 111
-# are adjacent hues and read as ONE colour at 12px, reported as "i dont see any difference
-# with colors". These three are roughly a third of the wheel apart and stay separable when
-# every station is dimmed, which is the case that actually has to work.
+# THE PRINT PRIMARIES, AND THE SPACING IS THE POINT. Roughly 120 degrees apart, which is as
+# far as three vibrant colours can get from each other. That is what makes them memorable
+# rather than merely bright: you stop reading the words and recognise the hue.
+#
+# TWO EARLIER SETS FAILED THE SAME TEST AND IT IS ALWAYS THE DIM ONE. An analogous triad
+# (purple 141, blue 111, aqua 115) read as ONE colour at terminal size -- "i dont see any
+# difference with colors" -- and a softer pastel set converged as soon as every station
+# went idle. High chroma has the most to lose to dimming and still leaves plenty; that is
+# the whole argument for vibrance here, and it is not an aesthetic one.
+#
+# NONE OF THE THREE IS A STATUS COLOUR -- not error red, warning yellow, success green or
+# information blue. A call-sign is identity and visibility is not a health claim. Orange
+# 208 is the closest to an alert hue and sits on TAB, the least alarming of the three roles.
 #
 # A per-station palette was built before this and reverted: a colour that means "which
 # station" has to be LEARNED, and its meaning moved whenever the fleet did. A colour that
@@ -119,7 +126,7 @@ if not root:
 # NEITHER IS A STATUS COLOUR -- not error (red), warning (yellow), success (green) or
 # information (cyan). A call-sign is identity, and the second signal is visibility; neither
 # is a health claim. Both are also far from the footer's own yellow directly below.
-CS_BG, CS_TAB, CS_WIN = 179, 141, 80
+CS_BG, CS_TAB, CS_WIN = 201, 208, 51
 
 # WHICH MODE A STATION GOT is not in the session registry -- `kind` says `bg` or
 # `interactive` and nothing finer -- so the deploy writes it down and this reads it back.

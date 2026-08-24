@@ -520,28 +520,27 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # Busy and idle must be distinguishable, or the line reports presence and calls it status.
   # BRIGHTNESS, NEVER WEIGHT: bold changes the letterforms, so a station starting work
   # reflowed the whole line -- near-constant movement under the prompt with three stations.
-  case "$(slrender)" in *$'\033[2;38;5;141mCONTROL'*) no "a busy station is never dimmed" "$(slrender | cat -v)" ;; *) ok "a busy station is never dimmed" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;208mCONTROL'*) no "a busy station is never dimmed" "$(slrender | cat -v)" ;; *) ok "a busy station is never dimmed" ;; esac
   case "$(slrender)" in *$'\033[2;38;5;'*'mFRONTEND'*) ok "an idle one is the same hue, dimmed" ;; *) no "an idle one is the same hue, dimmed" "$(slrender | cat -v)" ;; esac
   # `shell` IS WORK. This tested `== "busy"` until 6.94.0, so a station running a shell
   # command -- status "shell", seen live -- rendered as resting. Only `idle` rests now.
   slsess 9040 SHELLED live interactive shell 9040
-  case "$(slrender)" in *$'\033[1;38;5;141mSHELLED'*) ok "a station running a shell is working" ;; *) no "a station running a shell is working" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[1;38;5;208mSHELLED'*) ok "a station running a shell is working" ;; *) no "a station running a shell is working" "$(slrender | cat -v)" ;; esac
   # ...but a record with no status at all must not be promoted to working.
   printf '{"pid":9041,"name":"NOSTATUS","cwd":"%s","kind":"interactive","nameSince":9041}' "$SLR" > "$SLH/.claude/sessions/9041.json"; : > "$SLS/9041.sock"
-  case "$(slrender)" in *$'\033[2;38;5;141mNOSTATUS'*) ok "a station with no status stays dim" ;; *) no "a station with no status stays dim" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;208mNOSTATUS'*) ok "a station with no status stays dim" ;; *) no "a station with no status stays dim" "$(slrender | cat -v)" ;; esac
   for p in 9040 9041; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
 
   # Bold marks the busy station -- removed in 6.91.0, asked for again after seeing both.
-  case "$(slrender)" in *$'\033[1;38;5;141mCONTROL'*|*$'\033[1;38;5;141mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[1;38;5;141mFRONTEND'*|*$'\033[1;38;5;179mFRONTEND'*) no "an idle one is never bold" "$(slrender | cat -v)" ;; *) ok "an idle one is never bold" ;; esac
+  case "$(slrender)" in *$'\033[1;38;5;208mCONTROL'*|*$'\033[1;38;5;208mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[1;38;5;208mFRONTEND'*|*$'\033[1;38;5;201mFRONTEND'*) no "an idle one is never bold" "$(slrender | cat -v)" ;; *) ok "an idle one is never bold" ;; esac
 
   # ONE COLOUR FOR EVERY CALL-SIGN. A per-station palette was built and reverted: it made
   # the line prettier and less readable, because a colour only says something once the
   # reader has learned what it means, and its meaning moved whenever the fleet did.
   slsess 9010 BACKEND; slsess 9011 PAYMENTS; slsess 9012 CHANNELS live bg idle
   HUES=$(slrender | grep -o '38;5;[0-9]*' | sort -u | tr '\n' ' ')
-  case "$HUES" in *38\;5\;1[14]*) : ;; *) no "only the visibility triad is used" "$HUES"; false ;; esac 2>/dev/null
-  BAD=$(printf '%s' "$HUES" | tr ' ' '\n' | grep -v '^$' | grep -vE '^38;5;(141|80|179)$' || true)
+  BAD=$(printf '%s' "$HUES" | tr ' ' '\n' | grep -v '^$' | grep -vE '^38;5;(208|51|201)$' || true)
   [ -z "$BAD" ] && ok "only the visibility triad is used" || no "only the visibility triad is used" "$BAD"
   # Violet on purpose: the one terminal hue carrying no convention -- not error, warning,
   # success or information. A call-sign is identity, so it borrows no status colour.
@@ -556,19 +555,19 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # read from the spawn preference -- the preference describes future deploys, and a hybrid
   # fleet (spawn.once) can disagree with it right now.
   slsess 9003 CHANNELS live bg idle
-  case "$(slrender)" in *$'\033[2;38;5;179mCHANNELS'*) ok "a background station is gold" ;; *) no "a background station is gold" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[2;38;5;141mFRONTEND'*) ok "a tab station is purple" ;; *) no "a tab station is purple" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;201mCHANNELS'*) ok "a background station is magenta" ;; *) no "a background station is magenta" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;208mFRONTEND'*) ok "a tab station is orange" ;; *) no "a tab station is orange" "$(slrender | cat -v)" ;; esac
   # A WINDOW is not distinguishable from a TAB in the session registry -- `kind` says only
   # bg or interactive -- so the deploy records which it opened and the line reads it back.
   printf '{"stations":{"%s":{"WINDOWED":"window","FRONTEND":"tab"}}}' "$SLR" > "$SLH/spawns.json"
   slsess 9030 WINDOWED live interactive idle 9030
-  case "$(slrender)" in *$'\033[2;38;5;80mWINDOWED'*) ok "a windowed station is turquoise" ;; *) no "a windowed station is turquoise" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;51mWINDOWED'*) ok "a windowed station is cyan" ;; *) no "a windowed station is cyan" "$(slrender | cat -v)" ;; esac
   # MEASURED BEATS RECORDED: a session reporting bg is background whatever the log says.
   printf '{"stations":{"%s":{"CHANNELS":"window"}}}' "$SLR" > "$SLH/spawns.json"
-  case "$(slrender)" in *$'\033[2;38;5;179mCHANNELS'*) ok "the live registry outranks the spawn log" ;; *) no "the live registry outranks the spawn log" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;201mCHANNELS'*) ok "the live registry outranks the spawn log" ;; *) no "the live registry outranks the spawn log" "$(slrender | cat -v)" ;; esac
   # A hand-started session has no record and must not be guessed into a window.
   : > "$SLH/spawns.json"
-  case "$(slrender)" in *$'\033[2;38;5;80mWINDOWED'*) no "an unrecorded station falls back to tab" "$(slrender | cat -v)" ;; *) ok "an unrecorded station falls back to tab" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;51mWINDOWED'*) no "an unrecorded station falls back to tab" "$(slrender | cat -v)" ;; *) ok "an unrecorded station falls back to tab" ;; esac
   rm -f "$SLH/.claude/sessions/9030.json" "$SLS/9030.sock" "$SLH/spawns.json"
   # The old `(bg)` suffix is gone: colour says it without spending four characters a station.
   case "$(slplain)" in *"(bg)"*|*"·bg"*) no "no bg suffix survives" "$(slplain)" ;; *) ok "no bg suffix survives" ;; esac
@@ -595,22 +594,22 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # tabs=2 for the pair, tabs=1 for the one that owns its window -- the shape the probe writes.
   printf '{"sessions":{"sid-t1":{"window":"w7","tabs":2},"sid-t2":{"window":"w7","tabs":2},"sid-w1":{"window":"w9","tabs":1}}}' > "$SLH/windows.json"
   O=$(slrender)
-  case "$O" in *$'\033[2;38;5;141mTABBED-A'*) ok "two stations in one window are tabs" ;; *) no "two stations in one window are tabs" "$(printf '%s' "$O" | cat -v)" ;; esac
-  case "$O" in *$'\033[2;38;5;141mTABBED-B'*) ok "and so is the other one" ;; *) no "and so is the other one" "$(printf '%s' "$O" | cat -v)" ;; esac
-  case "$O" in *$'\033[2;38;5;80mALONE'*) ok "a station alone in its window is turquoise" ;; *) no "a station alone in its window is turquoise" "$(printf '%s' "$O" | cat -v)" ;; esac
+  case "$O" in *$'\033[2;38;5;208mTABBED-A'*) ok "two stations in one window are tabs" ;; *) no "two stations in one window are tabs" "$(printf '%s' "$O" | cat -v)" ;; esac
+  case "$O" in *$'\033[2;38;5;208mTABBED-B'*) ok "and so is the other one" ;; *) no "and so is the other one" "$(printf '%s' "$O" | cat -v)" ;; esac
+  case "$O" in *$'\033[2;38;5;51mALONE'*) ok "a station alone in its window is cyan" ;; *) no "a station alone in its window is cyan" "$(printf '%s' "$O" | cat -v)" ;; esac
   # A STALE COUNT MUST NOT OVER-CLAIM. Close one of the pair and the grouping now sees one
   # station in w7 -- but the recorded count still says 2 tabs, and a tab that holds no
   # station is still a tab. Both must agree before the line calls it a window.
   rm -f "$SLH/.claude/sessions/9061.json" "$SLS/9061.sock"
-  case "$(slrender)" in *$'\033[2;38;5;141mTABBED-A'*) ok "a stale tab count is not over-claimed" ;; *) no "a stale tab count is not over-claimed" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;208mTABBED-A'*) ok "a stale tab count is not over-claimed" ;; *) no "a stale tab count is not over-claimed" "$(slrender | cat -v)" ;; esac
   # Re-probed (tabs now 1) it becomes a window, which is what a fresh probe would record.
   printf '{"sessions":{"sid-t1":{"window":"w7","tabs":1}}}' > "$SLH/windows.json"
-  case "$(slrender)" in *$'\033[2;38;5;80mTABBED-A'*) ok "and a re-probe promotes it" ;; *) no "and a re-probe promotes it" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;51mTABBED-A'*) ok "and a re-probe promotes it" ;; *) no "and a re-probe promotes it" "$(slrender | cat -v)" ;; esac
   # No probe record falls back to the deploy log, then to tab -- never guessed into a window.
   : > "$SLH/windows.json"
   printf '{"stations":{"%s":{"ALONE":"window"}}}' "$SLR" > "$SLH/spawns.json"
-  case "$(slrender)" in *$'\033[2;38;5;80mALONE'*) ok "no probe falls back to the deploy log" ;; *) no "no probe falls back to the deploy log" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[2;38;5;141mTABBED-A'*) ok "and to tab when neither knows" ;; *) no "and to tab when neither knows" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;51mALONE'*) ok "no probe falls back to the deploy log" ;; *) no "no probe falls back to the deploy log" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;208mTABBED-A'*) ok "and to tab when neither knows" ;; *) no "and to tab when neither knows" "$(slrender | cat -v)" ;; esac
   for p in 9060 9062; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
   rm -f "$SLH/windows.json" "$SLH/spawns.json"
   slsess 9001 CONTROL live interactive busy; slsess 9002 FRONTEND; slsess 9003 CHANNELS live bg idle
@@ -621,10 +620,10 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   for p in 9001 9002 9003; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
   slsid 9050 sid-aaa MINE  idle
   slsid 9051 sid-bbb THEIRS busy
-  case "$(slas sid-aaa)" in *$'\033[7;38;5;141m MINE '*) ok "your own station is boxed" ;; *) no "your own station is boxed" "$(slas sid-aaa | cat -v)" ;; esac
-  case "$(slas sid-aaa)" in *$'\033[7;38;5;141m THEIRS '*) no "nobody else is boxed" "$(slas sid-aaa | cat -v)" ;; *) ok "nobody else is boxed" ;; esac
+  case "$(slas sid-aaa)" in *$'\033[7;38;5;208m MINE '*) ok "your own station is boxed" ;; *) no "your own station is boxed" "$(slas sid-aaa | cat -v)" ;; esac
+  case "$(slas sid-aaa)" in *$'\033[7;38;5;208m THEIRS '*) no "nobody else is boxed" "$(slas sid-aaa | cat -v)" ;; *) ok "nobody else is boxed" ;; esac
   # The box moves with the tab: the same fleet, read from the other session.
-  case "$(slas sid-bbb)" in *$'\033[7;38;5;141m THEIRS '*) ok "the box follows the reader" ;; *) no "the box follows the reader" "$(slas sid-bbb | cat -v)" ;; esac
+  case "$(slas sid-bbb)" in *$'\033[7;38;5;208m THEIRS '*) ok "the box follows the reader" ;; *) no "the box follows the reader" "$(slas sid-bbb | cat -v)" ;; esac
   # A box is never dimmed -- it says where you are, not what you are doing, and an idle
   # station is exactly when you most need to find your own row.
   case "$(slas sid-aaa)" in *$'\033[2;7'*|*$'\033[7;2'*) no "the box is never dimmed" "$(slas sid-aaa | cat -v)" ;; *) ok "the box is never dimmed" ;; esac
