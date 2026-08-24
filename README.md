@@ -206,6 +206,18 @@ fixed in the same move, since `--name` puts the call-sign in every title write.
 
 Stations from `/mc deploy` never need this — they launch with `--name` already.
 
+**Better still, never need the repair.** Hand-starting a station with a bare `claude` costs four
+things *every time*, and they compound: a **new ref** — so the board's row points at a dead address,
+Control reads the station as dead and reassigns its work — plus a stale envelope, a drifting tab
+title, and a row rewrite. One field fleet reached its *ninth* holder of a post this way. Start a
+hand-run station the way `deploy` does:
+
+```bash
+cd '<worktree>' && claude --name '<CALLSIGN>'
+```
+
+Then identify has nothing to repair.
+
 ### Speed
 
 `/mc` starts in **~0.3s**. It was 1.4s until 2026-08-24, and `git fetch` was 1.12s of that — a

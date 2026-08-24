@@ -193,6 +193,15 @@ if ! ps -o args= -p "$CLAUDE_PID" 2>/dev/null | grep -q -- "--name"; then
   echo "  (fix-header.sh prints this again any time. Do NOT report the header as fixed until a"
   echo "   peer has read the envelope back to you -- it is the one value you cannot see.)"
   echo ""
+  echo "NEXT TIME, PUT THE FLAG ON THE FIRST LAUNCH. Hand-starting a station with a bare"
+  echo "  \`claude\` costs four things every time, and they compound: a NEW REF (so the board's"
+  echo "  row points at a dead address and Control reads the station as dead and reassigns its"
+  echo "  work), a stale envelope, a drifting tab title, and a row rewrite. Start it as"
+  echo ""
+  echo "    cd '$MYCWD' && claude ${BGFLAG}--name '$CALLSIGN'"
+  echo ""
+  echo "  and identify has nothing to repair. \`/mc deploy\` does exactly this for you."
+  echo ""
 fi
 
 echo "NOTE: every peer keeps seeing your OLD handle on the \`@\` header -- not only the ones with a"
