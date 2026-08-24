@@ -227,6 +227,41 @@ TXT
   exit 0
 fi
 
+# ── RECORD WHICH MODE THIS STATION ACTUALLY GOT ─────────────────────────────────
+# The session registry says `bg` or `interactive` and nothing finer, so nothing
+# downstream can tell a station in its own WINDOW from one in a TAB. The deploy is the
+# only place that knows, so the deploy writes it down.
+#
+# WRITTEN HERE, NOT READ FROM THE PREFERENCE. The preference describes what the NEXT
+# deploy will do; this records what THIS one did. They disagree whenever `spawn.once` is
+# used, which is the whole reason that key exists. Same distinction as 6.89.0's: the state
+# itself, never a proxy for it.
+#
+# Keyed by repo root and call-sign, because a pid is not known until after the launch and
+# a station outlives the session manning it. User-level, like every other file this skill
+# owns -- a per-repo file would put one machine's window layout in everybody's checkout.
+if [ "$MODE" != "print" ]; then
+  SPAWNLOG="${MC_SPAWNLOG:-$HOME/.claude/mission-control-spawns.json}"
+  SP_ROOT=$(git -C "$WT" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$WT")
+  case "$SP_ROOT" in */.claude/worktrees/*) SP_ROOT="${SP_ROOT%%/.claude/worktrees/*}" ;; esac
+  SPAWNLOG="$SPAWNLOG" SP_ROOT="$SP_ROOT" SP_CS="$CALLSIGN" SP_MODE="$MODE" python3 - <<'PY' 2>/dev/null || true
+import json, os, tempfile
+f = os.environ["SPAWNLOG"]
+try:
+    with open(f) as fh: d = json.load(fh)
+    if not isinstance(d, dict): raise ValueError
+except FileNotFoundError:
+    d = {}
+except Exception:
+    raise SystemExit(0)   # unparseable: leave it alone, exactly as spawn-pref.sh does.
+d.setdefault("_comment", "written by mission-control spawn-station.sh: which mode each station was deployed in")
+d.setdefault("stations", {}).setdefault(os.environ["SP_ROOT"], {})[os.environ["SP_CS"]] = os.environ["SP_MODE"]
+t = tempfile.NamedTemporaryFile("w", dir=os.path.dirname(f) or ".", delete=False)
+json.dump(d, t, indent=2); t.write("\n"); t.close()
+os.replace(t.name, f)
+PY
+fi
+
 # ── shared reporting ────────────────────────────────────────────────────────────
 # Consumed here, AFTER the --deploy guard, so a --print or a no-deploy call never eats it.
 if [ -n "$ONCE_USED" ]; then

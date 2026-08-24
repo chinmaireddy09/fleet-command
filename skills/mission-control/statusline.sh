@@ -26,6 +26,19 @@
 # sounds like a fault. That case prints NOTHING. One session that HAS identified still
 # renders its chip -- that is the confirmation it identified at all.
 #
+# IT RE-RUNS ONLY ON YOUR OWN EVENTS, SO IT NEEDS `refreshInterval`. Claude Code re-runs a
+# status line when something happens IN THIS SESSION. Every other station's busy/idle
+# transition happens somewhere else and produces no event here, so without a timer the line
+# freezes at whatever it last saw -- reported 2026-08-24 as "it shows CHANNELS working but
+# in reality its idle", and the registry was right while the line was stale. Set it
+# alongside the command:
+#
+#   { "statusLine": { "type": "command", "refreshInterval": 5,
+#                     "command": "bash ~/.claude/skills/mission-control/statusline.sh" } }
+#
+# This is the one status line for which the timer is not a nicety: everything it reports
+# belongs to a DIFFERENT session, so local events are exactly the wrong clock.
+#
 # IT SPAWNS NOTHING. The obvious implementation shells out to `claude agents --json`; do
 # not. Measured 2026-08-24: that call takes ~0.21s, which a status line pays on every
 # render -- and worse, backgrounding it to hide the cost STARTS THE BACKGROUND SERVICE, a
@@ -74,8 +87,14 @@ if not root:
 #
 #   violet (141)      BACKGROUND -- no window anywhere. This line is the ONLY evidence it
 #                     exists, which is the whole reason the line exists.
-#   steel blue (111)  INTERACTIVE -- it has a tab or a window on your screen already. The
-#                     row is a reminder, not a discovery.
+#   cornflower (111)  A TAB in some window. Visible, but buried behind whichever tab is
+#                     forward, so the line still tells you something.
+#   aqua (115)        ITS OWN WINDOW. The most visible a station gets; the row is a
+#                     reminder, not a discovery.
+#
+# The three are an ANALOGOUS TRIAD -- even hue steps across purple, blue, teal, all in one
+# lightness band. They belong to each other at a glance and still separate when every one
+# of them is dimmed, which a softer set did not manage.
 #
 # A per-station palette was built before this and reverted: a colour that means "which
 # station" has to be LEARNED, and its meaning moved whenever the fleet did. A colour that
@@ -92,7 +111,19 @@ if not root:
 # NEITHER IS A STATUS COLOUR -- not error (red), warning (yellow), success (green) or
 # information (cyan). A call-sign is identity, and the second signal is visibility; neither
 # is a health claim. Both are also far from the footer's own yellow directly below.
-CS_BG, CS_VIS = 141, 111
+CS_BG, CS_TAB, CS_WIN = 141, 111, 115
+
+# WHICH MODE A STATION GOT is not in the session registry -- `kind` says `bg` or
+# `interactive` and nothing finer -- so the deploy writes it down and this reads it back.
+# A station started by hand has no record and falls back to the tab colour: it is visible
+# somewhere, which is all this can honestly claim about it.
+spawns = {}
+try:
+    f = os.environ.get("MC_SPAWNLOG") or os.path.expanduser("~/.claude/mission-control-spawns.json")
+    with open(f) as fh:
+        spawns = (json.load(fh).get("stations", {}) or {}).get(root, {}) or {}
+except Exception:
+    pass
 
 # BUSY IS BOLD AND FULL COLOUR; IDLE IS THE SAME COLOUR DIMMED. Bold was removed in
 # 6.91.0 because it changes the LETTERFORMS, so a station starting work nudges the rest of
@@ -175,8 +206,21 @@ for d in sorted(named, key=order):
     # NO `(bg)` SUFFIX ANY MORE. It shipped as `·bg`, became `(bg)` when the first form
     # read as a broken separator, and is now gone entirely: colour carries the same fact
     # without spending four characters per station on a line with no room to waste.
-    c = CS_BG if is_bg(d) else CS_VIS
-    lit = "1;" if d.get("status") == "busy" else "2;"
+    # MEASURED BEATS RECORDED. `kind` comes from the live registry; the spawn log is a
+    # note written at deploy time and can be stale if a station was relaunched by hand.
+    # So a session reporting `bg` is background whatever the log remembers.
+    if is_bg(d):
+        c = CS_BG
+    else:
+        c = CS_WIN if spawns.get(d.get("name")) == "window" else CS_TAB
+    # IDLE IS THE ONLY RESTING STATE; EVERYTHING ELSE IS WORK. This tested `== "busy"`
+    # until 6.94.0 and so rendered `status: "shell"` -- a station running a shell command,
+    # seen live on 2026-08-24 -- as though it were resting. Claude Code is free to add more
+    # working states, and an allow-list of them would be wrong again the next time one
+    # appears, so the test is inverted: only the state that MEANS resting reads as resting.
+    # A record with no status at all stays dim: absence of evidence is not evidence of work.
+    st = (d.get("status") or "idle").strip().lower()
+    lit = "2;" if st in ("idle", "") else "1;"
     parts.append(f"\033[{lit}38;5;{c}m{d.get('name')}{RESET}")
 if unnamed:
     parts.append(f"{DIM}+{unnamed} unidentified{RESET}")

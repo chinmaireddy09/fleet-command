@@ -483,7 +483,7 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
             [ "${3:-live}" = "live" ] && : > "$SLS/$1.sock"; }
   # MC_CONFIG points at nothing, so the coordinator falls back to CONTROL rather than
   # reading the tester's own machine-level naming.
-  slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
+  slrender(){ (cd "${1:-$SLR}" && HOME="$SLH" MC_CONFIG="$SLH/absent.json" MC_SPAWNLOG="$SLH/spawns.json" MC_SOCK_DIR="$SLS" timeout 10 bash "$SL" </dev/null 2>/dev/null); }
   slplain(){ slrender "${1:-}" | sed $'s/\033\[[0-9;]*m//g'; }
 
   # THE SILENT CASE. One unidentified session and nothing else is not a fleet -- it is the
@@ -508,6 +508,15 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # reflowed the whole line -- near-constant movement under the prompt with three stations.
   case "$(slrender)" in *$'\033[2;38;5;141mCONTROL'*) no "a busy station is never dimmed" "$(slrender | cat -v)" ;; *) ok "a busy station is never dimmed" ;; esac
   case "$(slrender)" in *$'\033[2;38;5;'*'mFRONTEND'*) ok "an idle one is the same hue, dimmed" ;; *) no "an idle one is the same hue, dimmed" "$(slrender | cat -v)" ;; esac
+  # `shell` IS WORK. This tested `== "busy"` until 6.94.0, so a station running a shell
+  # command -- status "shell", seen live -- rendered as resting. Only `idle` rests now.
+  slsess 9040 SHELLED live interactive shell 9040
+  case "$(slrender)" in *$'\033[1;38;5;111mSHELLED'*) ok "a station running a shell is working" ;; *) no "a station running a shell is working" "$(slrender | cat -v)" ;; esac
+  # ...but a record with no status at all must not be promoted to working.
+  printf '{"pid":9041,"name":"NOSTATUS","cwd":"%s","kind":"interactive","nameSince":9041}' "$SLR" > "$SLH/.claude/sessions/9041.json"; : > "$SLS/9041.sock"
+  case "$(slrender)" in *$'\033[2;38;5;111mNOSTATUS'*) ok "a station with no status stays dim" ;; *) no "a station with no status stays dim" "$(slrender | cat -v)" ;; esac
+  for p in 9040 9041; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
+
   # Bold marks the busy station -- removed in 6.91.0, asked for again after seeing both.
   case "$(slrender)" in *$'\033[1;38;5;111mCONTROL'*|*$'\033[1;38;5;141mCONTROL'*) ok "a busy station is bold" ;; *) no "a busy station is bold" "$(slrender | cat -v)" ;; esac
   case "$(slrender)" in *$'\033[1;38;5;111mFRONTEND'*|*$'\033[1;38;5;141mFRONTEND'*) no "an idle one is never bold" "$(slrender | cat -v)" ;; *) ok "an idle one is never bold" ;; esac
@@ -517,8 +526,9 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # reader has learned what it means, and its meaning moved whenever the fleet did.
   slsess 9010 BACKEND; slsess 9011 PAYMENTS; slsess 9012 CHANNELS live bg idle
   HUES=$(slrender | grep -o '38;5;[0-9]*' | sort -u | tr '\n' ' ')
-  case "$HUES" in "38;5;111 38;5;141 "|"38;5;141 "|"38;5;111 ") ok "only the two visibility colours are used" ;;
-                  *) no "only the two visibility colours are used" "$HUES" ;; esac
+  case "$HUES" in *38\;5\;1[14]*) : ;; *) no "only the visibility triad is used" "$HUES"; false ;; esac 2>/dev/null
+  BAD=$(printf '%s' "$HUES" | tr ' ' '\n' | grep -v '^$' | grep -vE '^38;5;(141|111|115)$' || true)
+  [ -z "$BAD" ] && ok "only the visibility triad is used" || no "only the visibility triad is used" "$BAD"
   # Violet on purpose: the one terminal hue carrying no convention -- not error, warning,
   # success or information. A call-sign is identity, so it borrows no status colour.
   case "$(slrender)" in *$'\033[31m'*|*$'\033[32m'*|*$'\033[33m'*|*$'\033[36m'*)
@@ -533,7 +543,19 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # fleet (spawn.once) can disagree with it right now.
   slsess 9003 CHANNELS live bg idle
   case "$(slrender)" in *$'\033[2;38;5;141mCHANNELS'*) ok "a background station is violet" ;; *) no "a background station is violet" "$(slrender | cat -v)" ;; esac
-  case "$(slrender)" in *$'\033[2;38;5;111mFRONTEND'*) ok "a visible one is steel blue" ;; *) no "a visible one is steel blue" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;111mFRONTEND'*) ok "a tab station is cornflower" ;; *) no "a tab station is cornflower" "$(slrender | cat -v)" ;; esac
+  # A WINDOW is not distinguishable from a TAB in the session registry -- `kind` says only
+  # bg or interactive -- so the deploy records which it opened and the line reads it back.
+  printf '{"stations":{"%s":{"WINDOWED":"window","FRONTEND":"tab"}}}' "$SLR" > "$SLH/spawns.json"
+  slsess 9030 WINDOWED live interactive idle 9030
+  case "$(slrender)" in *$'\033[2;38;5;115mWINDOWED'*) ok "a windowed station is aqua" ;; *) no "a windowed station is aqua" "$(slrender | cat -v)" ;; esac
+  # MEASURED BEATS RECORDED: a session reporting bg is background whatever the log says.
+  printf '{"stations":{"%s":{"CHANNELS":"window"}}}' "$SLR" > "$SLH/spawns.json"
+  case "$(slrender)" in *$'\033[2;38;5;141mCHANNELS'*) ok "the live registry outranks the spawn log" ;; *) no "the live registry outranks the spawn log" "$(slrender | cat -v)" ;; esac
+  # A hand-started session has no record and must not be guessed into a window.
+  : > "$SLH/spawns.json"
+  case "$(slrender)" in *$'\033[2;38;5;115mWINDOWED'*) no "an unrecorded station falls back to tab" "$(slrender | cat -v)" ;; *) ok "an unrecorded station falls back to tab" ;; esac
+  rm -f "$SLH/.claude/sessions/9030.json" "$SLS/9030.sock" "$SLH/spawns.json"
   # The old `(bg)` suffix is gone: colour says it without spending four characters a station.
   case "$(slplain)" in *"(bg)"*|*"·bg"*) no "no bg suffix survives" "$(slplain)" ;; *) ok "no bg suffix survives" ;; esac
 
@@ -586,6 +608,24 @@ bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --window >/dev/null 2>&1
 if [ -s "$STUB_CLAUDE_REG" ]; then no "nothing is launched without --deploy" "the launcher ran anyway"
 else ok "nothing is launched without --deploy"; fi
 chk "--print needs no --deploy"             "$(bash "$D/spawn-station.sh" BACKEND "$REPO" BACKEND --print 2>&1)" "open a terminal and paste this"
+
+# THE DEPLOY RECORDS WHICH MODE IT OPENED. Nothing else can: the session registry says
+# `bg` or `interactive` and never window-vs-tab, so the status line reads this log back.
+SPL="$WORK/spawns.json"; rm -f "$SPL"
+MC_SPAWNLOG="$SPL" bash "$D/spawn-station.sh" WINSTATION "$REPO" WINSTATION --window --deploy >/dev/null 2>&1
+if [ -f "$SPL" ]; then
+  chk "a deploy records the mode it opened"  "$(cat "$SPL")" '"WINSTATION": "window"'
+else no "a deploy records the mode it opened" "no log written"; fi
+# --print must not: it opened nothing, so it has nothing to report about.
+rm -f "$SPL"; bash "$D/spawn-station.sh" PRINTONLY "$REPO" PRINTONLY --print >/dev/null 2>&1
+[ -f "$SPL" ] && no "--print records nothing" "a log appeared" || ok "--print records nothing"
+# Neither may a refused spawn -- no --deploy means nothing happened at all.
+rm -f "$SPL"; MC_SPAWNLOG="$SPL" bash "$D/spawn-station.sh" NODEPLOY "$REPO" NODEPLOY --window >/dev/null 2>&1
+[ -f "$SPL" ] && no "a refused spawn records nothing" "a log appeared" || ok "a refused spawn records nothing"
+# An unparseable log is left alone rather than truncated, exactly as spawn-pref.sh does.
+printf 'not json' > "$SPL"; BEFORE=$(wc -c < "$SPL")
+MC_SPAWNLOG="$SPL" bash "$D/spawn-station.sh" SAFE "$REPO" SAFE --window --deploy >/dev/null 2>&1
+[ "$(wc -c < "$SPL")" = "$BEFORE" ] && ok "an unparseable spawn log is not rewritten" || no "an unparseable spawn log is not rewritten" "it was rewritten"
 
 echo
 echo "── 5d. the preference is ASKED once, not detected ─────────────────"

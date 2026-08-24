@@ -91,9 +91,15 @@ Claude Code's footer counts shells; it can't show your stations. `statusLine` ca
 this to `~/.claude/settings.json`:
 
 ```json
-{ "statusLine": { "type": "command",
+{ "statusLine": { "type": "command", "refreshInterval": 5,
                   "command": "bash ~/.claude/skills/mission-control/statusline.sh" } }
 ```
+
+**`refreshInterval` is not optional here.** Claude Code re-runs a status line when something
+happens *in your session* — and everything this line reports belongs to a **different** session.
+Another station going busy or idle produces no event in your tab, so without the timer the line
+freezes at whatever it last saw and cheerfully shows a station working that finished ten minutes
+ago. Local events are exactly the wrong clock for a fleet.
 
 ```
 fleet · CONTROL · BACKEND · CHANNELS · FRONTEND · +1 unidentified
