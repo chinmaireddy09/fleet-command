@@ -13,25 +13,50 @@ Run exactly one command, then show the picker. No exploring, no extra reads, no 
 bash ~/.claude/skills/mission-control/mc-config.sh show
 ```
 
-Its first lines give the current mode. Then **one `AskUserQuestion`**, modelled on `/model`:
-**one short line per option, no paragraphs**, and the value in force marked with a **`✓`** —
-the same signal `/model` puts against the model you are on.
+Its first lines give the current mode. Then **one `AskUserQuestion` carrying TWO questions**,
+modelled on `/model` — because `/model` does two things in one screen and so does this.
 
-| Label | description — keep it to one line |
+**Question 1 — the mode.** Lead with the sentence `/model` leads with, so the screen says what
+picking does rather than leaving it to be inferred:
+
+> *"How should stations appear when deployed? Your pick becomes the default for every deploy on
+> this machine."*
+
+| Label | description — one line, no paragraphs |
 |---|---|
 | `Default (recommended)` | Background · nothing opens, works in every IDE and CLI |
 | `Background — pinned` | Stays background even if the default changes |
 | `Tab` | A new tab in this Terminal window |
 | `Window` | Each station in its own window |
 
-**Append ` ✓` to the label of whichever one is in force** — `Tab ✓`, not `Tab (current)`. Keep
-the order above fixed so the row a person is looking for does not move between runs.
+**Append ` ✓` to the label of whichever one is in force** — `Tab ✓`, not `Tab (current)`. Keep the
+order above fixed so the row a person is looking for does not move between runs.
 
-*The rest of what `/model` shows — green on the selected row, the two-column layout, the
-`s to use this session only` footer — is Claude Code's own picker chrome and a skill cannot
-produce it; `AskUserQuestion` renders a plain numbered list, and options 5 and 6 in it are the
-harness's free-text and "chat about this", not ours. The `✓` and the wording are the parts that
-are ours, so they are the parts that match.*
+**Question 2 — how long it applies.** This is `/model`'s `Enter to set as default · s to use this
+session only`, which a skill cannot put in the footer, so it becomes a question instead:
+
+> *"Apply it how?"*
+
+| Label | description |
+|---|---|
+| `Set as the default` | Every deploy from now on, on this machine |
+| `Just this once` | The next deploy only, then it reverts |
+
+Then write the answer with **one** command and stop:
+
+```bash
+# "Set as the default"
+bash ~/.claude/skills/mission-control/mc-config.sh set spawn.mode <default|tab|window|background>
+# "Just this once"
+bash ~/.claude/skills/mission-control/spawn-pref.sh once <default|tab|window|background>
+```
+
+*What is NOT reachable, so nobody goes looking: `/model`'s green on the selected row, its
+two-column layout (label and description on ONE line), and its footer key hints are Claude Code's
+own picker chrome. A skill's `AskUserQuestion` renders a plain numbered list with the description
+beneath the label, and its options 5 and 6 — "type something" and "chat about this" — are the
+harness's, not ours. The `✓`, the wording, the fixed order and the second question are the parts
+that are ours, so they are the parts that match.*
 
 **A one-off, without changing the standing setting**, is `spawn-pref.sh once <mode>` — the
 equivalent of `/model`'s `s to use this session only`. Offer it in words if someone asks for

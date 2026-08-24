@@ -180,6 +180,10 @@ instead: microseconds, cannot hang, cannot start a daemon.
 
 ### The `@` header, and the one thing that fixes it
 
+> **Full guide:** [`references/station-identity.md`](skills/mission-control/references/station-identity.md)
+> — the three identity surfaces, how to start a station so none of them ever break, the three-step
+> repair when one has, and the two things that genuinely cannot be fixed with what to do instead.
+
 A session's own advertised name — the `@` header on every message it sends, and the name on its own
 `ListAgents` self-line — is read into the process **at launch and never again**. Measured: after
 `set-callsign.sh SKILLDEV`, the registry said `SKILLDEV` while that session's own self-line still

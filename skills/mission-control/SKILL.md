@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.3.0
+version: 7.4.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1264,7 +1264,7 @@ So, in one turn, with no intermediate "would you like to change it?":
 1. `mc-config.sh show` — read the current values, **including the `IN FORCE` line**, which is the
    one that reflects an `env.MC_SPAWN_MODE` override from `~/.claude/settings.json`.
 2. **`AskUserQuestion` immediately**, with the valid values as options (`mc-config.sh keys` lists
-   them per key) and **the value in force marked with a `✓`** (what `/model` does) so the picker shows state as well
+   them per key) and **the value in force marked with a `✓`**, and a SECOND question — *set as the default* vs *just this once* — which is what `/model`'s `s to use this session only` footer does and the only way a skill can offer it so the picker shows state as well
    as choices — that is half of what makes `/model` feel like a setting rather than a prompt.
 **ASK ABOUT SPAWN MODE AND NOTHING ELSE.** No "anything else while the picker is open?" —
 that is a second question nobody requested, and of the settings it was offering, **three are
