@@ -164,7 +164,11 @@ fi
 # every station passes through, however it was started. Best-effort and never fatal --
 # a missing record costs one colour on the status line and nothing else.
 if [ -f "$HERE/window-probe.sh" ]; then
-  bash "$HERE/window-probe.sh" 2>&1 | sed "s/^/window: /" || true
+  # --all, NOT a self-probe. One station identifying is the moment the fleet's shape most
+  # often just changed -- a tab was opened, a window pulled apart -- and everyone else's
+  # record is now as stale as this one was. Refreshing only yourself leaves the rest wrong
+  # and is the same cost: one osascript pass either way.
+  bash "$HERE/window-probe.sh" --all 2>&1 | sed "s/^/window: /" || true
 fi
 
 echo "NOTE: every peer keeps seeing your OLD handle on the \`@\` header -- not only the ones with a"

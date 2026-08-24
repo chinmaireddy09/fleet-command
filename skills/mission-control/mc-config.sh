@@ -157,7 +157,9 @@ if action=="show":
     print("  (only the first is offered in the picker; the rest are rarely worth setting)")
     print()
     # ONE SCREEN MUST TELL THE WHOLE TRUTH. spawn.mode can also be set from Claude Code's
-    # own settings.json as env.MC_SPAWN_MODE, and that value OUTRANKS this file. Showing
+    # own settings.json as env.MC_SPAWN_MODE. That value is OUTRANKED by this file (see
+    # the precedence note below), but it still has to be shown, because a reader who has
+    # one set needs to know it exists and is being ignored. Showing
     # only the file would render a value that is not the one in force -- a config screen
     # that is confidently wrong is worse than one that omits the setting, because the
     # reader has no reason to look further. Reported by the user 2026-08-24, asking why
@@ -168,17 +170,35 @@ if action=="show":
     if once:
         print(f"  PENDING ONE-SHOT: the next spawn uses {once}, then clears it.")
         print()
+    # PRECEDENCE HERE MUST BE THE PRECEDENCE A DEPLOY ACTUALLY USES, and for one release
+    # it was the opposite. This printed env.MC_SPAWN_MODE as "IN FORCE" and said it
+    # OVERRIDES the file -- while spawn-station.sh has resolved FILE ABOVE ENV since
+    # 6.89.0, precisely because env is a launch-time snapshot that goes stale. So a
+    # machine recorded `tab` with a stale `background` in settings.json was told
+    # "IN FORCE: background" and then opened a tab. Caught in the field 2026-08-24 by a
+    # coordinator that deployed a station, watched a Terminal tab open, and checked the
+    # registry rather than believing this screen: "the IN FORCE line and the actual
+    # behaviour disagreed -- the recorded tab won."
+    #
+    # A CONFIG SCREEN THAT IS CONFIDENTLY WRONG IS WORSE THAN ONE THAT OMITS THE SETTING,
+    # and this file already said so in a comment three lines up while doing the opposite.
+    # The order below is spawn-station.sh's, and if that ever changes this must change with
+    # it -- they are one rule written in two places.
     envmode = os.environ.get("MC_SPAWN_MODE", "")
-    if envmode:
-        filemode = (d.get("spawn") or {}).get("mode")
-        if envmode == filemode:
-            print(f"  IN FORCE: spawn.mode = {envmode}   (settings.json env, agreeing with this file)")
-        elif filemode:
-            print(f"  ⚠ IN FORCE: spawn.mode = {envmode}   — from ~/.claude/settings.json env.MC_SPAWN_MODE,")
-            print(f"    which OVERRIDES the {filemode!r} recorded below. Change the env entry, or clear it")
-            print( "    to let this file decide again.")
-        else:
-            print(f"  IN FORCE: spawn.mode = {envmode}   (settings.json env.MC_SPAWN_MODE; nothing recorded here)")
+    filemode = (d.get("spawn") or {}).get("mode")
+    if filemode:
+        if envmode and envmode != filemode:
+            print(f"  IN FORCE: spawn.mode = {filemode}   (recorded in this file, which OUTRANKS env)")
+            print(f"    ⚠ ~/.claude/settings.json sets env.MC_SPAWN_MODE={envmode!r} and it is IGNORED.")
+            print( "    env is stamped at session launch, so it goes stale the moment you change the")
+            print( "    setting; this file is re-read on every spawn. Remove that env entry to stop")
+            print( "    the two disagreeing.")
+            print()
+        elif envmode:
+            print(f"  IN FORCE: spawn.mode = {filemode}   (this file; settings.json env agrees)")
+            print()
+    elif envmode:
+        print(f"  IN FORCE: spawn.mode = {envmode}   (settings.json env.MC_SPAWN_MODE; nothing recorded here)")
         print()
     width=max(len(k) for k in SPEC)
     for k,(_,desc,dflt) in SPEC.items():

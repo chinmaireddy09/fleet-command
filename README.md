@@ -110,7 +110,7 @@ dim label, dim `·` separators, colour for the live values.
 
 **Colour says how visible the station is.** **Purple** — a *background* station, no window
 anywhere, so this line is the only evidence it exists. **Turquoise** — a *tab*, visible but behind
-whichever tab is forward. **Pink** — its *own window*, the most visible a station gets, so the row
+whichever tab is forward. **Gold** — its *own window*, the most visible a station gets, so the row
 is a reminder rather than a discovery.
 
 The three are roughly a third of the colour wheel apart, on purpose. An analogous triad was tried
@@ -128,6 +128,11 @@ is only `bg` or `interactive`, and no environment variable carries it either (Te
 terminal, and the line uses **two measures that must agree**: the tab count that window reported,
 and how many live stations share it. A station is called a *window* only when both say it is alone,
 so a count that went stale when you dragged a tab out never over-claims.
+
+*Grouping is by the window's **frame**, not its id. Terminal.app's scripting model exposes every
+**tab** as its own window object reporting `tabs = 1` — a window holding four visible tabs comes
+back as four windows of one tab each — so neither the id nor the tab count can tell a tab from a
+window. Tabs of one window share a screen rectangle exactly; a separate window has its own.*
 
 Run once per station at identify, or **backfill the whole fleet from any session**:
 

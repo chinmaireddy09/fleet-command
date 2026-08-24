@@ -262,6 +262,15 @@ os.replace(t.name, f)
 PY
 fi
 
+# REFRESH THE WINDOW MAP AFTER A DEPLOY. A deploy is by definition a change to the
+# fleet's shape -- a tab appeared, or a window did -- so every recorded window count is
+# now potentially stale. The station about to start will refresh it again at identify;
+# doing it here as well means the AUTOMATED path never depends on a human running
+# anything. Best-effort and silent: a status-line colour is not worth failing a deploy.
+if [ "$MODE" != "print" ] && [ -f "$(cd "$(dirname "$0")" && pwd)/window-probe.sh" ]; then
+  bash "$(cd "$(dirname "$0")" && pwd)/window-probe.sh" --all >/dev/null 2>&1 || true
+fi
+
 # ── shared reporting ────────────────────────────────────────────────────────────
 # Consumed here, AFTER the --deploy guard, so a --print or a no-deploy call never eats it.
 if [ -n "$ONCE_USED" ]; then

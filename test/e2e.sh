@@ -541,7 +541,7 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   slsess 9010 BACKEND; slsess 9011 PAYMENTS; slsess 9012 CHANNELS live bg idle
   HUES=$(slrender | grep -o '38;5;[0-9]*' | sort -u | tr '\n' ' ')
   case "$HUES" in *38\;5\;1[14]*) : ;; *) no "only the visibility triad is used" "$HUES"; false ;; esac 2>/dev/null
-  BAD=$(printf '%s' "$HUES" | tr ' ' '\n' | grep -v '^$' | grep -vE '^38;5;(141|80|218)$' || true)
+  BAD=$(printf '%s' "$HUES" | tr ' ' '\n' | grep -v '^$' | grep -vE '^38;5;(141|80|179)$' || true)
   [ -z "$BAD" ] && ok "only the visibility triad is used" || no "only the visibility triad is used" "$BAD"
   # Violet on purpose: the one terminal hue carrying no convention -- not error, warning,
   # success or information. A call-sign is identity, so it borrows no status colour.
@@ -562,13 +562,13 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   # bg or interactive -- so the deploy records which it opened and the line reads it back.
   printf '{"stations":{"%s":{"WINDOWED":"window","FRONTEND":"tab"}}}' "$SLR" > "$SLH/spawns.json"
   slsess 9030 WINDOWED live interactive idle 9030
-  case "$(slrender)" in *$'\033[2;38;5;218mWINDOWED'*) ok "a windowed station is pink" ;; *) no "a windowed station is pink" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;179mWINDOWED'*) ok "a windowed station is gold" ;; *) no "a windowed station is gold" "$(slrender | cat -v)" ;; esac
   # MEASURED BEATS RECORDED: a session reporting bg is background whatever the log says.
   printf '{"stations":{"%s":{"CHANNELS":"window"}}}' "$SLR" > "$SLH/spawns.json"
   case "$(slrender)" in *$'\033[2;38;5;141mCHANNELS'*) ok "the live registry outranks the spawn log" ;; *) no "the live registry outranks the spawn log" "$(slrender | cat -v)" ;; esac
   # A hand-started session has no record and must not be guessed into a window.
   : > "$SLH/spawns.json"
-  case "$(slrender)" in *$'\033[2;38;5;218mWINDOWED'*) no "an unrecorded station falls back to tab" "$(slrender | cat -v)" ;; *) ok "an unrecorded station falls back to tab" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;179mWINDOWED'*) no "an unrecorded station falls back to tab" "$(slrender | cat -v)" ;; *) ok "an unrecorded station falls back to tab" ;; esac
   rm -f "$SLH/.claude/sessions/9030.json" "$SLS/9030.sock" "$SLH/spawns.json"
   # The old `(bg)` suffix is gone: colour says it without spending four characters a station.
   case "$(slplain)" in *"(bg)"*|*"·bg"*) no "no bg suffix survives" "$(slplain)" ;; *) ok "no bg suffix survives" ;; esac
@@ -597,7 +597,7 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   O=$(slrender)
   case "$O" in *$'\033[2;38;5;80mTABBED-A'*) ok "two stations in one window are tabs" ;; *) no "two stations in one window are tabs" "$(printf '%s' "$O" | cat -v)" ;; esac
   case "$O" in *$'\033[2;38;5;80mTABBED-B'*) ok "and so is the other one" ;; *) no "and so is the other one" "$(printf '%s' "$O" | cat -v)" ;; esac
-  case "$O" in *$'\033[2;38;5;218mALONE'*) ok "a station alone in its window is pink" ;; *) no "a station alone in its window is pink" "$(printf '%s' "$O" | cat -v)" ;; esac
+  case "$O" in *$'\033[2;38;5;179mALONE'*) ok "a station alone in its window is pink" ;; *) no "a station alone in its window is pink" "$(printf '%s' "$O" | cat -v)" ;; esac
   # A STALE COUNT MUST NOT OVER-CLAIM. Close one of the pair and the grouping now sees one
   # station in w7 -- but the recorded count still says 2 tabs, and a tab that holds no
   # station is still a tab. Both must agree before the line calls it a window.
@@ -605,11 +605,11 @@ if [ ! -f "$SL" ]; then sk "status line not shipped in this copy"; else
   case "$(slrender)" in *$'\033[2;38;5;80mTABBED-A'*) ok "a stale tab count is not over-claimed" ;; *) no "a stale tab count is not over-claimed" "$(slrender | cat -v)" ;; esac
   # Re-probed (tabs now 1) it becomes a window, which is what a fresh probe would record.
   printf '{"sessions":{"sid-t1":{"window":"w7","tabs":1}}}' > "$SLH/windows.json"
-  case "$(slrender)" in *$'\033[2;38;5;218mTABBED-A'*) ok "and a re-probe promotes it" ;; *) no "and a re-probe promotes it" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;179mTABBED-A'*) ok "and a re-probe promotes it" ;; *) no "and a re-probe promotes it" "$(slrender | cat -v)" ;; esac
   # No probe record falls back to the deploy log, then to tab -- never guessed into a window.
   : > "$SLH/windows.json"
   printf '{"stations":{"%s":{"ALONE":"window"}}}' "$SLR" > "$SLH/spawns.json"
-  case "$(slrender)" in *$'\033[2;38;5;218mALONE'*) ok "no probe falls back to the deploy log" ;; *) no "no probe falls back to the deploy log" "$(slrender | cat -v)" ;; esac
+  case "$(slrender)" in *$'\033[2;38;5;179mALONE'*) ok "no probe falls back to the deploy log" ;; *) no "no probe falls back to the deploy log" "$(slrender | cat -v)" ;; esac
   case "$(slrender)" in *$'\033[2;38;5;80mTABBED-A'*) ok "and to tab when neither knows" ;; *) no "and to tab when neither knows" "$(slrender | cat -v)" ;; esac
   for p in 9060 9062; do rm -f "$SLH/.claude/sessions/$p.json" "$SLS/$p.sock"; done
   rm -f "$SLH/windows.json" "$SLH/spawns.json"
@@ -673,6 +673,18 @@ if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else
   O=$(MC_WINDOWS="$WORK/win2.json" timeout 20 bash "$WP" --all 2>&1); RC=$?
   [ $RC -eq 0 ] && ok "--all always exits clean" || no "--all always exits clean" "exit $RC: $O"
   chk "and reports what it did"            "$O" "WINDOW:"
+  # It must GROUP BY FRAME, never by window id or `count of tabs`. Terminal.app exposes
+  # every TAB as its own window object with tabs=1 -- measured on a window holding four
+  # visible tabs, which reported as four windows of one tab each -- so both of those
+  # measures are structurally unable to tell a tab from a window.
+  case "$(grep -vE '^\s*#' "$WP")" in
+    *"count of tabs"*) no "the probe does not count tabs of a window" "Terminal reports 1 for every tab" ;;
+    *) ok "the probe does not count tabs of a window" ;;
+  esac
+  case "$(grep -vE '^\s*#' "$WP")" in
+    *"bounds of w"*) ok "the probe groups by window frame" ;;
+    *) no "the probe groups by window frame" "no bounds lookup" ;;
+  esac
   # It must never shell out to claude, for the same reason the status line must not.
   case "$(grep -vE '^\s*#' "$WP")" in
     *"claude agents"*) no "the probe never shells out to claude" "claude agents present" ;;

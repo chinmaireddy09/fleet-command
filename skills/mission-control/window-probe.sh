@@ -34,14 +34,21 @@ CFG="${MC_WINDOWS:-$HOME/.claude/mission-control-windows.json}"
 
 if [ "${1:-}" = "--all" ]; then
   command -v osascript >/dev/null 2>&1 || { echo "WINDOW: unknown — no osascript (not macOS)"; exit 0; }
+  # BOUNDS, NOT WINDOW ID, AND NOT `count of tabs`. Terminal.app's scripting model exposes
+  # EVERY TAB as its own window object with `tabs = 1` -- measured 2026-08-24 on a window
+  # holding four visible tabs, which reported as four windows of one tab each. So the id
+  # never groups and the count is always 1: both of the obvious measures are structurally
+  # unable to answer the question. What DOES answer it is the frame: tabs of one window
+  # share a screen rectangle exactly, and a separate window has its own. The same four
+  # reported bounds 0,32,961,987 while the station in its own window reported
+  # 960,32,1920,987.
   MAP=$(osascript <<'AS' 2>/dev/null
 tell application "Terminal"
   set out to ""
   repeat with w in windows
-    set n to (count of tabs of w)
-    repeat with t in tabs of w
-      set out to out & ((id of w) as text) & " " & (n as text) & " " & (tty of t) & linefeed
-    end repeat
+    set b to bounds of w
+    set out to out & ((item 1 of b) as text) & "," & ((item 2 of b) as text) & "," & ¬
+      ((item 3 of b) as text) & "," & ((item 4 of b) as text) & " " & (tty of tab 1 of w) & linefeed
   end repeat
   return out
 end tell
@@ -51,12 +58,16 @@ AS
   CFG="$CFG" MAP="$MAP" python3 - <<'PY' 2>/dev/null || { echo "WINDOW: not recorded — config unwritable"; exit 0; }
 import json, os, glob, subprocess, tempfile
 
-# tty -> (windowId, tabCount), straight from the terminal.
-bytty = {}
+# tty -> frame, and frame -> how many tabs share it. The second count includes tabs that
+# hold no station at all -- a plain shell, another project -- which is exactly what a
+# person means when they say a station has a window "to itself".
+bytty, frames = {}, {}
 for line in os.environ["MAP"].splitlines():
     parts = line.split()
-    if len(parts) == 3:
-        bytty[parts[2]] = (parts[0], int(parts[1]))
+    if len(parts) == 2:
+        frame, tty = parts
+        bytty[tty] = frame
+        frames[frame] = frames.get(frame, 0) + 1
 
 f = os.environ["CFG"]
 try:
@@ -69,7 +80,7 @@ except Exception:
 d.setdefault("_comment", "written by mission-control window-probe.sh: which terminal window each session sits in")
 sess = d.setdefault("sessions", {})
 
-n = 0
+n = 0; pruned = 0; live = set()
 for path in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
     try:
         with open(path) as fh: r = json.load(fh)
@@ -85,16 +96,25 @@ for path in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
                              capture_output=True, text=True, timeout=5).stdout.strip()
     except Exception:
         continue
-    hit = bytty.get("/dev/" + tty) if tty and tty != "??" else None
-    if not hit:
+    frame = bytty.get("/dev/" + tty) if tty and tty != "??" else None
+    if not frame:
         continue          # a background session has no tab; it is coloured by `kind` anyway.
-    sess[sid] = {"window": hit[0], "tabs": hit[1]}
+    sess[sid] = {"window": frame, "tabs": frames.get(frame, 1)}
+    live.add(sid)
     n += 1
+
+# PRUNE WHAT IS NO LONGER RUNNING. --all used to only ADD, so a station that stood down
+# left its window id behind and kept inflating that window's station count forever -- the
+# grouping then called a genuine one-station window a "tab". A full pass knows the whole
+# live set, so it is the right place to drop the rest.
+for sid in [k for k in sess if k not in live]:
+    del sess[sid]
+    pruned += 1
 
 t = tempfile.NamedTemporaryFile("w", dir=os.path.dirname(f) or ".", delete=False)
 json.dump(d, t, indent=2); t.write("\n"); t.close()
 os.replace(t.name, f)
-print(f"WINDOW: recorded {n} live session(s) from Terminal.app")
+print(f"WINDOW: recorded {n} live session(s), pruned {pruned} stale, from Terminal.app")
 PY
   exit 0
 fi
@@ -133,16 +153,22 @@ WID=$(osascript <<AS 2>/dev/null
 tell application "Terminal"
   repeat with w in windows
     repeat with t in tabs of w
-      if tty of t is "$MYTTY" then return ((id of w) as text) & " " & ((count of tabs of w) as text)
+      if tty of t is "$MYTTY" then
+        set b to bounds of w
+        return ((item 1 of b) as text) & "," & ((item 2 of b) as text) & "," & ¬
+               ((item 3 of b) as text) & "," & ((item 4 of b) as text)
+      end if
     end repeat
   end repeat
   return ""
 end tell
 AS
 )
-TABS=$(printf '%s' "$WID" | awk '{print $2}')
-WID=$(printf '%s' "$WID" | awk '{print $1}' | tr -d '[:space:]')
-[ -n "$TABS" ] || TABS=0
+WID=$(printf '%s' "$WID" | tr -d '[:space:]')
+# A single-session probe cannot count the other tabs sharing this frame without a second
+# pass, and 0 means "unknown" to the status line -- which then relies on grouping alone.
+# `--all` records the real count, and both identify and deploy call --all.
+TABS=0
 [ -n "$WID" ] || { echo "WINDOW: unknown — no Terminal.app tab matches $MYTTY (iTerm2, tmux or another host)"; exit 0; }
 
 CFG="$CFG" SID="$SESSION_ID" WID="$WID" TABS="$TABS" python3 - <<'PY' 2>/dev/null || { echo "WINDOW: $WID (not recorded — config unwritable)"; exit 0; }
