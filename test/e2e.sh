@@ -793,7 +793,13 @@ chk "a bare launch is flagged before identify"  "$O" "ME_LAUNCH: bare"
 chk "its envelope is named, not left abstract"  "$O" "ME_ENVELOPE: repo-12"
 chk "and called correct-for-now, not stale"     "$O" "CORRECT RIGHT NOW"
 chk "the relaunch line is ready to paste"       "$O" "--name '<CALLSIGN>' --resume sid-b"
-chk "and it says to offer it BEFORE the rename" "$O" "BEFORE TAKING A CALL-SIGN"
+# 7.11.0 REVERSED THIS. It used to assert "OFFER THIS BEFORE TAKING A CALL-SIGN". But
+# Control is whoever runs /mc, so the session had no call-sign to launch with -- the
+# relaunch could not have been done, and asking for it every fleet was the actual defect.
+# The line is still PRINTED (fix-header.sh and a user who asks both need it); it is just
+# never volunteered.
+chk "and it says NOT to volunteer the relaunch" "$O" "DO NOT VOLUNTEER THIS"
+chk "and points at publishing the envelope instead" "$O" "PUBLISH the envelope instead"
 
 # Already renamed: now it IS stale, and what peers see is the BIRTH name.
 mireg "$(printf '{"pid":%s,"sessionId":"sid-c","cwd":"/tmp/c","name":"CONTROL","nameSource":"user","formerNames":["repo-12"]}' "$$")"
@@ -846,9 +852,13 @@ enreg '{"nameSource":"user","formerNames":["proj-cc"]}'
 O=$(enrun)
 chk "the first station prints the envelope cost"      "$O" "ENVELOPE_COST: NOW"
 chk "and names the handle peers will actually see"    "$O" "proj-cc"
-chk "and carries the relaunch, pre-filled"            "$O" "--name 'CONTROL' --resume sid-ctl"
-chk "and says the row rewrite is now part of the bill" "$O" "/mc identify CONTROL"
-chk "and says skipping is still correct"              "$O" "SKIPPING IS STILL CORRECT"
+chk "and hands over the address line, verbatim"       "$O" "address CONTROL; the name on my envelope is not my call-sign"
+chk "and names the board row to carry it"             "$O" "CONTROL · envelope proj-cc"
+chk "and says plainly it is not a relaunch prompt"    "$O" "THIS IS NOT A PROMPT TO RELAUNCH"
+# THE POINT OF 7.11.0. Control is whoever ran /mc, so it never had a call-sign to launch
+# with -- a relaunch cannot be volunteered here, at step 0, or anywhere in coming on watch.
+case "$O" in *--resume*) no "and never volunteers a --resume relaunch" "$O";;
+             *) ok "and never volunteers a --resume relaunch";; esac
 # The station still goes on post. This is a notice, never a gate.
 chk "and the deploy is not blocked by it"             "$O" "STATION CHANNELS"
 
@@ -880,11 +890,14 @@ mkdir -p "$WORK/elsewhere"
 python3 -c 'import json,sys; json.dump({"pid":1,"sessionId":"s","cwd":sys.argv[1],"name":"OTHER"},open(sys.argv[2],"w"))' "$WORK/elsewhere" "$ENS/1.json"
 chk "another repo's live session is not a peer here" "$(enrun)" "ENVELOPE_COST: NOW"
 
-# A background Control keeps --bg: the line is pasted verbatim, and dropping the flag
-# silently converts a background agent into a tab session.
+# A background Control gets the same published mapping and still no relaunch. The --bg
+# flag used to matter here because a relaunch line was printed; there is no longer one.
 rm -f "$ENS/1.json"
 enreg '{"nameSource":"user","formerNames":["proj-cc"],"kind":"bg"}'
-chk "a bg Control's relaunch keeps --bg" "$(enrun)" "claude --bg --name 'CONTROL'"
+O=$(enrun)
+chk "a bg Control is published the same way" "$O" "ENVELOPE_COST: NOW"
+case "$O" in *--resume*) no "and is offered no relaunch either" "$O";;
+             *) ok "and is offered no relaunch either";; esac
 
 # `/mc deploy A B` SPAWNS BACK-TO-BACK AND VERIFIES AFTERWARDS -- a list is not a loop --
 # and the script's own output admits the gap: "the launch returned cleanly but HANDLE is not

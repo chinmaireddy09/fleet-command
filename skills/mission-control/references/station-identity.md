@@ -173,8 +173,22 @@ fix-header.sh --for acme-api-54    # by the stale name you read on the `@` heade
 fix-header.sh --for 1170                 # by pid
 ```
 
-Former names resolve, so the only handle a peer holds — the wrong name on the envelope — is enough
-to find the station. It prints that station's exact repair line to hand over, and **refuses** when
+Former names resolve **for this lookup**, so the only handle a peer holds — the wrong name on the
+envelope — is enough to find the station.
+
+**That is a registry read, NOT an address.** `fix-header.sh` finds the station by scanning
+`formerNames` in `~/.claude/sessions/*.json`. `SendMessage` does no such thing: **a former name is
+not reachable.** Measured 2026-08-24 against a probe renamed twice, and the failure has two shapes:
+
+| Addressed | Current name | Result |
+|---|---|---|
+| `MCENVPROBE` | `MCENVPROBE2` | bounces, but the error **names the right session** — only because one is a prefix of the other |
+| `MCENVPROBE` | `ZULU` | `No agent named 'MCENVPROBE' is reachable.` — **no suggestion at all** |
+
+A real fleet is always the second row: a derived handle (`acme-shop-33`) and a call-sign
+(`CONTROL`) share no characters, so **a peer replying to an envelope gets a dead end, not a hint.**
+Which is why the mapping is published on the board and in each station's first order rather than
+left for a bounce to explain. It prints that station's exact repair line to hand over, and **refuses** when
 the registry says the station was named at launch, because a needless relaunch costs a new `[ref]`
 and a board-row rewrite. `fix-header.sh --audit` answers the same question for the whole fleet at
 once — see [Quick diagnosis](#quick-diagnosis).

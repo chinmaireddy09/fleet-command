@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.10.1
+version: 7.11.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -357,47 +357,54 @@ whichever you prefer on the radio.
 
 So the order is **bind, then report**, and the binding is two steps, not a project:
 
-**0. If the preamble printed `ME_LAUNCH: bare`, offer the relaunch BEFORE step 1.** Taking a
-call-sign in a bare session is *what creates* a stale `@` envelope: `set-callsign.sh` moves your
-address and leaves the envelope frozen at the handle you were born with. The session was
-internally consistent until that moment, and step 1 is the moment.
+**0. If the preamble printed `ME_LAUNCH: bare`, take the post anyway and DO NOT ASK FOR A
+RELAUNCH.** Record the envelope handle on your row instead. That is the whole of step 0, and the
+rest of this section is why every version that asked was wrong.
 
-**The whole reason this is step 0 and not a repair afterwards is cost.** Here it is one relaunch,
-and `--resume` keeps the entire conversation. After step 2 it is the same relaunch **plus** a
-second identify, **plus** a board-row rewrite, **plus** a dead `[ref]` in between that peers are
-entitled to read as a death — because a row pointing at a dead ref is exactly how a coordinator
-concludes a station is gone and reassigns its work. Nothing is saved by deferring it; the bill
-only grows.
+**A hand-started Control cannot satisfy `--name`, because the call-sign does not exist yet.**
+Control is *whoever runs `/mc`* — the post is not deployed to a session, it is taken by one. So at
+launch, the session had no call-sign to pass: `--name CONTROL` requires having already decided to
+be Control, in a session that had not yet run the command that decides it. **Every hand-started
+Control fails that test by construction, and `deploy` never launches Control** — so a flow that
+asks for a relaunch asks *every* fleet, forever, for something the user could not have done.
 
-Put the preamble's `ME_RELAUNCH` line to the user in one short exchange. Not a menu, not a gate
-you enforce:
+**Two releases asked anyway.** 7.9.0 moved the ask before the rename because that is where a
+relaunch is cheapest; 7.10.0 added a second ask at the first deploy because declining is only free
+until a peer reads the envelope. Both facts are true. Both asks were still wrong, and the user who
+hand-starts every Control got them twice per fleet.
 
-```
-Your session was launched without --name, so taking CONTROL here leaves every message you
-send stamped <ME_ENVELOPE>. One relaunch fixes it and keeps this conversation:
+**So the envelope is not repaired here. It is PUBLISHED.** The mismatch is real and does not go
+away — see the measurements below — but it costs nothing once peers are told, and telling them is
+one line you write anyway:
 
-  <ME_RELAUNCH>
+1. **Put the handle on your own board row**, beside your call-sign: `CONTROL [ref] · envelope
+   <ME_ENVELOPE>`. The board is where a station looks up who is who; this is the same lookup.
+2. **Put one line in every station's first order** — *"address `CONTROL`; the name on my envelope
+   is not my call-sign, do not spend a transmission reporting it back."* `spawn-station.sh` prints
+   the exact line at the first spawn, so there is nothing to compose.
 
-Say go and I will wait for you; say skip and I take the post now and we live with it.
-```
+That is the entire mitigation, it is free, and it removes the only cost the envelope ever had —
+peers spending transmissions on a fault none of them can fix.
 
-**Both answers are correct, and neither is yours to pick.** Skipping is *bounded*, and say so
-plainly rather than warning: the address stays live, so peers reach you by call-sign normally —
-only a reply addressed to the envelope bounces, and the fix for that is "address `CONTROL`, not
-the name on the envelope." Then proceed to step 1.
+**The relaunch still exists for anyone who wants it, and is never volunteered.** `fix-header.sh`
+prints it on request. Offer it only if the user asks about the envelope, or if a bounce actually
+happens — never as part of coming on watch.
 
-**Raise it exactly once more — at the first deploy — and never again.** That clause used to read
-"do not raise it again this session", and that was wrong: skipping here is free *because there is
-nobody to read the envelope yet*, and the moment that stops being true is the moment the first
-station comes up. You do not have to remember to do this. `spawn-station.sh` measures it at the
-spawn and prints `ENVELOPE_COST: NOW` itself — see
-[the first deploy](#the-first-deploy-is-where-a-skipped-envelope-starts-costing).
+**MEASURED 2026-08-24, and it settles what "bounce" costs.** A former name is **not reachable by
+`SendMessage`** — distinct from `fix-header.sh --for <stale-name>`, which finds the station fine
+because it reads `formerNames` out of the registry rather than addressing it. Addressing a renamed
+session by its old handle fails in one of two ways, and which one you get depends on nothing you
+control:
 
-**Observed twice on one fleet, 2026-08-24.** Control was relaunched without `--name` and
-re-identified — twice — and the fault came back each time with a fresh birth name (`…-54`, then
-`…-7d`). Both relaunches were the user acting on a correct repair notice; the notice simply came
-after the rename instead of before it, so it bought a new instance of the fault. `--name` is the
-half that does the work, and step 0 is where it costs least.
+| Addressed | Current name | Result |
+|---|---|---|
+| `MCENVPROBE` | `MCENVPROBE2` | bounces, but the error **names the right session** — only because one is a prefix of the other |
+| `MCENVPROBE` | `ZULU` | `No agent named 'MCENVPROBE' is reachable.` — **no suggestion at all** |
+
+A real fleet is always the second row: a derived handle (`acme-shop-33`) and a call-sign
+(`CONTROL`) share no characters. **So a peer that replies to the envelope gets a dead end, not a
+hint** — which is exactly why step 0 publishes the mapping instead of hoping the bounce explains
+itself.
 
 1. **Take the call-sign** — `bash <skill-dir>/set-callsign.sh <COORDINATOR>`. **Resolve
    `<COORDINATOR>` yourself, in this order, and do not ask:** this project's `MISSION-CONTROL.md`
@@ -1268,33 +1275,32 @@ where both are possible.
 row carries its address.** A deploy that ends with a 🚧 row and no session name has produced a
 lie, not a station.
 
-#### The first deploy is where a skipped envelope starts costing
+#### The first station is where the envelope mapping gets published
 
-If you took the post in a bare session and skipped [step 0](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command),
 `spawn-station.sh` prints a block headed **`ENVELOPE_COST: NOW`** on the deploy that puts the
-*first* station on this fleet. **Relay it to the user in one short exchange, exactly as step 0 did,
-then drop it for good** — it is printed **once per Control session**, so a two-station
-`/mc deploy CHANNELS FINANCE` prints it on the first spawn and not the second.
+*first* station on a fleet whose Control is bare. **It is not an offer and there is nothing to put
+to the user.** It hands you one line to include in the new station's first order:
 
-**Do not re-derive it per station.** Deploy spawns back-to-back and verifies the fleet afterwards,
-so at station two, station one may not be in the registry yet — "no live peer yet" is briefly true
-twice. The script latches on Control's own `sessionId` for exactly that reason. A *later* fleet is a
-new Control session and is offered it again, correctly.
+> *"address `CONTROL`; the name on my envelope is not my call-sign — do not spend a transmission
+> reporting it back."*
 
-**It is not a warning and not a gate.** The deploy proceeds either way; a station is going on post
-regardless of what they answer. Do not hold the spawn waiting for a reply.
+**Include it and move on.** Printed once per Control session, so a two-station
+`/mc deploy CHANNELS FINANCE` prints on the first spawn and not the second. Do not re-derive it
+per station: deploy spawns back-to-back and verifies the fleet afterwards, so at station two,
+station one may not be in the registry yet — "no live peer yet" is briefly true twice, and the
+script latches on Control's own `sessionId` for exactly that reason. A later fleet is a new
+Control session and is told again, correctly.
 
-**Say what actually changed since step 0, because the price went up and pretending otherwise is
-the thing that loses trust.** At step 0 the repair was one command. Now your row is on the board,
-so `--resume` gives you a new `[ref]` and the row has to be rewritten — the relaunch **and**
-`/mc identify <CALLSIGN>`, in that order. It is two commands from here and it never gets cheaper.
+**Do NOT offer a relaunch here.** Earlier releases did, and it was wrong for the same reason it is
+wrong at [step 0](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command): Control is
+whoever ran `/mc`, so it never had a call-sign to launch with. Asking at the deploy just moved the
+ask; it did not make it answerable.
 
-**And say what skipping actually costs, which is not nothing and is not a bounce.** Measured
-2026-08-24: Control skipped, and the next two stations to come up each spent part of their **first
-transmission** reporting the stale envelope back — a fact none of them could act on, since only a
-relaunch reaches it. Three sessions paid for it. **If they skip, spend one line preventing that
-instead:** put *"address `<CALLSIGN>`; the name on my envelope is not my call-sign"* in the new
-station's first order, and the round-trip never happens.
+**Why the line is worth including — measured 2026-08-24.** On a fleet where Control's envelope was
+left unpublished, the next two stations to come up EACH spent part of their first transmission
+reporting the stale envelope back to Control — a fact none of them could act on, since only a
+relaunch reaches it. Three sessions paid for it and nothing bounced. One line in the first order is
+what stops that, and it is free.
 
 **A fleet whose Control was launched with `--name` never sees this** — the notice is silent unless
 the session that ran the deploy is bare. In practice that means it fires for Control and nothing

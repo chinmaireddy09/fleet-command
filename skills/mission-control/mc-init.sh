@@ -119,9 +119,12 @@ else:
         print(f"ME_ENVELOPE: {d.get('name')}   # CORRECT RIGHT NOW, and taking a call-sign is what breaks it:")
         print("             #           the rename moves your address and leaves the envelope here.")
     print(f"ME_RELAUNCH: cd '{d.get('cwd','?')}' && claude {bg}--name '{coord or '<CALLSIGN>'}' --resume {sid}")
-    print("             # OFFER THIS BEFORE TAKING A CALL-SIGN, NOT AFTER. --resume keeps the whole")
-    print("             # conversation. Declining is legitimate -- see the skill's step 1 -- but it")
-    print("             # is the user's call to make, and it is cheapest to make it here.")
+    print("             # DO NOT VOLUNTEER THIS. Control is whoever runs /mc, so this session had no")
+    print("             # call-sign to launch with -- asking for a relaunch asks for something that")
+    print("             # could not have been done. Take the post and PUBLISH the envelope instead:")
+    print("             # put it on your board row, and put \"address <CALLSIGN>, not the name on my")
+    print("             # envelope\" in each station's first order. Print this line only if the user")
+    print("             # asks about the envelope, or if a reply to it actually bounced.")
 PY
 }
 

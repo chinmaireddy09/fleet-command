@@ -198,22 +198,30 @@ ListAgents" into every message: it is routing around a real failure.
 So `set-callsign.sh` fixes the address peers **resolve**, and cannot reach the value the process
 already holds. `/rename` fixes the **tab title**, a different surface. Neither touches this.
 
-**Better: never take the damage.** `/mc` now reports how the session was launched *before* it
-takes a call-sign, because `set-callsign.sh` is what splits the two surfaces apart — until it runs,
-a bare session's address and envelope agree. Control offers the `--name … --resume` line at that
-point, where it costs one relaunch instead of a relaunch plus a second identify plus a board-row
-rewrite plus a dead `[ref]` in between. Declining is fine and bounded; it is just cheaper to decide
-early.
+**You are not asked to relaunch, and that is deliberate.** Control is *whoever runs `/mc`* — the
+post is taken, not deployed — so at launch that session had no call-sign to pass. `--name CONTROL`
+requires having already decided to be Control, in a session that had not yet run the command that
+decides it. **Every hand-started Control fails that test by construction**, so asking for a
+relaunch asks, on every fleet forever, for something that could not have been done.
 
-**And if you decline, it is raised once more at the moment it starts costing — the first station.**
-Declining is free only because nobody is reading your envelope yet, and that stops being true when
-the first peer comes up. Measured on a live fleet: Control declined, and the next two stations each
-spent part of their **first transmission** reporting the stale envelope back — three sessions
-paying for it, and none of them able to fix it. So `spawn-station.sh` prints `ENVELOPE_COST: NOW`
-on the first station of that fleet — **once per Control session**, so a two-station deploy prints
-it on the first spawn and not the second. Declining a second time is still fine;
-one line in the new station's first order — *"address `CONTROL`; the name on my envelope is not my
-call-sign"* — is what actually stops the round-trip.
+**The envelope is published instead of repaired.** `/mc` puts the handle on Control's own board row
+(`CONTROL · envelope acme-shop-33`) and `spawn-station.sh` hands over one line for the first
+station's opening order — *"address `CONTROL`; the name on my envelope is not my call-sign, do not
+spend a transmission reporting it back."* That costs one line and removes the only price the
+mismatch ever had: measured on a live fleet, the two stations that came up after an unpublished
+envelope each spent part of their **first transmission** reporting it back to Control, a fact none
+of them could act on.
+
+**What a bounce actually costs, measured both ways.** A former name is not reachable by
+`SendMessage` — and when the call-sign shares no characters with the handle, which is always the
+real case, the error suggests nothing at all:
+
+| Addressed | Current name | Result |
+|---|---|---|
+| `MCENVPROBE` | `MCENVPROBE2` | bounces, but names the right session — only because one is a prefix of the other |
+| `MCENVPROBE` | `ZULU` | `No agent named 'MCENVPROBE' is reachable.` — no suggestion |
+
+Published, nobody addresses the envelope in the first place.
 
 **The repair, when a station already has the fault, is a relaunch — and it does not cost you the
 conversation:**

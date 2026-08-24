@@ -342,32 +342,32 @@ for f in glob.glob(os.path.join(sess, "*.json")):
 
 envelope = (d.get("formerNames") or [None])[0] or d.get("name")
 mine = d.get("name", "?")
-bg = "--bg " if d.get("kind") == "bg" else ""
 print(f"""
-ENVELOPE_COST: NOW   # {newcs} is the first peer on this fleet, and it is about to read your `@` header
+ENVELOPE_COST: NOW   # {newcs} is the first peer that will read your `@` header. Publish, do not repair.
 
-  You are running as {mine} in a session launched WITHOUT --name, so everything you send
-  arrives stamped `@ {envelope}` -- not {mine}. Until this moment that cost nothing: there
-  was nobody to read it. {newcs} is the first station that will.
+  Everything you send arrives stamped `@ {envelope}` -- not {mine}. That value froze at
+  launch and NOTHING reaches it now, so there is nothing here to fix and nothing to ask
+  the user. THIS IS NOT A PROMPT TO RELAUNCH. You are Control because you ran /mc, so this
+  session never had a call-sign to launch with; asking for one now asks for a thing that
+  could not have been done.
 
-  MEASURED 2026-08-24: skipped here, the next two stations to come up EACH spent part of
-  their first transmission reporting the stale envelope back to Control. Three sessions
-  paid for it, and none of them could fix it.
+  PUT THIS LINE IN {newcs}'s FIRST ORDER, verbatim:
 
-  Relaunch keeps the whole conversation:
+    address {mine}; the name on my envelope is not my call-sign -- do not spend a
+    transmission reporting it back.
 
-    cd '{d.get('cwd','?')}' && claude {bg}--name '{mine}' --resume {d.get('sessionId','')}
-    ...then  /mc identify {mine}
+  ...and carry the handle on your own board row: {mine} · envelope {envelope}
 
-  identify is NOT optional now, and that is what changed since step 0: your row is on the
-  board, --resume gets a NEW [ref], and a row pointing at a dead ref is how a coordinator
-  concludes a station died and reassigns its work. At step 0 there was no row and this was
-  one command; it is two now, and it never gets cheaper than this.
+  WHY IT IS WORTH ONE LINE, measured 2026-08-24: on a fleet where this went unpublished,
+  the next two stations to come up EACH spent part of their FIRST transmission reporting
+  the stale envelope back to Control -- a fact none of them could act on. Three sessions
+  paid for it and nothing bounced.
 
-  SKIPPING IS STILL CORRECT and this is the LAST time it is raised. The address stays
-  live, so peers reach you by call-sign normally. Say once, in {newcs}'s first order:
-  "address {mine}; the name on my envelope is not my call-sign" -- and then only a reply
-  sent to the envelope bounces.
+  A reply addressed to `{envelope}` is the one thing that fails, and it fails DEAD: a
+  former name does not resolve, and when the call-sign shares no characters with the
+  handle the error suggests nothing at all (measured, both shapes). Published, nobody
+  addresses it in the first place. If the user asks for the repair anyway, fix-header.sh
+  prints it -- do not volunteer it.
 """)
 
 # LATCH IT, and never let this fail a deploy. Written AFTER the print, so a crash here costs
