@@ -215,7 +215,32 @@ It prints the exact line, session id filled in so nothing can be mistyped:
 is read; `--resume` reopens *that* conversation rather than starting a new one. The tab title is
 fixed in the same move, since `--name` puts the call-sign in every title write.
 
-Stations from `/mc deploy` never need this — they launch with `--name` already.
+Stations from `/mc deploy` never need this — they launch with `--name` already. **Control does.**
+`/mc deploy` never launches Control: Control is whoever ran `/mc`, in whatever session they were
+already sitting in, which is a bare `claude` started before there was a fleet to name. So the
+default shape of a correctly-run fleet is every deployed station right and the coordinator carrying
+a stale envelope — on the station that sends the most messages and is replied to the most.
+
+**A peer can print the repair for a station that cannot see its own fault.** The envelope is only
+visible to the *receiver*, so the station that notices is almost never the station that has it:
+
+```bash
+# by call-sign, by the stale name you read on the `@` header, or by pid
+bash ~/.claude/skills/mission-control/fix-header.sh --for <CALLSIGN|stale-name|pid>
+
+# or ask the whole fleet at once
+bash ~/.claude/skills/mission-control/fix-header.sh --audit
+```
+
+```
+pid      call-sign    envelope
+11187    CHANNELS     OK        named at launch
+1170     CONTROL      STALE     peers see `acme-api-54`
+13590    FINANCE      OK        named at launch
+```
+
+It refuses to hand out a relaunch line for a station that was named at launch — a needless relaunch
+costs a new `[ref]` and a board-row rewrite, which is how Control concludes a station has died.
 
 **Better still, never need the repair.** Hand-starting a station with a bare `claude` costs four
 things *every time*, and they compound: a **new ref** — so the board's row points at a dead address,
@@ -354,7 +379,7 @@ it, so four stations do not each carry procedure they will never run:
 | `mc-config.sh` | `/mc-config` — the preference picker, and it keeps `settings.json` in agreement with the skill's own file | Control |
 | `statusline.sh` | optional, user-level — puts this repo's live stations under your prompt. Reads the session registry and the sockets; **spawns nothing** | anyone |
 | `window-probe.sh` | asks the terminal which **window** each session sits in, so the line can tell a tab from its own window. `--all` refreshes the whole fleet. macOS Terminal.app; skips cleanly elsewhere | runs itself, at identify and deploy |
-| `fix-header.sh` | prints the one line that repairs a wrong `@` header — `claude --name <CALLSIGN> --resume <sessionId>`, then `/mc identify` | a station whose envelope is stale |
+| `fix-header.sh` | prints the one line that repairs a wrong `@` header — `claude --name <CALLSIGN> --resume <sessionId>`, then `/mc identify`. `--for <name\|pid>` prints it for *another* station (resolving the stale name too), `--audit` says whose envelope is wrong fleet-wide | a station whose envelope is stale — or the peer that noticed |
 
 ---
 

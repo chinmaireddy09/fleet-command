@@ -682,6 +682,86 @@ if [ ! -f "$FH" ]; then sk "fix-header.sh not shipped in this copy"; else
     *'grep -q -- "--name"'*) ok "identify only warns when --name is absent" ;;
     *) no "identify only warns when --name is absent" "no argv check" ;;
   esac
+
+  # THE FAULT IS SEEN BY A PEER, NEVER BY THE STATION THAT HAS IT -- a session cannot
+  # observe its own envelope. So the station that can SEE it must be able to PRINT the
+  # repair for the station that cannot. Live failure, 2026-08-24: a deployed fleet's
+  # Control was the only station with a stale header, its peer read `@ acme-api-54`
+  # off an incoming message, and nothing in this skill could turn that into a fix.
+  FHH="$WORK/fhhome"; mkdir -p "$FHH/.claude/sessions"
+  mkst(){ # pid name sessionId cwd nameSource former kind
+    python3 -c 'import json,sys
+d={"pid":int(sys.argv[1]),"name":sys.argv[2],"sessionId":sys.argv[3],"cwd":sys.argv[4],
+   "kind":sys.argv[7]}
+if sys.argv[5]: d["nameSource"]=sys.argv[5]
+if sys.argv[6]: d["formerNames"]=[sys.argv[6]]
+print(json.dumps(d))' "$@" > "$FHH/.claude/sessions/$1.json"; }
+  mkst 9201 CONTROL sid-ctl /tmp/ctl user proj-54     interactive
+  mkst 9202 FINANCE sid-fin /tmp/fin ""   ""          interactive
+  mkst 9203 NIGHTBG sid-bg  /tmp/bg  user proj-77     bg
+  mkst 9204 proj-99 sid-un  /tmp/un  derived ""       interactive
+
+  # The only handle a peer holds is the WRONG name. If that does not resolve, the tool
+  # cannot be reached from the place the fault is visible.
+  O=$(HOME="$FHH" bash "$FH" --for proj-54 2>&1)
+  chk "a stale envelope name resolves to its station"  "$O" "CONTROL"
+  chk "and prints that station's repair line"          "$O" "--name 'CONTROL' --resume sid-ctl"
+  chk "in that station's cwd, not the caller's"        "$O" "cd '/tmp/ctl'"
+  chk "it says the envelope peers are actually seeing" "$O" "proj-54"
+  chk "and that the caller cannot run it from here"    "$O" "CANNOT RUN IT FROM HERE"
+  chk "resolving by call-sign works too"  "$(HOME="$FHH" bash "$FH" --for CONTROL 2>&1)" "sid-ctl"
+  chk "and by pid"                        "$(HOME="$FHH" bash "$FH" --for 9201 2>&1)"    "sid-ctl"
+
+  # A NEEDLESS RELAUNCH IS NOT FREE: it costs a new [ref] and a board-row rewrite, which
+  # is how Control concludes a station died. So a station that was named at launch must be
+  # refused, not handed a repair it does not need.
+  O=$(HOME="$FHH" bash "$FH" --for FINANCE 2>&1)
+  chk "a station named at launch is refused"    "$O" "NOTHING TO REPAIR"
+  case "$O" in *"--resume sid-fin"*) no "and is not given a relaunch line" "$O";;
+               *) ok "and is not given a relaunch line";; esac
+
+  # Pasted verbatim, so a dropped --bg silently converts a background agent into a tab.
+  chk "a bg station's peer repair line keeps --bg" \
+      "$(HOME="$FHH" bash "$FH" --for NIGHTBG 2>&1)" "claude --bg --name 'NIGHTBG'"
+
+  # A never-named station has a WORKING envelope and no call-sign -- a different fault
+  # with a different fix, and guessing a call-sign for it would be inventing one.
+  O=$(HOME="$FHH" bash "$FH" --for 9204 2>&1)
+  chk "a never-named station is not called stale" "$O" "NEVER BEEN NAMED"
+  chk "and it asks for the call-sign to use"      "$O" "<CALLSIGN>"
+
+  # "Whose header is wrong" is the question a peer arrives with. It must be answerable
+  # without a lookup that has to fail first.
+  O=$(HOME="$FHH" bash "$FH" --audit 2>&1)
+  chk "the audit flags the stale station"      "$O" "CONTROL            STALE"
+  chk "and clears the ones named at launch"    "$O" "FINANCE            OK"
+  chk "and separates never-named from stale"   "$O" "UNNAMED"
+  chk "and says what to run next"              "$O" "--for <call-sign>"
+
+  # An unresolvable target must not dead-end: it lists the fleet, because "which station
+  # did you mean" is only answerable with the fleet in front of you.
+  O=$(HOME="$FHH" bash "$FH" --for NOSUCHSTATION 2>&1); RC=$?
+  chk "an unknown target lists the fleet"  "$O" "CONTROL"
+  [ "$RC" -ne 0 ] && ok "and exits non-zero" || no "and exits non-zero" "exit $RC"
+
+  # --for that lands on the CALLER is the obvious thing to type when a peer tells you your
+  # header is wrong. Every word of the peer path ("hand this over") is false in that case.
+  # `CP` is not computed until the rename section, 300 lines below, and `set -u` makes a
+  # forward reference fatal rather than empty -- so this walks the chain itself.
+  FHCP=$$
+  while [ "$FHCP" -gt 1 ]; do
+    [ "$(ps -o comm= -p "$FHCP" 2>/dev/null | xargs basename 2>/dev/null)" = "claude" ] && break
+    FHCP=$(ps -o ppid= -p "$FHCP" 2>/dev/null | tr -d ' '); [ -z "$FHCP" ] && { FHCP=1; break; }
+  done
+  if [ "$FHCP" -gt 1 ]; then
+    mkst "$FHCP" SELFTEST sid-self /tmp/self user proj-11 interactive
+    O=$(HOME="$FHH" bash "$FH" --for "$FHCP" 2>&1)
+    chk "--for on yourself becomes the self path" "$O" "THIS session"
+    case "$O" in *"CANNOT RUN IT FROM HERE"*) no "and drops the hand-it-over wording" "$O";;
+                 *) ok "and drops the hand-it-over wording";; esac
+  else
+    sk "--for on yourself (no claude in the parent chain)"
+  fi
 fi
 
 echo
