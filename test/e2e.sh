@@ -673,6 +673,15 @@ if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else
   O=$(MC_WINDOWS="$WORK/win2.json" timeout 20 bash "$WP" --all 2>&1); RC=$?
   [ $RC -eq 0 ] && ok "--all always exits clean" || no "--all always exits clean" "exit $RC: $O"
   chk "and reports what it did"            "$O" "WINDOW:"
+  # A PASS THAT SEES NOTHING MUST NOT WIPE THE MAP. 6.99.0 built its live set out of
+  # sessions that matched a Terminal tab, so one pass where the lookup came back empty
+  # concluded the whole fleet was dead and pruned every record -- every station lost its
+  # frame and fell back to the tab colour. Liveness is the socket; "I could not see it
+  # this time" is not death.
+  printf '{"sessions":{"keep-me":{"window":"0,0,10,10","tabs":3}}}' > "$WORK/win3.json"
+  MC_WINDOWS="$WORK/win3.json" PATH=/nonexistent timeout 10 bash "$WP" --all >/dev/null 2>&1
+  case "$(cat "$WORK/win3.json")" in *keep-me*) ok "a failed pass does not wipe the map" ;;
+    *) no "a failed pass does not wipe the map" "$(cat "$WORK/win3.json")" ;; esac
   # It must GROUP BY FRAME, never by window id or `count of tabs`. Terminal.app exposes
   # every TAB as its own window object with tabs=1 -- measured on a window holding four
   # visible tabs, which reported as four windows of one tab each -- so both of those

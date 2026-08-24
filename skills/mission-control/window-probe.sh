@@ -96,20 +96,31 @@ for path in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
                              capture_output=True, text=True, timeout=5).stdout.strip()
     except Exception:
         continue
+    # LIVENESS IS THE SOCKET, AND NOTHING ELSE. This is recorded BEFORE the tty lookup on
+    # purpose: 6.99.0 built the live set out of sessions that matched a Terminal tab, so a
+    # pass where the lookup came back empty -- Terminal busy, automation permission not
+    # granted in that context, a background session with no tab at all -- concluded that
+    # every session was dead and pruned the ENTIRE map. Seen in the field within the hour:
+    # every station lost its frame and the whole fleet fell back to the tab colour.
+    live.add(sid)
+
     frame = bytty.get("/dev/" + tty) if tty and tty != "??" else None
     if not frame:
         continue          # a background session has no tab; it is coloured by `kind` anyway.
     sess[sid] = {"window": frame, "tabs": frames.get(frame, 1)}
-    live.add(sid)
     n += 1
 
-# PRUNE WHAT IS NO LONGER RUNNING. --all used to only ADD, so a station that stood down
-# left its window id behind and kept inflating that window's station count forever -- the
-# grouping then called a genuine one-station window a "tab". A full pass knows the whole
-# live set, so it is the right place to drop the rest.
+# PRUNE ONLY WHAT IS GONE. A station that stood down must lose its frame, or it keeps
+# inflating that frame's count forever and turns a genuine one-station window into a
+# "tab". But "gone" means the socket is gone -- never "I could not see it this time".
 for sid in [k for k in sess if k not in live]:
     del sess[sid]
     pruned += 1
+
+# A PASS THAT SAW NOTHING WRITES NOTHING. If the terminal told us about no tabs at all,
+# the safe conclusion is that this probe failed, not that the fleet has no windows.
+if n == 0 and sess == {}:
+    raise SystemExit(0)
 
 t = tempfile.NamedTemporaryFile("w", dir=os.path.dirname(f) or ".", delete=False)
 json.dump(d, t, indent=2); t.write("\n"); t.close()

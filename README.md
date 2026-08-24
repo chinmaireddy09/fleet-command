@@ -134,7 +134,16 @@ so a count that went stale when you dragged a tab out never over-claims.
 back as four windows of one tab each — so neither the id nor the tab count can tell a tab from a
 window. Tabs of one window share a screen rectangle exactly; a separate window has its own.*
 
-Run once per station at identify, or **backfill the whole fleet from any session**:
+**It keeps itself current.** Identify and deploy both refresh the whole fleet, and a
+`UserPromptSubmit` hook re-runs the probe in the background so moving a window or dragging a tab
+is picked up without anyone doing anything:
+
+```json
+{ "hooks": { "UserPromptSubmit": [ { "hooks": [ { "type": "command", "async": true,
+  "command": "bash ~/.claude/skills/mission-control/window-probe.sh --all >/dev/null 2>&1" } ] } ] } }
+```
+
+Run it by hand any time, or **backfill the whole fleet from any session**:
 
 ```bash
 bash ~/.claude/skills/mission-control/window-probe.sh --all
