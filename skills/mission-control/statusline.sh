@@ -90,16 +90,18 @@ if not root:
 
 # TWO COLOURS, AND EACH ONE MEANS EXACTLY ONE THING: can you see this station or not.
 #
-#   magenta (201)     BACKGROUND -- no window anywhere. This line is the ONLY evidence it
-#                     exists, so it gets the most arresting hue of the three: it is the one
-#                     station you cannot find by looking at your screen.
-#   orange (208)      A TAB in some window. Visible, but behind whichever tab is forward.
-#   cyan (51)         ITS OWN WINDOW. Already the most visible thing you own, so it gets
-#                     the calm one -- the row is a reminder, not a discovery.
+#   white (231)       BACKGROUND -- no window anywhere. This line is the ONLY evidence it
+#                     exists. White is the one value on the line with no hue at all, so it
+#                     cannot be confused with either of the others at any brightness.
+#   Claude orange     A TAB in some window. Visible, but behind whichever tab is forward.
+#     (173)           173 is #d7875f, the closest xterm-256 entry to Claude's own #D97757.
+#   golden yellow     ITS OWN WINDOW. The most visible a station gets.
+#     (220)
 #
-# THE PRINT PRIMARIES, AND THE SPACING IS THE POINT. Roughly 120 degrees apart, which is as
-# far as three vibrant colours can get from each other. That is what makes them memorable
-# rather than merely bright: you stop reading the words and recognise the hue.
+# WHITE EARNS ITS PLACE BY BEING ACHROMATIC. The two failures before this were both hue
+# collisions -- an analogous triad that read as one colour, and a pastel set that converged
+# when dimmed. A value with no hue cannot collide with one that has hue, at any brightness,
+# which makes the background station the one row that can never be misread.
 #
 # TWO EARLIER SETS FAILED THE SAME TEST AND IT IS ALWAYS THE DIM ONE. An analogous triad
 # (purple 141, blue 111, aqua 115) read as ONE colour at terminal size -- "i dont see any
@@ -126,7 +128,7 @@ if not root:
 # NEITHER IS A STATUS COLOUR -- not error (red), warning (yellow), success (green) or
 # information (cyan). A call-sign is identity, and the second signal is visibility; neither
 # is a health claim. Both are also far from the footer's own yellow directly below.
-CS_BG, CS_TAB, CS_WIN = 201, 208, 51
+CS_BG, CS_TAB, CS_WIN = 231, 173, 220
 
 # WHICH MODE A STATION GOT is not in the session registry -- `kind` says `bg` or
 # `interactive` and nothing finer -- so the deploy writes it down and this reads it back.
