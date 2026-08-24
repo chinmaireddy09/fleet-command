@@ -812,6 +812,78 @@ O=$(HOME="$MIH" timeout 30 bash "$D/mc-init.sh" 2>&1)
 chk "the relaunch line carries the resolved coordinator" "$O" "--name 'FLEETLEAD'"
 
 echo
+echo "── 5pp. the FIRST station is where a skipped envelope starts costing ──"
+# 7.9.0 offered the relaunch at step 0 and then told Control "do not raise it again this
+# session". Measured 2026-08-24 on the fleet that shipped with it: Control skipped -- which
+# is correct and allowed -- and the next two stations each spent part of their FIRST
+# transmission reporting the stale envelope back. Three sessions paid for it. The cost does
+# not land when the choice is offered; it lands at the first peer, so the notice belongs at
+# the spawn. Fires ONCE per fleet, derived from "no live peer yet", never a stored flag.
+ENH="$WORK/envhome"; mkdir -p "$ENH/.claude/sessions"
+ENS="$ENH/.claude/sessions"
+ENR=$(newrepo); cd "$ENR"
+# The caller is found by walking up from the script's own shell, so the registry entry has
+# to be for a pid in THIS test's parent chain -- $$ is, exactly as the 5p block relies on.
+enreg(){ CE_P="$$" CE_CWD="$ENR" CE_EXTRA="$1" python3 -c '
+import json,os,sys
+d={"pid":int(os.environ["CE_P"]),"sessionId":"sid-ctl","cwd":os.environ["CE_CWD"],"name":"CONTROL"}
+d.update(json.loads(os.environ["CE_EXTRA"]))
+json.dump(d,open(sys.argv[1],"w"))' "$ENS/$$.json"; }
+enrun(){ HOME="$ENH" MC_SESSIONS="$ENS" timeout 20 bash "$D/spawn-station.sh" CHANNELS "$ENR" CHANNELS --print 2>&1; }
+
+# BARE Control, no peer yet: this is the moment, and it must say so.
+enreg '{"nameSource":"user","formerNames":["proj-cc"]}'
+O=$(enrun)
+chk "the first station prints the envelope cost"      "$O" "ENVELOPE_COST: NOW"
+chk "and names the handle peers will actually see"    "$O" "proj-cc"
+chk "and carries the relaunch, pre-filled"            "$O" "--name 'CONTROL' --resume sid-ctl"
+chk "and says the row rewrite is now part of the bill" "$O" "/mc identify CONTROL"
+chk "and says skipping is still correct"              "$O" "SKIPPING IS STILL CORRECT"
+# The station still goes on post. This is a notice, never a gate.
+chk "and the deploy is not blocked by it"             "$O" "STATION CHANNELS"
+
+# Launched WITH --name: nameSource is absent and there is nothing to say. This is every
+# station `deploy` itself starts, so a false positive here would fire on the whole fleet.
+enreg '{}'
+O=$(enrun)
+case "$O" in *ENVELOPE_COST*) no "a --name Control is never told this" "$O";;
+             *) ok "a --name Control is never told this";; esac
+
+# A LIVE peer already on this fleet: not the first station, so it is spent. pid 1 is alive
+# and NOT ours -- os.kill(1,0) raises PermissionError, not ProcessLookupError, and reading
+# that as a corpse made this fire on a fleet that already had a peer. Caught here.
+enreg '{"nameSource":"user","formerNames":["proj-cc"]}'
+mkdir -p "$ENR/.claude/worktrees/fin"
+python3 -c 'import json,sys; json.dump({"pid":1,"sessionId":"s","cwd":sys.argv[1],"name":"FINANCE"},open(sys.argv[2],"w"))' "$ENR/.claude/worktrees/fin" "$ENS/1.json"
+O=$(enrun)
+case "$O" in *ENVELOPE_COST*) no "a live peer means it is not the first station" "$O";;
+             *) ok "a live peer means it is not the first station";; esac
+
+# A DEAD row on the fleet is not a peer -- eight dead rows is the state this fleet was
+# actually found in, and it must not silence the one notice that still applies.
+python3 -c 'import json,sys; json.dump({"pid":999999,"sessionId":"s","cwd":sys.argv[1],"name":"GHOST"},open(sys.argv[2],"w"))' "$ENR/.claude/worktrees/fin" "$ENS/1.json"
+chk "a dead row does not count as a peer" "$(enrun)" "ENVELOPE_COST: NOW"
+
+# A live session in ANOTHER repo is not this fleet's peer. Scoping by pid alone would
+# silence this forever on any machine running two fleets at once.
+mkdir -p "$WORK/elsewhere"
+python3 -c 'import json,sys; json.dump({"pid":1,"sessionId":"s","cwd":sys.argv[1],"name":"OTHER"},open(sys.argv[2],"w"))' "$WORK/elsewhere" "$ENS/1.json"
+chk "another repo's live session is not a peer here" "$(enrun)" "ENVELOPE_COST: NOW"
+
+# A background Control keeps --bg: the line is pasted verbatim, and dropping the flag
+# silently converts a background agent into a tab session.
+rm -f "$ENS/1.json"
+enreg '{"nameSource":"user","formerNames":["proj-cc"],"kind":"bg"}'
+chk "a bg Control's relaunch keeps --bg" "$(enrun)" "claude --bg --name 'CONTROL'"
+
+# It must never be able to break a deploy. An unreadable registry is a clean silence.
+printf 'not json' > "$ENS/$$.json"
+O=$(enrun); RC=$?
+[ $RC -eq 0 ] && ok "an unreadable registry cannot fail the deploy" || no "an unreadable registry cannot fail the deploy" "exit $RC: $O"
+chk "and the station still goes on post" "$O" "STATION CHANNELS"
+rm -f "$ENS/$$.json"
+
+echo
 echo "── 5m. the window probe is best-effort and never fatal ───────────"
 WP="$D/window-probe.sh"
 if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else

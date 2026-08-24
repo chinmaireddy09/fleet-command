@@ -227,6 +227,120 @@ TXT
   exit 0
 fi
 
+# ── THE ENVELOPE STOPS BEING FREE RIGHT HERE ────────────────────────────────────
+# 7.9.0 moved the relaunch offer to BEFORE the call-sign is taken, which is where it is
+# cheapest, and then told Control "do not raise it again this session". That last clause
+# was wrong, and the field showed it the same day.
+#
+# OBSERVED 2026-08-24, the fleet after 7.9.0 shipped: Control was offered the relaunch at
+# step 0 -- correctly, with the command pre-filled -- and skipped it. The offer's own words
+# were "with zero peers alive right now it costs nothing today; it costs on the first
+# deploy". It was accurate. Twenty minutes later CHANNELS and FINANCE came up, and BOTH
+# spent a chunk of their first transmission telling Control its envelope was stale --
+# one of them a full paragraph, in a fleet where Control had also had to explain itself.
+# That is three sessions paying for one skipped keystroke.
+#
+# So the cost does not arrive when the choice is offered. It arrives HERE, at the first
+# peer, and 7.9.0 had explicitly forbidden mentioning it at the only moment it becomes real.
+#
+# ONCE, AND DERIVED -- NEVER A REMEMBERED FLAG. The condition is "this fleet has no live
+# peer yet", which is measured from the registry at the instant of the spawn. So it fires
+# on the first station and is silent on every one after it, with nothing to write down,
+# nothing to go stale, and nothing to reset. A failed first deploy that gets retried is
+# still the first station, and is still the truth: no peer has read the envelope yet.
+#
+# Silent for a station launched with --name (nameSource absent) -- which is every station
+# `deploy` itself starts. In practice this only ever fires for Control, because Control is
+# the one post deploy never launches.
+SESSIONS="${MC_SESSIONS:-$HOME/.claude/sessions}"
+# Same walk as mc-init.sh's find_me: by pid up the parent chain, matching the REGISTRY
+# FILE and not the process name. Matching on comm="claude" would be tighter and is what
+# set-callsign.sh does, but it also makes this untestable without a process called claude.
+find_caller() {
+  local p=$$ i
+  for i in 1 2 3 4 5 6 7 8; do
+    [ -f "$SESSIONS/$p.json" ] && { echo "$p"; return 0; }
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+    [ -z "$p" ] || [ "$p" = "0" ] || [ "$p" = "1" ] && { [ -z "$p" ] && return 1; }
+  done
+  return 1
+}
+if [ -d "$SESSIONS" ] && CALLER=$(find_caller); then
+  EN_ROOT=$(git -C "$WT" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$WT")
+  case "$EN_ROOT" in */.claude/worktrees/*) EN_ROOT="${EN_ROOT%%/.claude/worktrees/*}" ;; esac
+  MC_SESS="$SESSIONS" MC_ME="$CALLER" MC_ROOT="$EN_ROOT" MC_CS="$CALLSIGN" python3 - <<'PY' 2>/dev/null || true
+import glob, json, os
+
+sess = os.environ["MC_SESS"]; me = os.environ["MC_ME"]
+root = os.path.realpath(os.environ["MC_ROOT"]); newcs = os.environ["MC_CS"]
+
+try:
+    d = json.load(open(os.path.join(sess, f"{me}.json")))
+except Exception:
+    raise SystemExit(0)
+
+# nameSource absent == launched with --name: address and envelope agree and always will.
+if d.get("nameSource") is None:
+    raise SystemExit(0)
+
+def under(p):
+    try: p = os.path.realpath(p)
+    except Exception: return False
+    return p == root or p.startswith(root + os.sep)
+
+# A LIVE PEER ON THIS FLEET, not on this machine. The tester's own session, and every
+# other repo's fleet, are live and irrelevant -- scoping by pid alone would silence this
+# notice forever on any machine that runs two fleets at once.
+for f in glob.glob(os.path.join(sess, "*.json")):
+    if os.path.basename(f) == f"{me}.json": continue
+    try: p = json.load(open(f))
+    except Exception: continue
+    if not under(p.get("cwd", "")): continue
+    try: pid = int(p.get("pid", 0) or 0)
+    except Exception: continue
+    if pid <= 0: continue
+    # ONLY ProcessLookupError MEANS DEAD. `os.kill(pid, 0)` on a LIVE process owned by
+    # another user raises PermissionError, and a bare `except Exception` reads that as a
+    # corpse -- so a live peer would be missed and this notice would fire on a fleet that
+    # already has one. Caught here on the first run of the new test, against pid 1.
+    try: os.kill(pid, 0)
+    except ProcessLookupError: continue
+    except PermissionError: pass
+    except Exception: continue
+    raise SystemExit(0)        # a peer is already up: this is not the first station
+
+envelope = (d.get("formerNames") or [None])[0] or d.get("name")
+mine = d.get("name", "?")
+bg = "--bg " if d.get("kind") == "bg" else ""
+print(f"""
+ENVELOPE_COST: NOW   # {newcs} is the first peer on this fleet, and it is about to read your `@` header
+
+  You are running as {mine} in a session launched WITHOUT --name, so everything you send
+  arrives stamped `@ {envelope}` -- not {mine}. Until this moment that cost nothing: there
+  was nobody to read it. {newcs} is the first station that will.
+
+  MEASURED 2026-08-24: skipped here, the next two stations to come up EACH spent part of
+  their first transmission reporting the stale envelope back to Control. Three sessions
+  paid for it, and none of them could fix it.
+
+  Relaunch keeps the whole conversation:
+
+    cd '{d.get('cwd','?')}' && claude {bg}--name '{mine}' --resume {d.get('sessionId','')}
+    ...then  /mc identify {mine}
+
+  identify is NOT optional now, and that is what changed since step 0: your row is on the
+  board, --resume gets a NEW [ref], and a row pointing at a dead ref is how a coordinator
+  concludes a station died and reassigns its work. At step 0 there was no row and this was
+  one command; it is two now, and it never gets cheaper than this.
+
+  SKIPPING IS STILL CORRECT and this is the LAST time it is raised. The address stays
+  live, so peers reach you by call-sign normally. Say once, in {newcs}'s first order:
+  "address {mine}; the name on my envelope is not my call-sign" -- and then only a reply
+  sent to the envelope bounces.
+""")
+PY
+fi
+
 # ── RECORD WHICH MODE THIS STATION ACTUALLY GOT ─────────────────────────────────
 # The session registry says `bg` or `interactive` and nothing finer, so nothing
 # downstream can tell a station in its own WINDOW from one in a TAB. The deploy is the

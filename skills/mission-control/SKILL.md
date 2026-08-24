@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.9.0
+version: 7.10.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -384,7 +384,14 @@ Say go and I will wait for you; say skip and I take the post now and we live wit
 **Both answers are correct, and neither is yours to pick.** Skipping is *bounded*, and say so
 plainly rather than warning: the address stays live, so peers reach you by call-sign normally —
 only a reply addressed to the envelope bounces, and the fix for that is "address `CONTROL`, not
-the name on the envelope." Then proceed to step 1 and **do not raise it again this session.**
+the name on the envelope." Then proceed to step 1.
+
+**Raise it exactly once more — at the first deploy — and never again.** That clause used to read
+"do not raise it again this session", and that was wrong: skipping here is free *because there is
+nobody to read the envelope yet*, and the moment that stops being true is the moment the first
+station comes up. You do not have to remember to do this. `spawn-station.sh` measures it at the
+spawn and prints `ENVELOPE_COST: NOW` itself — see
+[the first deploy](#the-first-deploy-is-where-a-skipped-envelope-starts-costing).
 
 **Observed twice on one fleet, 2026-08-24.** Control was relaunched without `--name` and
 re-identified — twice — and the fault came back each time with a fresh birth name (`…-54`, then
@@ -1260,6 +1267,33 @@ where both are possible.
 `deploy` initiates the post, **starts the session itself**, lets it identify, and **verifies the
 row carries its address.** A deploy that ends with a 🚧 row and no session name has produced a
 lie, not a station.
+
+#### The first deploy is where a skipped envelope starts costing
+
+If you took the post in a bare session and skipped [step 0](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command),
+`spawn-station.sh` prints a block headed **`ENVELOPE_COST: NOW`** on the deploy that puts the
+*first* station on this fleet. **Relay it to the user in one short exchange, exactly as step 0 did,
+then drop it for good** — it is printed once per fleet and never again, because the condition it
+measures (no live peer yet) can only be true once.
+
+**It is not a warning and not a gate.** The deploy proceeds either way; a station is going on post
+regardless of what they answer. Do not hold the spawn waiting for a reply.
+
+**Say what actually changed since step 0, because the price went up and pretending otherwise is
+the thing that loses trust.** At step 0 the repair was one command. Now your row is on the board,
+so `--resume` gives you a new `[ref]` and the row has to be rewritten — the relaunch **and**
+`/mc identify <CALLSIGN>`, in that order. It is two commands from here and it never gets cheaper.
+
+**And say what skipping actually costs, which is not nothing and is not a bounce.** Measured
+2026-08-24: Control skipped, and the next two stations to come up each spent part of their **first
+transmission** reporting the stale envelope back — a fact none of them could act on, since only a
+relaunch reaches it. Three sessions paid for it. **If they skip, spend one line preventing that
+instead:** put *"address `<CALLSIGN>`; the name on my envelope is not my call-sign"* in the new
+station's first order, and the round-trip never happens.
+
+**A fleet whose Control was launched with `--name` never sees this** — the notice is silent unless
+the session that ran the deploy is bare. In practice that means it fires for Control and nothing
+else, because Control is the one post `deploy` never launches.
 
 **Background is the default, and it opens nothing.** `claude --bg` starts the station as a
 background agent: it returns in about a second, opens no window, types nothing, and takes nobody's
@@ -2148,7 +2182,7 @@ everything a station needs on post. The rest loads only when the command in hand
 | `set-callsign.sh` | **step 1 of identify — every station runs it, always, before the board.** Makes the call-sign the address peers resolve | every station |
 | `label-tab.sh` | called by the above — sets the tab title, and reads this session's own argv/env to report whether it will hold (`persists: YES/NO`) | every station |
 | `tour-state.sh` | owns the first-run flag — whether the walkthrough has been offered, taken or declined. One key, so nothing else in the config can be disturbed by it | the tour only |
-| `spawn-station.sh` | **only at deploy, and it requires `--deploy` to spawn at all** — starts the station (background by default, a visible window on request) and reads the fleet manifest back to check it really registered | Control |
+| `spawn-station.sh` | **only at deploy, and it requires `--deploy` to spawn at all** — starts the station (background by default, a visible window on request) and reads the fleet manifest back to check it really registered. Also prints `ENVELOPE_COST: NOW` on the **first** station of a fleet whose Control was launched bare — the one moment a skipped `@` envelope stops being free | Control |
 | `spawn-pref.sh` | first deploy on a machine — records whether this person wants stations in the background or in a visible window. Asked once, never detected | Control |
 | `fix-header.sh` | prints the one line that repairs a wrong `@` header — `claude --name <CALLSIGN> --resume <sessionId>`. The advertised name is read at launch and never re-read, so no in-session command can fix it; `--resume` means the relaunch costs nothing. A session cannot see its own envelope, so `--for <call-sign\|stale-name\|pid>` prints another station's repair line to hand over, and `--audit` says whose envelope is wrong across the fleet. **Control is the station this bites** — deploy never launches it | any station whose header is wrong, and the peer that noticed |
 | `window-probe.sh` | asks the terminal which WINDOW this session's tab is in and records it, so the status line can tell a tab from a window — nothing Claude Code stores distinguishes them. Runs at identify; `--all` backfills every live session in one pass. Best-effort, never fatal | every station |

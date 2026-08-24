@@ -205,6 +205,15 @@ point, where it costs one relaunch instead of a relaunch plus a second identify 
 rewrite plus a dead `[ref]` in between. Declining is fine and bounded; it is just cheaper to decide
 early.
 
+**And if you decline, it is raised once more at the moment it starts costing — the first station.**
+Declining is free only because nobody is reading your envelope yet, and that stops being true when
+the first peer comes up. Measured on a live fleet: Control declined, and the next two stations each
+spent part of their **first transmission** reporting the stale envelope back — three sessions
+paying for it, and none of them able to fix it. So `spawn-station.sh` prints `ENVELOPE_COST: NOW`
+on the first station of that fleet, once, and never again. Declining a second time is still fine;
+one line in the new station's first order — *"address `CONTROL`; the name on my envelope is not my
+call-sign"* — is what actually stops the round-trip.
+
 **The repair, when a station already has the fault, is a relaunch — and it does not cost you the
 conversation:**
 

@@ -131,7 +131,14 @@ cd '<the station's worktree>' && claude --name '<CALLSIGN>'
 1. **A new `[ref]`.** The board's row for that call-sign now points at a dead address, so Control
    reads the station as dead and **reassigns its work.** Observed: a station's in-flight gate result
    and its next task were handed to a peer. Correctly — from outside, it had died.
-2. **A stale envelope** — peers replying by name bounce.
+2. **A stale envelope** — peers replying by name bounce. **And the bounce is the smaller half.**
+   Measured 2026-08-24 on a fleet whose Control had skipped the relaunch: the next two stations to
+   come up each spent part of their **first transmission** reporting the stale envelope back to
+   Control — a fact none of them could act on, because only a relaunch reaches it. Three sessions
+   paid for one skipped flag, and nothing bounced. `spawn-station.sh` now prints `ENVELOPE_COST:
+   NOW` on the first station of such a fleet, which is the moment the cost becomes real; one line
+   in that station's first order — *"address `CONTROL`; the name on my envelope is not my
+   call-sign"* — is what actually prevents the round-trip.
 3. **A drifting tab title** — the turn summary overwrites it at the next boundary.
 4. **A row rewrite**, and a predecessor record. One post reached its **tenth holder in a day** this
    way, and the board crossed its ~100 KB ceiling twice — the churn inflates the file it writes to.
