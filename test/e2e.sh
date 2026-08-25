@@ -174,6 +174,11 @@ chk "a small board is called healthy"   "$O" "BOARD_CEILING:"
 # UNCLEARABLE: archiving a cell shrinks bytes and never touches a line count, so the correct fix
 # could not move the number.
 chk "and it counts rows, saying so"     "$O" "station rows"
+# BOARD_LINES sits three lines above BOARD_CEILING next to a doctrine that says "150 rows".
+# Measured 2026-08-25: a coordinator divided BOARD_LINES by 150 itself and reported 241% on a
+# board at 67%. The fix has to be on the LINE ITSELF -- a rule elsewhere in a 200KB skill does
+# not reach the moment somebody is looking at a number.
+chk "BOARD_LINES warns against the wrong sum" "$O" "do NOT divide this by 150"
 chk "and names which limit is binding"  "$O" "binding one"
 case "$O" in *"BOARD_CEILING: "[0-9]"% -- healthy"*|*"BOARD_CEILING: "[0-9][0-9]"% -- healthy"*)
     ok "and a healthy board says so" ;;
@@ -1047,7 +1052,9 @@ if [ ! -f "$CSH" ]; then sk "control-shell-hook.sh not shipped in this copy"; el
   # The branches below the gate cannot be reached without a tty, so exercise them on a copy
   # with ONLY that condition removed. The gate's existence is asserted above, separately.
   sed 's/if \[ "$#" -ne 0 \] || \[ ! -t 0 \] || \[ ! -t 1 \]; then/if [ "$#" -ne 0 ]; then/' "$CH/fn.sh" > "$CH/fnt.sh"
-  csrun(){ ( cd "$1" 2>/dev/null || exit 0; PATH="$CH/bin:$PATH"; HOME="$CH/home"; . "$CH/fnt.sh"; claude ${2:+$2} ) 2>/dev/null; }
+  # stderr is MERGED, not discarded: the decline notice is written there, and a helper that
+  # throws it away would let a silent decline pass every assertion in this block.
+  csrun(){ ( cd "$1" 2>/dev/null || exit 0; PATH="$CH/bin:$PATH"; HOME="$CH/home"; . "$CH/fnt.sh"; claude ${2:+$2} ) 2>&1; }
 
   CSR=$(newrepo)
   chk "a plain repo launches as CONTROL" "$(csrun "$CSR")" "RAN: claude --name CONTROL"
@@ -1067,10 +1074,18 @@ if [ ! -f "$CSH" ]; then sk "control-shell-hook.sh not shipped in this copy"; el
 
   # NEVER CLAIM A NAME SOMEBODY ELSE ANSWERS TO. Two sessions on one address is worse than
   # a wrong envelope: a peer's message reaches whichever the harness picks.
-  printf '{"pid":1,"name":"CONTROL","cwd":"/tmp"}' > "$CH/home/.claude/sessions/live.json"
-  O=$(csrun "$CSR")
+  printf '{"pid":1,"name":"CONTROL","cwd":"/tmp/otherproj"}' > "$CH/home/.claude/sessions/live.json"
+  O=$(csrun "$CSR" 2>&1)
   case "$O" in *"--name"*) no "a live CONTROL is never claimed twice" "$O";;
                *) ok "a live CONTROL is never claimed twice";; esac
+  # AND IT MUST SAY SO. A silent decline is indistinguishable from the hook not being
+  # installed, and the user cannot read the registry to tell which. Reported 2026-08-25:
+  # a session came up bare and neither the user nor I could establish which had happened.
+  chk "and it says why it declined"      "$O" "held by a live session"
+  # A call-sign is unique per MACHINE, not per repo -- SendMessage resolves names machine-wide
+  # and set-callsign.sh refuses a taken name the same way. So the holder is usually in ANOTHER
+  # repo, and without the path the user hunts through the wrong project.
+  chk "and names WHERE the holder is"    "$O" "/tmp/otherproj"
   # ...and a DEAD row does not reserve the name forever.
   printf '{"pid":999999,"name":"CONTROL","cwd":"/tmp"}' > "$CH/home/.claude/sessions/live.json"
   chk "a dead CONTROL row frees the name" "$(csrun "$CSR")" "RAN: claude --name CONTROL"

@@ -450,7 +450,9 @@ fi
 if git -C "$ROOT" cat-file -e "$BASE:$BOARD" 2>/dev/null; then
   echo "BOARD: $BOARD"
   echo "BOARD_BYTES: $(git -C "$ROOT" show "$BASE:$BOARD" | wc -c | tr -d ' ')   # at $BASE, NOT the working copy"
-  echo "BOARD_LINES: $(git -C "$ROOT" show "$BASE:$BOARD" | wc -l | tr -d ' ')"
+  echo "BOARD_LINES: $(git -C "$ROOT" show "$BASE:$BOARD" | wc -l | tr -d ' ')   # LINES, NOT ROWS -- do NOT divide this by 150."
+  echo "             # A board is mostly prose. BOARD_CEILING below has already done the arithmetic"
+  echo "             # against real table rows; quote that, never a figure derived from this one."
   # A NUMBER IS NOT A DIAGNOSIS. BOARD_BYTES has been printed for releases and the board still
   # reached the ceiling twice, because a coordinator reading "75594" has no way to know that is
   # three quarters of the way to a board `Read` will refuse to open -- and no way to know WHICH

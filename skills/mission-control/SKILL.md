@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.14.2
+version: 7.15.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2984,6 +2984,14 @@ Control keeps these. They look alike and are not interchangeable.
 **Measured 2026-08-18: a live board reached 313 KB and `Read` refused to open it** — so the
 skill's own first instruction failed. **Ceiling: ~150 rows or ~100 KB, and never past what `Read`
 accepts.**
+
+**A ROW IS A TABLE ROW, NOT A LINE, AND THE PREAMBLE HAS ALREADY DONE THIS SUM.** Quote
+`BOARD_CEILING`; never divide `BOARD_LINES` by 150. Measured 2026-08-25 on a live board: 362
+lines, of which 350 were prose and headings and **twelve** were station rows. A coordinator that
+did the division itself reported *"362 lines — 241% of the row ceiling"* on a board sitting at
+**67%**, and the fix for it — archiving a fat cell — shrinks bytes and cannot move a line count,
+so that alarm could never have been cleared. `BOARD_CEILING` counts real rows and says which of
+the two limits is binding.
 
 **Measure it at the ref you are about to write, not in the shared checkout** —
 `git show origin/main:docs/WORK-LOCKS.md | wc -c`. On 2026-08-19 two stations independently

@@ -122,9 +122,20 @@ for f in glob.glob(os.path.expanduser('~/.claude/sessions/*.json')):
     except ProcessLookupError: continue
     except PermissionError: pass
     except Exception: continue
-    print('taken'); break" 2>/dev/null)
+    print(d.get('cwd','') or '?'); break" 2>/dev/null)
   fi
   if [ -n "$_mc_taken" ]; then
+    # SAY SO. Declining here is correct, but a SILENT decline is indistinguishable from the
+    # hook not being installed -- and the user cannot see the registry to tell the difference.
+    # Reported 2026-08-25: a session came up bare, and neither of us could establish whether
+    # the guard had fired or the wrapper had failed. One line removes the whole question.
+    # NAME WHERE THE HOLDER IS. A call-sign is unique per MACHINE, not per repo, because
+    # SendMessage resolves names machine-wide -- set-callsign.sh refuses a taken name the same
+    # way. So the holder is often in a DIFFERENT repo, and "close the other one" sends someone
+    # hunting through the wrong project unless the path is on the line.
+    printf '%s\n' "mission-control: not naming this session ${_mc_name} -- held by a live session in ${_mc_taken}" >&2
+    printf '%s\n' "                 (call-signs are unique per machine). Starting bare; close that one first" >&2
+    printf '%s\n' "                 if this session was meant to be ${_mc_name}." >&2
     command claude; return $?
   fi
 
