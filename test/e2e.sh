@@ -979,6 +979,25 @@ chk "and the station still goes on post" "$O" "STATION CHANNELS"
 rm -f "$ENS/$$.json"
 
 echo
+echo "── 5r. the first-run tour numbers its own steps consistently ──────"
+# A REAL DEFECT THIS WOULD HAVE CAUGHT. The tour shipped as five steps; two more were added as
+# 5/6 and 6/6 and the first four were never renumbered, so a reader walked 1/5, 2/5, 3/5, 4/5,
+# 5/6, 6/6 -- and cross-references inside them pointed at a denominator the labels disagreed
+# with. Found 2026-08-25 while adding a seventh step. Prose cannot be unit-tested, but its
+# ARITHMETIC can.
+TOURN=$(grep -o '\*\*[0-9]/[0-9] —' "$D/SKILL.md" | grep -o '[0-9]/[0-9]' | sort -u)
+DENOMS=$(printf '%s\n' "$TOURN" | cut -d/ -f2 | sort -u | tr -d '\n')
+if [ -z "$TOURN" ]; then sk "no numbered tour steps found"; else
+  [ ${#DENOMS} -eq 1 ] && ok "every tour step shares one denominator (/$DENOMS)" \
+    || no "every tour step shares one denominator" "mixed: $(printf '%s ' $TOURN)"
+  # ...and the steps must actually run 1..N with none missing or repeated.
+  NUMS=$(printf '%s\n' "$TOURN" | cut -d/ -f1 | sort -n | tr -d '\n')
+  EXPECT=$(seq 1 "$DENOMS" 2>/dev/null | tr -d '\n')
+  [ "$NUMS" = "$EXPECT" ] && ok "and they run 1..$DENOMS with no gaps or repeats" \
+    || no "and they run 1..$DENOMS with no gaps or repeats" "got $NUMS, expected $EXPECT"
+fi
+
+echo
 echo "── 5q. a bare claude comes up already named as the coordinator ────"
 # THE ENVELOPE IS SET BY --name AND BY NOTHING ELSE. Measured 2026-08-24:
 # CLAUDE_CODE_SESSION_NAME exists in the binary and does NOT name a session (a bg session

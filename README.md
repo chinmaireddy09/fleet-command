@@ -436,7 +436,18 @@ git clone https://github.com/chinmaireddy09/fleet-command.git
 mkdir -p ~/.claude/skills ~/.claude/commands
 cp -r fleet-command/skills/*   ~/.claude/skills/
 cp -r fleet-command/commands/* ~/.claude/commands/
+
+# recommended, and the only thing that makes Control's own name right from the start
+bash ~/.claude/skills/mission-control/control-shell-hook.sh --install
 ```
+
+**That last line is optional and it is the one worth reading about.** Control is *whoever runs
+`/mc`* — always a session you started by hand — so the name stamped on the messages it sends is
+the one your shell generated, and nothing running can change it. The hook makes a bare `claude`
+in a git repo start as that repo's coordinator, so there is no mismatch to explain. Skip it and
+the fleet still works: the mismatch gets published on the board instead and nothing bounces.
+`--uninstall` removes it. The first-run walkthrough offers it as its last step, so you do not have
+to remember this line.
 
 **Copy `commands/` too — that line is what makes the short forms work.** A skill registers one
 slash command, named after its directory: `/mission-control`, `/status-and-backlog`. The short

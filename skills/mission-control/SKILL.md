@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.13.0
+version: 7.14.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2277,7 +2277,7 @@ Run them in order, narrating what you are doing and why. **Confirm before every 
 exact file and repo.** This is somebody's first minute with the tool and the impression that lasts
 is whether it touched their project without asking.
 
-**1/5 — Your board.** Run Step 1's discovery. Then:
+**1/7 — Your board.** Run Step 1's discovery. Then:
 - **A board already exists** → **do not create anything.** Show them the real one, say where it
   lives and how many rows it holds. *"You already have one — that's it, at `docs/WORK-LOCKS.md`."*
   A tour that creates a second board beside a real one has taught them the exact thing this skill
@@ -2286,7 +2286,7 @@ is whether it touched their project without asking.
   thing that matters: **it is an ordinary file in their repo, committed and pushed like any other.
   Nothing is hidden and nothing is stored anywhere else.**
 
-**2/5 — Claim something.** Have them run `/mc checkin trying the tour`, or offer to run it for
+**2/7 — Claim something.** Have them run `/mc checkin trying the tour`, or offer to run it for
 them.
 
 **UPDATE THE TASK CELL ON THEIR EXISTING ROW. DO NOT ADD A SECOND ROW.** One row per live
@@ -2302,7 +2302,7 @@ Then **show them the line you just changed** — the actual row in the actual fi
 after. Point at their call-sign in it, and at the cell that moved. The claim is the whole idea; a
 row they have seen with their own name on it is worth more than a paragraph explaining claims.
 
-**3/5 — A second session.** **Describe it, offer it, and do not do it unprompted.** Opening a
+**3/7 — A second session.** **Describe it, offer it, and do not do it unprompted.** Opening a
 terminal window on somebody's first run is a lot, and it is the one step with a side effect they
 did not ask for.
 
@@ -2312,7 +2312,7 @@ did not ask for.
 
 Only on an explicit yes. **On no, that is not a failed tour** — say the command and move on.
 
-**4/5 — Let it go.** Release the claim from 2/6, so they end where they started and have seen a
+**4/7 — Let it go.** Release the claim from 2/7, so they end where they started and have seen a
 full cycle: `/mc checkin` put a row on, this takes it off. Then tell them the two words worth
 knowing:
 
@@ -2330,7 +2330,7 @@ Step 4 released a claim. That is `secure`, and it is the honest label for what t
 **it tells somebody who has just arrived how to leave** — a first run that ends on *"and now close
 everything"* has taught the exit before the job.
 
-**5/6 — How stations should appear.** **The one preference this tool has, asked once, here.**
+**5/7 — How stations should appear.** **The one preference this tool has, asked once, here.**
 A first run is the right moment for it: they have just watched a station open, so the question
 is concrete rather than hypothetical.
 
@@ -2354,9 +2354,9 @@ is the existing path. The tour is the better moment, not the only one.
 
 Then tell them it is changeable, in the same breath: ***"`/mc-config` changes it any time."***
 
-**6/6 — See your fleet under the prompt.** **Offer it. It writes to their settings, so it needs
+**6/7 — See your fleet under the prompt.** **Offer it. It writes to their settings, so it needs
 a yes.** This is the last step because it is the only one that changes something outside the repo,
-and because it only means anything once they have watched a station open in 3/6.
+and because it only means anything once they have watched a station open in 3/7.
 
 > One last thing: I can put your fleet under your prompt — every station on this repo, coloured by
 > whether you can actually see it, with your own call-sign boxed. It's two keys in
@@ -2387,6 +2387,37 @@ gets reported as a bug by the person it was never going to work for.
 **On no, that is not a failed tour.** Say it is in the README under *"See your fleet under the
 prompt"* and move on. It is a convenience, not part of the fleet.
 
+**7/7 — Make Control's name right from the start.** **Offer it. It writes to their shell profile,
+so it needs a yes.** Last because it is the only step that changes something outside both the repo
+*and* Claude Code, and because it only makes sense once they have seen a station's header in 3/7.
+
+> One more, and it closes the one rough edge left in this tool. You start Control by hand — that
+> is the only way Control ever starts — so the name stamped on every message it sends is the one
+> your shell generated, not `CONTROL`, and nothing running can change it. I can make a bare
+> `claude` in a git repo start as that repo's coordinator, so it is right from the first message.
+> You keep typing `claude`. Want it?
+
+On yes: `bash <skill-dir>/control-shell-hook.sh --install`
+
+**Say what it touches.** One `source` line appended to `~/.zshrc` (or `~/.bashrc`), between two
+marker comments. It fires **only** on a bare `claude` at a terminal — every flag, subcommand and
+pipe passes through byte for byte. That narrowness is not fussiness: Claude Code re-execs *itself*
+as `claude daemon run` and `claude bg-pty-host`, and injecting a flag into those would corrupt its
+own plumbing.
+
+**Say the two times it deliberately does nothing**, because both look like failures otherwise: a
+repo that already has a live session answering to the coordinator's name — claiming one address
+twice is worse than a wrong header — and a station's worktree, where coming up as Control would
+take the coordinator's address from inside somebody's lane. In both, `claude` starts bare exactly
+as before.
+
+**It needs a NEW terminal.** A shell profile is read at shell start, so the session they are
+sitting in is unchanged. Say so, or they will test it in the wrong window and conclude it failed.
+
+**On no, that is genuinely cheap** — [step 0](#1--control-comes-on-watch-and-control-is-whoever-ran-the-command)
+publishes the mismatch instead, nothing bounces, and no station spends a transmission on it.
+Point at the README, and `--uninstall` takes it back out whenever they want.
+
 ### Finishing
 
 Run `tour-state.sh complete`. Then say plainly what just happened to their machine:
@@ -2394,9 +2425,13 @@ Run `tour-state.sh complete`. Then say plainly what just happened to their machi
 > That won't appear again — I've noted it in `~/.claude/mission-control.json`, which lives with
 > your settings, not in this repo. `/mc tour` replays it any time.
 
-**If they took the status line in 6/6, name that file too** — it is a *different* file
+**If they took the status line in 6/7, name that file too** — it is a *different* file
 (`~/.claude/settings.json`) and the same rule applies: a tool that writes two things and mentions
 one has told a half-truth about somebody's machine. If they declined, say nothing about it.
+
+**And if they took 7/7, name `~/.zshrc`.** A shell profile is the most personal file this tool
+will ever touch and the one people are most entitled to hear about. Say it was one appended line
+between two marker comments, that it needs a new terminal, and that `--uninstall` removes it.
 
 **Say where the flag went.** A tool that silently remembers something about a person is a tool
 they have to guess about later. One sentence removes the guessing, and it is the same sentence
