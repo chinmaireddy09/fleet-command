@@ -1009,6 +1009,40 @@ chk "and the station still goes on post" "$O" "STATION CHANNELS"
 rm -f "$ENS/$$.json"
 
 echo
+echo "── 5s. a NEW tour step reaches people who already took the tour ───"
+# THE GAP 7.14.0 LEFT. Step 7/7 was added and TOUR_VERSION was not bumped, so every existing
+# adopter -- everyone who had already completed the tour -- would never have been offered it.
+# A capability that only reaches people who install for the first time is shipped to nobody
+# who is already using the tool. tour-state.sh was built for exactly this and went unused.
+TS="$D/tour-state.sh"
+if [ ! -f "$TS" ]; then sk "tour-state.sh not shipped in this copy"; else
+  # NOT $WORK/tourhome -- the first-run test owns that directory and asserts it is pristine.
+  # Reusing it made "a fresh machine is offered the tour" fail against a config I had written.
+  # Same class as the registry I left as CONTROL earlier: a fixture that borrows another
+  # test's state turns the suite's result into a function of its running order.
+  TSH="$WORK/tourhome-versioned"; mkdir -p "$TSH"
+  # a person who completed the PREVIOUS version must be offered the new one, exactly once
+  printf '{"tour":{"state":"completed","version":1,"date":"2026-08-23"}}' > "$TSH/mission-control.json"
+  mkdir -p "$TSH/.claude"; cp "$TSH/mission-control.json" "$TSH/.claude/mission-control.json"
+  O=$(HOME="$TSH" bash "$TS" read 2>&1)
+  chk "a v1 taker is offered the newer tour"   "$O" "not taken"
+  chk "and is told it is an older version"     "$O" "older version"
+  chk "and the date they took it is printed"   "$O" "2026-08-23"
+  # ...and somebody on the CURRENT version is still left alone
+  CURV=$(grep -o 'TOUR_VERSION=[0-9]*' "$TS" | cut -d= -f2)
+  printf '{"tour":{"state":"completed","version":%s,"date":"2026-08-25"}}' "$CURV" > "$TSH/.claude/mission-control.json"
+  O=$(HOME="$TSH" bash "$TS" read 2>&1)
+  chk "a current-version taker is not re-offered" "$O" "TOUR: taken"
+  # a DECLINE on the current version is equally terminal -- "not now" must not become "every time"
+  printf '{"tour":{"state":"declined","version":%s,"date":"2026-08-25"}}' "$CURV" > "$TSH/.claude/mission-control.json"
+  chk "and a decline is just as settled"          "$(HOME="$TSH" bash "$TS" read 2>&1)" "TOUR: taken"
+  # THE VERSION MUST ACTUALLY HAVE MOVED. This is the check that fails if someone adds a step
+  # and forgets the bump again -- which is the whole bug being fixed here.
+  [ "${CURV:-1}" -ge 2 ] && ok "TOUR_VERSION was bumped for the added step" \
+    || no "TOUR_VERSION was bumped for the added step" "still v${CURV:-?}"
+fi
+
+echo
 echo "── 5r. the first-run tour numbers its own steps consistently ──────"
 # A REAL DEFECT THIS WOULD HAVE CAUGHT. The tour shipped as five steps; two more were added as
 # 5/6 and 6/6 and the first four were never renumbered, so a reader walked 1/5, 2/5, 3/5, 4/5,

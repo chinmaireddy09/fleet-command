@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.15.0
+version: 7.16.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -2271,7 +2271,27 @@ doing anything else — including before the board report they asked for.
   not a refused one, and it will be offered again next time. Only a finished or a refused
   walkthrough is settled.
 
-### The six steps
+#### Someone who already took an OLDER tour is a different person to talk to
+
+`TOUR:` distinguishes them: *"not taken # completed an older version (v1); offer v2 once"*.
+**Do not replay seven steps to deliver one.** They have already met the board, the worktree, the
+second session and the status line; re-walking all of it to reach one new step is the same
+disrespect as a nag, only slower. Say what is new and let them choose:
+
+> You took this walkthrough on <date>. One step has been added since — making a bare `claude`
+> come up already named as the coordinator, so Control's messages carry its call-sign from the
+> first one instead of the handle your shell generated. Want just that step, the whole thing
+> again, or neither?
+
+- **just the new step** → run 7/7 alone, then `tour-state.sh complete`.
+- **the whole thing** → run it from 1/7.
+- **neither** → `tour-state.sh decline`. Settled, and never raised again.
+
+**Name the date they took it.** *"You took this on 2026-08-23"* is what makes the offer land as a
+changelog rather than as the tool having forgotten it already asked — and `TOUR:` prints that date,
+so there is nothing to guess.
+
+### The seven steps
 
 Run them in order, narrating what you are doing and why. **Confirm before every write, naming the
 exact file and repo.** This is somebody's first minute with the tool and the impression that lasts

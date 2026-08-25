@@ -22,7 +22,7 @@
 # `version` is what lets a future rewrite re-offer once, without anyone hand-editing a
 # config: bump TOUR_VERSION here and a person who took v1 is offered v2 exactly once.
 set -u
-TOUR_VERSION=1
+TOUR_VERSION=2
 ACTION="${1:-read}"
 CFG="$HOME/.claude/mission-control.json"
 
@@ -58,7 +58,10 @@ if action == "read":
     if state in ("completed", "declined") and isinstance(taken, int) and taken >= ver:
         print(f"TOUR: taken   # {state} {tour.get('date','?')} (v{taken})")
     elif state in ("completed", "declined"):
-        print(f"TOUR: not taken   # {state} an older version (v{taken}); offer v{ver} once")
+        # CARRY THE DATE. The returning-user offer is told to say "you took this on <date>" --
+        # that one clause is what makes it read as a changelog rather than as the tool having
+        # forgotten it already asked. It cannot say it if this line does not print it.
+        print(f"TOUR: not taken   # {state} {tour.get('date','?')} on an older version (v{taken}); offer v{ver} once")
     else:
         print("TOUR: not taken   # first run on this machine -- offer the walkthrough")
     raise SystemExit(0)
