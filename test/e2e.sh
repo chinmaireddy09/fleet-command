@@ -1009,6 +1009,30 @@ chk "and the station still goes on post" "$O" "STATION CHANNELS"
 rm -f "$ENS/$$.json"
 
 echo
+echo "── 5u. radio discipline names WHEN to transmit, not only how long ──"
+# The caps (5 lines routine, 10 for a check-in) governed LENGTH and never said which events
+# warrant a message at all -- so "silence is the default" was a principle with nothing to check
+# against, and a station with something interesting to say reached for the radio and merely tried
+# to be brief. Reported 2026-08-25 against a live fleet: "Control is communicating every single
+# second... this is not a war room." The caps were being missed anyway.
+SK="$D/SKILL.md"
+chk "the six events are enumerated"          "$(cat "$SK")" "The six events"
+chk "starting a task is one of them"         "$(cat "$SK")" "You are starting a task"
+chk "so is finishing or standing down"       "$(cat "$SK")" "You finished, or you are standing down"
+chk "blocked must name WHO can unblock you"  "$(cat "$SK")" "blocked *on someone*"
+chk "and everything else is written, not sent" "$(cat "$SK")" "and nobody is told"
+# The two uncapped categories must survive: safety and corrections are why the caps have
+# exceptions at all, and a trigger list that swallowed them would be a worse skill.
+chk "a correction that causes wrong work still transmits" "$(cat "$SK")" "A correction that would otherwise cause wrong work"
+chk "mayday still transmits"                 "$(cat "$SK")" "Mayday"
+# Control is the biggest talker and reads its own playbook, so the rule has to be there too --
+# stations copy the register they are answered in.
+PB="$D/references/control-playbook.md"
+if [ -f "$PB" ]; then
+  chk "Control's own playbook carries the rule" "$(cat "$PB")" "the six events"
+else sk "control-playbook.md not shipped in this copy"; fi
+
+echo
 echo "── 5t. install.sh links, and refuses to destroy what it did not make ──"
 # WHY LINKING IS THE DEFAULT: Claude Code reads skills from ~/.claude/skills, never from the
 # clone. With a COPIED install, `git pull` updates the checkout and the tool keeps running

@@ -1,6 +1,6 @@
 ---
 name: mission-control
-version: 7.17.0
+version: 7.18.0
 description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Control comes up already carrying its call-sign, so the name on the messages it sends is its own from the first one rather than a handle the shell generated. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
@@ -1598,6 +1598,37 @@ the code — and that correction caught a live bug in the other station's own co
 
 **Silence is the default, not the exception.** A station with nothing to coordinate says nothing.
 Traffic should be *unusual*.
+
+#### The six events. If it is not one of these, do not open the channel.
+
+**The caps above govern how LONG a message may be. They never said WHEN one is warranted, and a
+principle without a trigger list is not checkable** — a station with something interesting to say
+reaches for the radio and then merely tries to be brief. Reported 2026-08-25 by the user watching
+a live fleet: *"Control is communicating every single second... this is not a war room."* The
+observation was correct and the caps were being missed anyway.
+
+| Transmit | Because |
+|---|---|
+| **You are starting a task** | `/mc checkin <task>` — so nobody else takes it. This is the one that prevents duplicated work |
+| **You finished, or you are standing down** | the post is free and the work landed somewhere findable |
+| **You are blocked and a named station can unblock you** | not "blocked" in general — blocked *on someone* |
+| **A conflict: two stations on one path, lane or ordering** | the thing the fleet exists to prevent |
+| **A correction that would otherwise cause wrong work** | uncapped, and worth every line |
+| **Mayday** | uncapped, always |
+
+**Everything else goes in the board, the backlog or the commit message, and nobody is told.**
+A measurement, a finding, a decision, a thing you noticed, progress at 40% — all of it is written
+where a reader can find it and none of it is broadcast. The repo is the shared memory; the radio
+is only a pointer to it.
+
+**The tell that you are about to break this: you are composing a message that would still be true
+tomorrow.** Status, findings and reasoning keep. Only coordination is perishable, and only
+perishable things justify interrupting somebody.
+
+**"Interesting" is not one of the six.** Neither is "I want Control to know I did the work" — the
+board already says that, which is what the board is for. And an answer to a question nobody asked
+is the most expensive message a fleet sends, because it costs the sender's tokens, the reader's
+tokens, and the reader's attention on whatever they were actually doing.
 
 **But silence has one cost, and it is not optional to pay it: re-read the board from `origin`
 before you write anything after a gap.** A quiet station's picture of the fleet goes stale

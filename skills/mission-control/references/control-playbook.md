@@ -503,6 +503,18 @@ is not a row.**
 > traffic to five lines and then let rows run to six thousand words — **same instinct, apply it
 > in both places.**
 
+**AND CONTROL IS THE STATION MOST LIKELY TO BREAK THE OTHER HALF OF THAT RULE.** Stations copy
+the register they are answered in, so a talkative coordinator produces a talkative fleet — the
+drift is automatic and it compounds. Before opening a channel, check it against
+**the six events** in SKILL.md's *Radio discipline*: starting a task, finishing one, blocked on
+a named station, a conflict, a correction that would cause wrong work, or a mayday.
+**Nothing else.**
+
+Reported 2026-08-25 by a user watching a live fleet — *"Control is communicating every single
+second... this is not a war room"* — and the traffic that prompted it was mostly Control's own.
+**A finding, a measurement or a status belongs on the board or in the commit, where it is found
+by whoever needs it, at no cost to anyone who does not.**
+
 **Recovering a board that is already oversized — `Read` will not open it:**
 
 ```bash
