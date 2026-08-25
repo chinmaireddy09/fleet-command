@@ -462,11 +462,34 @@ if git -C "$ROOT" cat-file -e "$BASE:$BOARD" 2>/dev/null; then
 import sys
 try: t = sys.stdin.read()
 except Exception: raise SystemExit(0)
-b = len(t.encode("utf-8", "replace")); n = t.count("\n")
+b = len(t.encode("utf-8", "replace"))
+# COUNT ROWS, NOT LINES. 7.12.0 said "~150 rows" and measured `t.count("\n")` -- raw lines.
+# Measured against a live board 2026-08-25: 362 lines, of which 350 were prose and headings
+# and TWELVE were station rows. It reported 241% AT THE CEILING on a board sitting at 8% of
+# the row limit. Two ways that is worse than no check at all: it is a false alarm, and it is
+# UNCLEARABLE -- archiving a cell shrinks bytes and never touches the line count,
+# so the correct fix could not move the number and the alarm would stand forever.
+rowlines = [l for l in t.splitlines() if l.strip().startswith("|")]
+def _issep(l):
+    # Strip EVERY pipe, not just the outer ones: "|---|---|" keeps inner pipes after
+    # .strip("|"), so the old test never matched a separator on any real multi-column table.
+    core = l.replace("|", "").replace(":", "").replace(" ", "").strip()
+    return core != "" and set(core) <= set("-")
+# Drop the separator AND the header above it -- "| Station | Task |" is a column heading, not a
+# station, and counting it inflated every table by one. A board with no separator has no header
+# to drop, so nothing is subtracted there.
+skip = set()
+for i, l in enumerate(rowlines):
+    if _issep(l):
+        skip.add(i)
+        if i: skip.add(i - 1)
+r = len([i for i in range(len(rowlines)) if i not in skip])
 CB, CR = 100_000, 150          # ~100 KB or ~150 rows, and never past what Read accepts
-pct = int(round(100.0 * max(b / CB, n / CR)))
+pct = int(round(100.0 * max(b / CB, r / CR)))
 verdict = "healthy" if pct < 60 else ("WATCH" if pct < 85 else "AT THE CEILING")
-print(f"BOARD_CEILING: {pct}% -- {verdict}   # ~100 KB or ~150 rows, whichever comes first")
+binding = "size" if (b / CB) >= (r / CR) else "row count"
+print(f"BOARD_CEILING: {pct}% -- {verdict}   # {binding} is the binding one; ~100 KB or ~150 rows")
+print(f"               # {b} bytes, {r} station rows ({len(t.splitlines())} lines total -- prose is not a row)")
 if pct >= 85:
     print("               # A board past this has been measured UNREADABLE -- Read refused it,")
     print("               # so the skill\x27s own first instruction fails. Archive before you write.")
@@ -488,7 +511,7 @@ for ln in t.splitlines():
     for lead in ("STATION ", "Station ", "station "):
         if name.startswith(lead): name = name[len(lead):]
     name = (name or "?")[:24]
-    if set(name) <= set("-: "): continue          # the table separator row
+    if name == "" or set(name) <= set("-: "): continue    # the table separator row
     rows.append((len(ln), name))
 rows.sort(reverse=True)
 if rows and rows[0][0] >= 800:

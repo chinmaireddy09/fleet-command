@@ -168,6 +168,13 @@ chk "board measured at origin/main"     "$O" "BOARD_BYTES:"
 # board `Read` refuses to open, nor WHICH row is eating it. Measured 2026-08-24: 75,594 bytes /
 # 362 lines, growth was predecessor records nested in station cells, one cell 4,489 chars.
 chk "a small board is called healthy"   "$O" "BOARD_CEILING:"
+# PROSE IS NOT A ROW. 7.12.0 said "~150 rows" and counted raw LINES. Measured against a live
+# board 2026-08-25: 362 lines, 350 of them prose and headings, TWELVE station rows -- reported
+# as 241% AT THE CEILING while sitting at 8% of the row limit. Worse than a false alarm, it was
+# UNCLEARABLE: archiving a cell shrinks bytes and never touches a line count, so the correct fix
+# could not move the number.
+chk "and it counts rows, saying so"     "$O" "station rows"
+chk "and names which limit is binding"  "$O" "binding one"
 case "$O" in *"BOARD_CEILING: "[0-9]"% -- healthy"*|*"BOARD_CEILING: "[0-9][0-9]"% -- healthy"*)
     ok "and a healthy board says so" ;;
   *) no "and a healthy board says so" "$O" ;; esac
@@ -189,6 +196,21 @@ chk "and it says to archive, not merge or delete" "$O" "Do NOT merge or"
 # The markdown separator row is not a station and must never be reported as the fattest one.
 case "$O" in *"BOARD_BIGGEST: ---"*|*"BOARD_BIGGEST: :--"*) no "the separator row is not a station" "$O";;
              *) ok "the separator row is not a station";; esac
+
+# A BOARD THAT IS MOSTLY PROSE IS NOT A FULL BOARD. This is the regression that shipped: a
+# real board carries headings, notes and blank lines around a handful of station rows.
+python3 -c '
+prose = "\n".join("some prose line about the fleet %d" % i for i in range(400))
+rows = "| CONTROL | the watch | shared | on watch |\n| FINANCE | Epic D | lane/finance | manned |\n"
+open("docs/WORK-LOCKS.md","w").write("# Board\n\n" + prose + "\n\n| Station | Task | Where | Status |\n|---|---|---|---|\n" + rows)'
+git add -A; git commit -qm proseboard; git update-ref refs/remotes/origin/main HEAD
+O=$(bash "$D/mc-init.sh" 2>&1)
+case "$O" in *"AT THE CEILING"*) no "400 lines of prose is not 'at the ceiling'" "$O";;
+                              *) ok "400 lines of prose is not 'at the ceiling'";; esac
+chk "and it reports the real row count"  "$O" "2 station rows"
+# the separator row must not be counted as a station either
+case "$O" in *"3 station rows"*) no "the separator row is not counted as a station" "$O";;
+                              *) ok "the separator row is not counted as a station";; esac
 
 # Past the ceiling the verdict has to change, and say why it matters: Read refuses the file, so
 # the skill's own first instruction fails.
