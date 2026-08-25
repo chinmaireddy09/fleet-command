@@ -198,6 +198,22 @@ ListAgents" into every message: it is routing around a real failure.
 So `set-callsign.sh` fixes the address peers **resolve**, and cannot reach the value the process
 already holds. `/rename` fixes the **tab title**, a different surface. Neither touches this.
 
+**Better still: make the header right from birth — `control-shell-hook.sh`.**
+
+```bash
+bash ~/.claude/skills/mission-control/control-shell-hook.sh --install
+```
+
+The `@` header is set by `--name` at launch and by **nothing else** — measured: the binary's
+`CLAUDE_CODE_SESSION_NAME` variable does not name a session. Since Control can never pass that
+flag itself, the flag has to come from the shell. This installs a function so a bare `claude`
+inside a git repo comes up as that repo's coordinator; you type exactly what you typed before.
+
+It fires **only** on a bare `claude` at a terminal — every flag, subcommand and pipe passes
+through byte for byte, which is what keeps Claude Code's own `claude daemon run` re-execs safe.
+It never claims a call-sign a live session already answers to, and it stays quiet inside a
+station's worktree. `--uninstall` removes it.
+
 **You are not asked to relaunch, and that is deliberate.** Control is *whoever runs `/mc`* — the
 post is taken, not deployed — so at launch that session had no call-sign to pass. `--name CONTROL`
 requires having already decided to be Control, in a session that had not yet run the command that

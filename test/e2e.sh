@@ -979,6 +979,88 @@ chk "and the station still goes on post" "$O" "STATION CHANNELS"
 rm -f "$ENS/$$.json"
 
 echo
+echo "── 5q. a bare claude comes up already named as the coordinator ────"
+# THE ENVELOPE IS SET BY --name AND BY NOTHING ELSE. Measured 2026-08-24:
+# CLAUDE_CODE_SESSION_NAME exists in the binary and does NOT name a session (a bg session
+# launched with it came up as `5708410f`, nameSource absent). Control is whoever runs /mc,
+# so it can never pass the flag itself -- the call-sign does not exist until /mc runs.
+# Supplying the flag from the shell is therefore the only thing that makes Control's header
+# correct from birth, and it is what the user actually asked for after refusing to relaunch.
+CSH="$D/control-shell-hook.sh"
+if [ ! -f "$CSH" ]; then sk "control-shell-hook.sh not shipped in this copy"; else
+  CH="$WORK/cshook"; mkdir -p "$CH/bin" "$CH/home/.claude/sessions"
+  printf '#!/bin/bash\necho "RAN: claude $*"\n' > "$CH/bin/claude"; chmod +x "$CH/bin/claude"
+  bash "$CSH" --print > "$CH/fn.sh" 2>/dev/null
+  [ -s "$CH/fn.sh" ] && ok "--print emits a shell function" || no "--print emits a shell function" "empty"
+  bash -n "$CH/fn.sh" 2>/dev/null && ok "and it parses" || no "and it parses" "syntax error"
+
+  # THE SAFETY GATE ITSELF. Claude Code re-execs ITSELF -- `claude daemon run`,
+  # `claude bg-pty-host`, `claude bg-spare` were all observed live -- so a wrapper that
+  # injected a flag into those would corrupt the harness's own plumbing. The trigger must
+  # stay "zero arguments, at a terminal".
+  chk "it fires only on a bare claude at a tty" "$(cat "$CH/fn.sh")" '[ "$#" -ne 0 ] || [ ! -t 0 ] || [ ! -t 1 ]'
+
+  # The branches below the gate cannot be reached without a tty, so exercise them on a copy
+  # with ONLY that condition removed. The gate's existence is asserted above, separately.
+  sed 's/if \[ "$#" -ne 0 \] || \[ ! -t 0 \] || \[ ! -t 1 \]; then/if [ "$#" -ne 0 ]; then/' "$CH/fn.sh" > "$CH/fnt.sh"
+  csrun(){ ( cd "$1" 2>/dev/null || exit 0; PATH="$CH/bin:$PATH"; HOME="$CH/home"; . "$CH/fnt.sh"; claude ${2:+$2} ) 2>/dev/null; }
+
+  CSR=$(newrepo)
+  chk "a plain repo launches as CONTROL" "$(csrun "$CSR")" "RAN: claude --name CONTROL"
+
+  # A project that names its own coordinator wins over the default. Never invent one.
+  printf '# board\n\nCoordinator: FLEETLEAD\n' > "$CSR/MISSION-CONTROL.md"
+  chk "a project's own coordinator wins" "$(csrun "$CSR")" "RAN: claude --name FLEETLEAD"
+  rm -f "$CSR/MISSION-CONTROL.md"
+
+  # A STATION's worktree is not Control's. Coming up as Control there would claim the
+  # coordinator's address from inside somebody else's lane.
+  mkdir -p "$CSR/.claude/worktrees/channels"
+  ( cd "$CSR" && git worktree add -q -b lane/ch "$CSR/.claude/worktrees/channels" 2>/dev/null ) || true
+  O=$(csrun "$CSR/.claude/worktrees/channels")
+  case "$O" in *"--name"*) no "a station worktree does not claim CONTROL" "$O";;
+               *) ok "a station worktree does not claim CONTROL";; esac
+
+  # NEVER CLAIM A NAME SOMEBODY ELSE ANSWERS TO. Two sessions on one address is worse than
+  # a wrong envelope: a peer's message reaches whichever the harness picks.
+  printf '{"pid":1,"name":"CONTROL","cwd":"/tmp"}' > "$CH/home/.claude/sessions/live.json"
+  O=$(csrun "$CSR")
+  case "$O" in *"--name"*) no "a live CONTROL is never claimed twice" "$O";;
+               *) ok "a live CONTROL is never claimed twice";; esac
+  # ...and a DEAD row does not reserve the name forever.
+  printf '{"pid":999999,"name":"CONTROL","cwd":"/tmp"}' > "$CH/home/.claude/sessions/live.json"
+  chk "a dead CONTROL row frees the name" "$(csrun "$CSR")" "RAN: claude --name CONTROL"
+  rm -f "$CH/home/.claude/sessions/live.json"
+
+  # Outside a git repo there is no fleet and nothing to coordinate.
+  O=$(csrun "$WORK")
+  case "$O" in *"--name"*) no "outside a repo it stays bare" "$O";;
+               *) ok "outside a repo it stays bare";; esac
+
+  # Arguments pass through byte for byte -- this is what protects the harness re-execs.
+  chk "an argument passes through untouched" "$(csrun "$CSR" "--resume abc123")" "RAN: claude --resume abc123"
+
+  # A call-sign with a space cannot be a session name; never invent somebody's short form.
+  printf 'Coordinator: FLEET COMMAND\n' > "$CSR/MISSION-CONTROL.md"
+  O=$(csrun "$CSR")
+  case "$O" in *"--name"*) no "a spaced call-sign is left alone, not abbreviated" "$O";;
+               *) ok "a spaced call-sign is left alone, not abbreviated";; esac
+  rm -f "$CSR/MISSION-CONTROL.md"
+
+  # install/uninstall round-trip against a FAKE rc file, never the tester's own.
+  CSH_HOME="$WORK/cshome"; mkdir -p "$CSH_HOME"; : > "$CSH_HOME/.zshrc"
+  HOME="$CSH_HOME" bash "$CSH" --install >/dev/null 2>&1
+  chk "install writes a source line"  "$(cat "$CSH_HOME/.zshrc")" "control-shell-hook"
+  BEFORE=$(wc -c < "$CSH_HOME/.zshrc")
+  HOME="$CSH_HOME" bash "$CSH" --install >/dev/null 2>&1
+  [ "$(wc -c < "$CSH_HOME/.zshrc")" = "$BEFORE" ] && ok "and installing twice changes nothing" \
+    || no "and installing twice changes nothing" "file grew"
+  HOME="$CSH_HOME" bash "$CSH" --uninstall >/dev/null 2>&1
+  case "$(cat "$CSH_HOME/.zshrc")" in *control-shell-hook*) no "uninstall removes it cleanly" "still present";;
+                                      *) ok "uninstall removes it cleanly";; esac
+fi
+
+echo
 echo "── 5m. the window probe is best-effort and never fatal ───────────"
 WP="$D/window-probe.sh"
 if [ ! -f "$WP" ]; then sk "window-probe.sh not shipped in this copy"; else
