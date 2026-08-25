@@ -59,7 +59,7 @@ Never the whole thing again unless you ask for it.
 
 ## Quick start
 
-1. **Install** — two `cp` commands, below. Thirty seconds.
+1. **Install** — clone and run `install.sh`, below. Thirty seconds, and `git pull` is the update.
 2. Open a session on your repo and run **`/mc`**. It becomes the coordinator, names itself, and
    tells you who else is working and on what.
 3. Open another window and run **`/mc identify FRONTEND`** — **any name you like**, and a name
@@ -441,9 +441,7 @@ it, so four stations do not each carry procedure they will never run:
 
 ```bash
 git clone https://github.com/chinmaireddy09/fleet-command.git
-mkdir -p ~/.claude/skills ~/.claude/commands
-cp -r fleet-command/skills/*   ~/.claude/skills/
-cp -r fleet-command/commands/* ~/.claude/commands/
+cd fleet-command && bash install.sh
 
 # recommended, and the only thing that makes Control's own name right from the start
 bash ~/.claude/skills/mission-control/control-shell-hook.sh --install
@@ -456,6 +454,15 @@ in a git repo start as that repo's coordinator, so there is no mismatch to expla
 the fleet still works: the mismatch gets published on the board instead and nothing bounces.
 `--uninstall` removes it. The first-run walkthrough offers it as its last step, so you do not have
 to remember this line.
+
+`install.sh` is idempotent, and it will not delete anything it did not create: an existing
+copied install is left alone (or moved aside with `--force`, never removed), a symlink belonging
+to some other install is refused, and `--uninstall` removes only links that point into this
+checkout. `~/.claude/skills/` holds every skill you have, so an installer loose with `rm` there
+would take unrelated work with it.
+
+**Prefer to copy instead?** `cp -r skills/* ~/.claude/skills/` and
+`cp -r commands/* ~/.claude/commands/` still work — you just have to repeat them after every pull.
 
 **Copy `commands/` too — that line is what makes the short forms work.** A skill registers one
 slash command, named after its directory: `/mission-control`, `/status-and-backlog`. The short
@@ -478,13 +485,16 @@ Take only the ones you want; each skill directory is self-contained.
 
 ```bash
 cd fleet-command && git pull
-cp -r skills/*   ~/.claude/skills/
-cp -r commands/* ~/.claude/commands/
 ```
 
-**Copy again after every pull.** Skills are read from `~/.claude/skills/`, not from your clone —
-a `git pull` alone changes nothing about what runs. (If you symlinked instead of copying, the
-pull *is* the update.)
+**That is the whole update.** `install.sh` links this checkout into `~/.claude` rather than
+copying it, so the files Claude Code reads *are* the files you just pulled.
+
+**If you installed by copying** — the old instructions, or an older release — a `git pull` alone
+changes nothing about what runs, because skills are read from `~/.claude/skills/`, not from your
+clone. Run `bash install.sh --check` to see which entries are still copies, then
+`bash install.sh --force` to switch them over. Copies are **moved aside**, never deleted, and the
+path is printed.
 
 **Two things happen on your next `/mc`, and neither needs you to remember anything:**
 

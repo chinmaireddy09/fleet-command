@@ -1009,6 +1009,52 @@ chk "and the station still goes on post" "$O" "STATION CHANNELS"
 rm -f "$ENS/$$.json"
 
 echo
+echo "── 5t. install.sh links, and refuses to destroy what it did not make ──"
+# WHY LINKING IS THE DEFAULT: Claude Code reads skills from ~/.claude/skills, never from the
+# clone. With a COPIED install, `git pull` updates the checkout and the tool keeps running
+# yesterday's files -- a silent failure, because everything looks updated. A symlink removes
+# the second step. The danger is the other side: ~/.claude/skills holds every skill a person
+# has, from every source, so an installer loose with rm there destroys unrelated work.
+IS="$(cd "$D/../.." 2>/dev/null && pwd)/install.sh"
+[ -f "$IS" ] || IS="$D/../../install.sh"
+if [ ! -f "$IS" ]; then sk "install.sh not present in this copy"; else
+  IW="$WORK/instroot"; mkdir -p "$IW/skills" "$IW/commands"
+  irun(){ MC_SKILLS_DIR="$IW/skills" MC_COMMANDS_DIR="$IW/commands" bash "$IS" "$@" 2>&1; }
+
+  O=$(irun); chk "a fresh install links everything" "$O" "linked"
+  [ -L "$IW/skills/mission-control" ] && ok "and the skill is a symlink, not a copy" \
+    || no "and the skill is a symlink, not a copy" "not a link"
+  # running twice must change nothing -- an installer people are told to re-run after every
+  # pull is an installer that runs constantly.
+  chk "running it again changes nothing"  "$(irun)" "linked 0"
+
+  # A COPIED install may carry local edits. Left alone by default, and never deleted even
+  # with --force: moved aside with the path printed.
+  rm -f "$IW/skills/work-lock"; mkdir -p "$IW/skills/work-lock"; echo "edited" > "$IW/skills/work-lock/SKILL.md"
+  O=$(irun)
+  chk "a copied install is left alone"     "$O" "a real directory is already there"
+  O=$(irun --force)
+  chk "--force moves it aside"             "$O" "MOVED"
+  [ -f "$IW/skills/work-lock.bak-1/SKILL.md" ] && ok "and the copy survives with its edits" \
+    || no "and the copy survives with its edits" "backup missing"
+
+  # A symlink pointing somewhere else belongs to another install. Never touched.
+  rm -f "$IW/skills/progress-and-log"; ln -s /tmp "$IW/skills/progress-and-log"
+  chk "a foreign symlink is refused, not overwritten" "$(irun)" "a symlink to somewhere else"
+
+  # THE ONE THAT MATTERS MOST: uninstall must not reach anything it did not create.
+  mkdir -p "$IW/skills/unrelated-skill"; echo x > "$IW/skills/unrelated-skill/SKILL.md"
+  O=$(irun --uninstall)
+  chk "uninstall keeps what is not ours"   "$O" "not ours to remove"
+  [ -f "$IW/skills/unrelated-skill/SKILL.md" ] && ok "an unrelated skill survives uninstall" \
+    || no "an unrelated skill survives uninstall" "DESTROYED somebody elses skill"
+  [ -L "$IW/skills/progress-and-log" ] && ok "and so does a foreign symlink" \
+    || no "and so does a foreign symlink" "removed a link it did not create"
+
+  chk "--check names a copied install as stale" "$(mkdir -p "$IW/skills/work-lock2"; irun --check)" "checkout:"
+fi
+
+echo
 echo "── 5s. a NEW tour step reaches people who already took the tour ───"
 # THE GAP 7.14.0 LEFT. Step 7/7 was added and TOUR_VERSION was not bumped, so every existing
 # adopter -- everyone who had already completed the tour -- would never have been offered it.
