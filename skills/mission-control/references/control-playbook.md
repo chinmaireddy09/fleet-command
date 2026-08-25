@@ -481,6 +481,12 @@ framing, so that's on me as much as it."*
 instruction — read the board — failed outright.** Nothing had enforced "short", nothing defined
 it, and nothing said what to do about a board that is already too big.
 
+**A ROW IS A TABLE ROW, NOT A LINE.** Quote `BOARD_CEILING` from the preamble; never divide
+`BOARD_LINES` by 150. Measured 2026-08-25: a board of 362 lines held 350 lines of prose and
+**twelve** station rows, and a coordinator that did the division itself reported 241% on a board
+at 67% — an alarm that archiving could never have cleared, because archiving shrinks bytes and
+cannot move a line count.
+
 **The ceiling: ~150 rows or ~100 KB, whichever comes first, and no board should exceed what
 `Read` accepts.** Past that it is not a board, it is an archive that also blocks people.
 

@@ -1,7 +1,7 @@
 ---
 name: mission-control
-version: 7.16.0
-description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
+version: 7.16.1
+description: Fleet Command for any number of Claude Code sessions working one repo. The session that initiates it comes on watch as Control — the coordinator is whoever ran the command, not a post somebody has to deploy first. Gives each session a call-sign and its own git worktree, keeps a live board of who holds what and what is next, and spots when one station's work depends on another's so nobody guesses, waits or duplicates. Call-signs are initiated per job and retired when it lands — there is no fixed roster and no ceiling. Deploys a station in the background by default — no terminal opened, nothing typed, nothing taking your focus — or in a new tab or its own window if you ask for one, then verifies it really registered rather than trusting that something appeared. Works the same in every IDE and CLI, and /mc-config changes how stations appear in one keystroke. Control comes up already carrying its call-sign, so the name on the messages it sends is its own from the first one rather than a handle the shell generated. Coordinates changes that cross every area at once, and emails a human collaborator when a job needs them. Every wait has an expiry and silence is never taken as evidence. Runs only when explicitly invoked, as /mission-control or /mc.
 author: Chinmai Reddy (@chinmaireddy09)
 source: https://github.com/chinmaireddy09/fleet-command
 license: LicenseRef-FleetCommand-1.1
@@ -2248,7 +2248,7 @@ is what makes four sessions cost more than one doing the same work rather than t
 | `/mission-control go` | **Go / no-go** — run the tests, say plainly if it's safe |
 | `/mission-control alert <who> <what>` | **Alert a person** — reach a human collaborator by email, either to say *I am holding this* or to ask them to **take or help with** something nobody owns. GitHub sends the mail; `SendMessage` cannot and never could |
 | `/mission-control recover` | **Find lost work** — sweep for anything a dead station left |
-| `/mission-control tour` | **Replay the first run** — the 2-minute walkthrough, whenever you want it. Appears once on its own; this is how you get it back |
+| `/mission-control tour` | **Replay the first run** — the seven-step walkthrough, whenever you want it. Appears once on its own; this is how you get it back |
 | `/mission-control secure <station>` | **Stand down** — save the work, free the workspace, **take the row off the board and retire the call-sign** |
 
 ---
@@ -2261,7 +2261,7 @@ doing anything else — including before the board report they asked for.
 
 **Offer it. Do not start it.**
 
-> First time here — want a 2-minute walkthrough? I'll do each step with you on this repo, and
+> First time here — want a quick walkthrough? Seven short steps, I'll do each one with you on this repo, and
 > ask before touching anything. Or say **skip** and I'll just show you the board.
 
 - **skip / not now / no** → run `tour-state.sh decline` and go straight to the board. **Never

@@ -39,15 +39,23 @@ themselves.
 
 ## First run
 
-The first time you type `/mc` on a machine, it offers a two-minute walkthrough — it creates or
+The first time you type `/mc` on a machine, it offers a seven-step walkthrough — it creates or
 finds your board, puts one real claim on it, shows you the row with your name in it, and takes it
 back off. **It asks before touching anything, and if you already have a board it will not create a
 second one.**
+
+It ends by offering the one thing that cannot be fixed later: making a bare `claude` come up
+already named as the coordinator, so Control's messages carry its call-sign from the first one.
+That step writes to your shell profile, so it is offered and never performed unasked.
 
 Say **skip** and it goes straight to the board and never asks again. Take it and it never asks
 again either. The flag lives in `~/.claude/mission-control.json`, with your settings — **not in
 your repo**, so a teammate cloning your project still gets their own first run. `/mc tour` replays
 it whenever you want.
+
+**If you took the walkthrough before a step was added, you are offered just the new step** — with
+the date you took it, so it reads as a changelog rather than the tool forgetting it already asked.
+Never the whole thing again unless you ask for it.
 
 ## Quick start
 
@@ -464,8 +472,31 @@ start a new session before assuming the install failed. Check:
 ls ~/.claude/skills/mission-control/SKILL.md ~/.claude/commands/mc.md
 ```
 
-Take only the ones you want; each skill directory is self-contained. To update later, `git pull`
-and copy again.
+Take only the ones you want; each skill directory is self-contained.
+
+### Updating an existing install
+
+```bash
+cd fleet-command && git pull
+cp -r skills/*   ~/.claude/skills/
+cp -r commands/* ~/.claude/commands/
+```
+
+**Copy again after every pull.** Skills are read from `~/.claude/skills/`, not from your clone —
+a `git pull` alone changes nothing about what runs. (If you symlinked instead of copying, the
+pull *is* the update.)
+
+**Two things happen on your next `/mc`, and neither needs you to remember anything:**
+
+- **A walkthrough step added since you took it is offered once**, on its own, with the date you
+  took the original — not the whole tour again. Decline and it is settled for good.
+- **Scripts are re-read every run**, so fixes to the preamble, the board check and the spawn path
+  are live immediately in sessions you already have open.
+
+**One thing does need you:** if you want a bare `claude` to come up already named as the
+coordinator, that writes to your shell profile, so it is never done for you —
+`bash ~/.claude/skills/mission-control/control-shell-hook.sh --install`, or take the step when
+the walkthrough offers it. Everything else works without it.
 
 **Optional, and worth it:** [the fleet status line](#see-your-fleet-under-the-prompt) puts this
 repo's live stations under your prompt. It is a **user-level** setting — one `statusLine` key in
