@@ -120,6 +120,17 @@ PY
 )
 [ -n "$CLASH" ] && { echo "REFUSED: $HANDLE is answered by a live session — $CLASH" >&2; exit 3; }
 
+# --- 0. capture the LAUNCH facts before the rename overwrites them -------------
+# `nameSource` absent == this process was launched with --name; 'derived' == a bare launch.
+# Read it HERE, because step 1 sets it to 'user' and the answer would be lost. Read from the
+# REGISTRY, not from `ps -o args=`: the argv test could only ever inspect the live process, so
+# the --name branch was unreachable in any test and shipped unexercised (found 2026-08-25).
+PRE_NS=$(python3 -c "import json,sys
+d=json.load(open(sys.argv[1])); v=d.get('nameSource')
+print('' if v is None else str(v))" "$REG" 2>/dev/null)
+PRE_NAME=$(python3 -c "import json,sys
+print(json.load(open(sys.argv[1])).get('name',''))" "$REG" 2>/dev/null)
+
 # --- 1. the address peers resolve: read-modify-write, name only ----------------
 CALLSIGN="$HANDLE" python3 - "$REG" <<'PY' || exit 1
 import json,os,sys,time,tempfile
@@ -187,7 +198,7 @@ fi
 # What the mismatch actually costs is peers spending transmissions reporting a fault none of
 # them can fix -- measured: two stations, first transmission each. Publishing removes that for
 # one line. The relaunch still exists in fix-header.sh for anyone who asks for it.
-if ! ps -o args= -p "$CLAUDE_PID" 2>/dev/null | grep -q -- "--name"; then
+if [ -n "$PRE_NS" ]; then          # non-empty == derived == launched WITHOUT --name
   MYENV=$(python3 -c "import json,sys
 d=json.load(open(sys.argv[1])); f=d.get('formerNames') or []
 print(f[0] if f else d.get('name',''))" "$REG" 2>/dev/null)
@@ -209,6 +220,47 @@ print(f[0] if f else d.get('name',''))" "$REG" 2>/dev/null)
   echo "handle the bounce suggests nothing at all (measured 2026-08-24, both shapes). Published,"
   echo "nobody addresses it. If the USER asks for the repair, fix-header.sh prints it."
   echo ""
+else
+  # LAUNCHED WITH --name, AND NOW RENAMED TO SOMETHING ELSE. This is the one envelope fault
+  # that MISDELIVERS instead of bouncing, and until 7.14.2 it was completely silent.
+  #
+  # It is created by the control-shell-hook: a hand-started session in a repo with no live
+  # coordinator comes up `--name CONTROL`, and if the human then types `/mc identify CHANNELS`
+  # the address moves to CHANNELS while the envelope stays frozen at CONTROL. CONTROL is not a
+  # dead handle -- it is a REAL call-sign that a live coordinator answers to. A peer replying to
+  # that header does not get "no agent named ..."; it reaches the ACTUAL COORDINATOR, who reads
+  # a reply to a message they never sent. Every other envelope fault in this skill is bounded by
+  # failing loudly. This one fails quietly and in somebody else's tab.
+  #
+  # `/mc deploy` never produces it -- it launches --name X and identifies as the same X.
+  LAUNCHNAME="$PRE_NAME"
+  if [ -n "$LAUNCHNAME" ] && [ "$LAUNCHNAME" != "$HANDLE" ]; then
+    echo ""
+    echo "STOP -- YOUR ENVELOPE NAMES A DIFFERENT STATION, AND IT WILL MISDELIVER."
+    echo "This process was launched with  --name '$LAUNCHNAME'  and you have just taken $HANDLE."
+    echo "Your address is $HANDLE. Your \`@\` header is frozen at $LAUNCHNAME and cannot be changed."
+    echo ""
+    echo "WHY THIS ONE IS DIFFERENT from an ordinary stale envelope: $LAUNCHNAME is a REAL"
+    echo "call-sign, not a dead machine handle. A peer replying to your header does NOT get a"
+    echo "bounce -- it reaches whoever actually holds $LAUNCHNAME, who receives a reply to a"
+    echo "message they never sent. Publishing cannot fix that; only the launch can."
+    echo ""
+    echo "RELAUNCH, and here that is a question you CAN answer -- you already know your call-sign:"
+    MYSID=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('sessionId',''))" "$REG" 2>/dev/null)
+    MYCWD=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('cwd',''))" "$REG" 2>/dev/null)
+    MYKIND=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('kind',''))" "$REG" 2>/dev/null)
+    BGF=""; [ "$MYKIND" = "bg" ] && BGF="--bg "
+    echo "  cd '$MYCWD' && claude ${BGF}--name '$HANDLE' --resume $MYSID"
+    echo "  ...then  /mc identify $HANDLE"
+    echo ""
+    echo "UNTIL THEN, TELL YOUR PEERS IN YOUR FIRST TRANSMISSION: \"my header reads $LAUNCHNAME"
+    echo "and that is NOT me -- address $HANDLE, and never reply to my header.\""
+    echo ""
+    echo "NEXT TIME: \`/mc deploy $HANDLE\` launches a station as its own call-sign and this"
+    echo "cannot happen. A station started by hand should be started as"
+    echo "  cd '$MYCWD' && claude --name '$HANDLE'"
+    echo ""
+  fi
 fi
 
 echo "NOTE: every peer keeps seeing your OLD handle on the \`@\` header -- not only the ones with a"

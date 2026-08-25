@@ -755,9 +755,12 @@ if [ ! -f "$FH" ]; then sk "fix-header.sh not shipped in this copy"; else
     *) no "a bg station's repair line keeps --bg" "no --bg branch" ;;
   esac
   # identify must HAND OVER the fix, not describe it -- and only when it is actually needed.
+  # THE SIGNAL IS THE REGISTRY, NOT argv. This asserted `grep -q -- "--name"` until 7.14.2,
+  # which read the LIVE process's arguments -- so the --name branch could never be reached by
+  # a test and shipped unexercised. nameSource is captured before the rename overwrites it.
   case "$(grep -vE '^\s*#' "$D/set-callsign.sh")" in
-    *'grep -q -- "--name"'*) ok "identify only warns when --name is absent" ;;
-    *) no "identify only warns when --name is absent" "no argv check" ;;
+    *'PRE_NS='*) ok "identify branches on the registry, not on argv" ;;
+    *) no "identify branches on the registry, not on argv" "no PRE_NS capture" ;;
   esac
 
   # THE FAULT IS SEEN BY A PEER, NEVER BY THE STATION THAT HAS IT -- a session cannot
@@ -1339,6 +1342,47 @@ else
   REGN=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d['name'],d.get('nameSource'),','.join(d.get('formerNames',[])))" "$TH/.claude/sessions/$CP.json")
   chk "the registry carries the new name"   "$REGN" "GHOST user"
   chk "the former name is kept"             "$REGN" "OLDNAME"
+
+  # ── THE ONE ENVELOPE FAULT THAT MISDELIVERS INSTEAD OF BOUNCING ──────────────
+  # Created by the control-shell-hook: a hand-started session in a repo with no live
+  # coordinator comes up `--name CONTROL`; if the human then types `/mc identify CHANNELS`,
+  # the address moves to CHANNELS while the envelope stays frozen at CONTROL. CONTROL is a
+  # REAL call-sign somebody answers to, so a peer replying to that header does not get "no
+  # agent named ..." -- it reaches the ACTUAL coordinator. Every other envelope fault here
+  # fails loudly; this one fails quietly, in somebody else's tab.
+  #
+  # It was silent until 7.14.2, and UNTESTABLE before it: the branch keyed off
+  # `ps -o args=` on the LIVE process, so it could only ever inspect the tester's own
+  # session. It now reads nameSource from the registry, captured before the rename.
+  mkreg(){ MK_P="$CP" MK_N="$1" MK_S="${2:-}" python3 -c '
+import json,os,sys
+d={"pid":int(os.environ["MK_P"]),"sessionId":"sid-mis","cwd":"/tmp/proj",
+   "name":os.environ["MK_N"],"kind":"interactive"}
+if os.environ["MK_S"]: d["nameSource"]=os.environ["MK_S"]
+json.dump(d,open(sys.argv[1],"w"))' "$TH/.claude/sessions/$CP.json"; }
+
+  mkreg CONTROL ""                       # launched --name CONTROL
+  O=$(HOME="$TH" bash "$SC" CHANNELS 2>&1)
+  chk "a --name CONTROL renamed to CHANNELS is stopped" "$O" "WILL MISDELIVER"
+  chk "and it says WHY this one is not a bounce"        "$O" "reaches whoever actually holds CONTROL"
+  chk "and the relaunch it offers names the STATION"    "$O" "--name 'CHANNELS'"
+  chk "and it points at deploy as the way to avoid it"  "$O" "/mc deploy CHANNELS"
+
+  mkreg CHANNELS ""                      # deploy's own path: launch name == call-sign
+  O=$(HOME="$TH" bash "$SC" CHANNELS 2>&1)
+  case "$O" in *MISDELIVER*) no "deploy's own path is never warned about" "$O";;
+               *) ok "deploy's own path is never warned about";; esac
+
+  mkreg proj-7d derived                  # a bare launch is the OTHER notice, not this one
+  O=$(HOME="$TH" bash "$SC" CONTROL 2>&1)
+  case "$O" in *MISDELIVER*) no "a bare launch gets publish, not misdelivery" "$O";;
+               *) ok "a bare launch gets publish, not misdelivery";; esac
+  chk "and the publish notice is the one it gets"       "$O" "PUBLISH YOUR ENVELOPE"
+
+  # Put the registry back the way the next assertion expects to find it. The fixtures above
+  # rewrote it three times; leaving that mess for the next test is how a suite starts passing
+  # or failing on the order its cases happen to run in.
+  mkreg GHOST user
   chk "re-setting the same name is a no-op" "$(HOME="$TH" bash "$SC" GHOST 2>&1)" "address already"
   REGN=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('formerNames',[]))" "$TH/.claude/sessions/$CP.json")
   case "$REGN" in *OLDNAME*OLDNAME*) no "a no-op does not re-log the former name" "$REGN";; *) ok "a no-op does not re-log the former name";; esac

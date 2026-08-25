@@ -29,6 +29,20 @@
 # bare `claude` with zero arguments, at an interactive terminal. Anything else -- a flag, a
 # subcommand, a pipe, `-p`, `--resume`, `--bg` -- passes through untouched, byte for byte.
 #
+# ── THE ONE TRAP THIS CREATES, AND WHERE IT IS CAUGHT ───────────────────────────
+# This names a bare session after the COORDINATOR, because that is what a bare session in a
+# repo with no live coordinator almost always is. If the human meant to raise a STATION and
+# types `/mc identify CHANNELS`, the address moves to CHANNELS while the envelope stays frozen
+# at CONTROL -- and CONTROL is a REAL call-sign, not a dead machine handle. A peer replying to
+# that header does not bounce; it reaches the ACTUAL coordinator. That is the only envelope
+# fault in this skill that MISDELIVERS rather than failing loudly.
+#
+# It cannot be prevented here: at launch there is no way to know which the user meant. It is
+# caught at the moment intent becomes visible instead -- `set-callsign.sh` compares the launch
+# name against the call-sign being taken and refuses to be quiet about a mismatch. There the
+# relaunch IS answerable, because a station knows its call-sign; and `/mc deploy <STATION>`
+# never produces the trap at all, since it launches --name X and identifies as the same X.
+#
 # ── AND IT NEVER CLAIMS A NAME SOMEBODY ELSE ANSWERS TO ─────────────────────────
 # If a live session already answers to the coordinator name in this repo, this does nothing
 # and the session comes up bare, exactly as today. Two sessions sharing one address is a
