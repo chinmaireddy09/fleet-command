@@ -461,13 +461,17 @@ to some other install is refused, and `--uninstall` removes only links that poin
 checkout. `~/.claude/skills/` holds every skill you have, so an installer loose with `rm` there
 would take unrelated work with it.
 
-**Prefer to copy instead?** `cp -r skills/* ~/.claude/skills/` and
-`cp -r commands/* ~/.claude/commands/` still work — you just have to repeat them after every pull.
+**Copying still works, and it is the one choice worth talking you out of.**
+`cp -r skills/* ~/.claude/skills/` and `cp -r commands/* ~/.claude/commands/` install the same
+files — but Claude Code reads them from `~/.claude/skills/`, never from your clone, so a later
+`git pull` updates the checkout and **the tool keeps running the old files.** Nothing errors. The
+clone is genuinely up to date. The only symptom is that a fix you were told shipped does not
+happen, which is indistinguishable from the fix not working. Link unless you have a reason.
 
-**Copy `commands/` too — that line is what makes the short forms work.** A skill registers one
-slash command, named after its directory: `/mission-control`, `/status-and-backlog`. The short
-forms `/mc` and `/backlog` are separate command files in `commands/`, and if you skip that
-directory they simply will not exist. (Earlier versions declared a `triggers:` list in the skill
+**`install.sh` links `commands/` as well as `skills/`, and both halves are load-bearing.** A
+skill registers one slash command, named after its directory: `/mission-control`,
+`/status-and-backlog`. The short forms `/mc` and `/backlog` are separate command files in
+`commands/` — so a copy install that skips that directory leaves them simply not existing. (Earlier versions declared a `triggers:` list in the skill
 frontmatter and assumed it registered aliases. It never did — nothing reads that field. The
 list is gone; `commands/` replaces it.)
 

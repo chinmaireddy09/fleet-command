@@ -63,6 +63,10 @@ place() {                       # place <source-path> <dest-path>
     MOVED=$((MOVED+1))
   fi
   ln -s "$src" "$dst" || { echo "  FAILED to link $name" >&2; return 1; }
+  # NAME EACH ONE. "linked 7" is a number a first-time installer cannot check anything against;
+  # a missing entry looks identical to a present one. The list is what lets somebody see that
+  # the short forms (/mc, /backlog) arrived, which is the half people skip when copying.
+  echo "  linked $name"
   LINKED=$((LINKED+1))
 }
 
